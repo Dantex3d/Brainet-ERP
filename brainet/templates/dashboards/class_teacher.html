@@ -1,0 +1,357 @@
+{% extends 'dashboards/base.html' %}
+{% load static %}
+
+{% block content %}
+
+<div class="container-fluid">
+
+    <!-- HEADER -->
+    <div class="row mb-4">
+
+        <div class="col-md-8">
+
+            <h2 class="fw-bold text-info">
+                Class Teacher Dashboard
+            </h2>
+
+            <p class="text-muted">
+                Manage class students, monitor academic performance,
+                validate marksheets and generate reports.
+            </p>
+
+        </div>
+
+        <div class="col-md-4 text-end">
+
+            <a href="{% url 'dashboard' %}"
+               class="btn btn-outline-primary shadow-sm">
+                Refresh Dashboard
+            </a>
+
+        </div>
+
+    </div>
+
+
+    <!-- STATISTICS -->
+    <div class="row g-4 mb-5">
+
+        <!-- CLASS SIZE -->
+        <div class="col-md-3">
+
+            <div class="card border-0 shadow-lg bg-primary text-white rounded-4">
+
+                <div class="card-body">
+
+                    <h6 class="text-uppercase">
+                        Students
+                    </h6>
+
+                    <h1 class="fw-bold">
+                        {{ roster_count }}
+                    </h1>
+
+                    <small>
+                        Total class population
+                    </small>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ATTENDANCE -->
+        <div class="col-md-3">
+
+            <div class="card border-0 shadow-lg bg-success text-white rounded-4">
+
+                <div class="card-body">
+
+                    <h6 class="text-uppercase">
+                        Attendance
+                    </h6>
+
+                    <h1 class="fw-bold">
+                        96%
+                    </h1>
+
+                    <small>
+                        Current attendance rate
+                    </small>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- PERFORMANCE -->
+        <div class="col-md-3">
+
+            <div class="card border-0 shadow-lg bg-warning text-dark rounded-4">
+
+                <div class="card-body">
+
+                    <h6 class="text-uppercase">
+                        Performance
+                    </h6>
+
+                    <h1 class="fw-bold">
+                        B+
+                    </h1>
+
+                    <small>
+                        Overall class mean grade
+                    </small>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- PENDING -->
+        <div class="col-md-3">
+
+            <div class="card border-0 shadow-lg bg-danger text-white rounded-4">
+
+                <div class="card-body">
+
+                    <h6 class="text-uppercase">
+                        Pending Tasks
+                    </h6>
+
+                    <h1 class="fw-bold">
+                        4
+                    </h1>
+
+                    <small>
+                        Marksheets awaiting validation
+                    </small>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- MAIN SECTION -->
+    <div class="row">
+
+        <!-- LEFT -->
+        <div class="col-lg-8">
+
+            <!-- CLASS ROSTER -->
+            <div class="card border-0 shadow-lg rounded-4 mb-4">
+
+                <div class="card-header bg-info text-white rounded-top-4">
+
+                    <div class="d-flex justify-content-between align-items-center">
+
+                        <h5 class="mb-0">
+                            Class Roster
+                        </h5>
+
+                        <button class="btn btn-light btn-sm">
+                            Download PDF
+                        </button>
+
+                    </div>
+
+                </div>
+
+                <div class="card-body table-responsive">
+
+                    <table class="table table-hover align-middle">
+
+                        <thead class="table-light">
+
+                            <tr>
+                                <th>Admission No</th>
+                                <th>Name</th>
+                                <th>Gender</th>
+                                <th>Status</th>
+                                <th>Performance</th>
+                            </tr>
+
+                        </thead>
+
+                        <tbody>
+
+                            {% for student in students %}
+
+                            <tr>
+
+                                <td>
+                                    {{ student.admission_no }}
+                                </td>
+
+                                <td>
+                                    {{ student.name }}
+                                </td>
+
+                                <td>
+                                    {{ student.gender }}
+                                </td>
+
+                                <td>
+
+                                    <span class="badge bg-success">
+                                        Active
+                                    </span>
+
+                                </td>
+
+                                <td>
+
+                                    <span class="badge bg-primary">
+                                        {{ student.mean_grade }}
+                                    </span>
+
+                                </td>
+
+                            </tr>
+
+                            {% empty %}
+
+                            <tr>
+
+                                <td colspan="5"
+                                    class="text-center text-muted">
+
+                                    No students assigned
+
+                                </td>
+
+                            </tr>
+
+                            {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+
+            <!-- MARKSHEET VALIDATION -->
+            <div class="card border-0 shadow-lg rounded-4 mb-4">
+
+                <div class="card-header bg-primary text-white rounded-top-4">
+
+                    <h5 class="mb-0">
+                        Marksheets Validation
+                    </h5>
+
+                </div>
+
+                <div class="card-body">
+
+                    <p class="text-muted">
+
+                        Validate submitted marks before release
+                        to DOS and principal.
+
+                    </p>
+
+                    <button class="btn btn-primary shadow-sm">
+
+                        Validate Marksheets
+
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- RIGHT -->
+        <div class="col-lg-4">
+
+            <!-- QUICK ACTIONS -->
+            <div class="card border-0 shadow-lg rounded-4 mb-4">
+
+                <div class="card-header bg-dark text-white rounded-top-4">
+
+                    <h5 class="mb-0">
+                        Quick Actions
+                    </h5>
+
+                </div>
+
+                <div class="card-body d-grid gap-3">
+
+                    <button class="btn btn-outline-primary">
+                        Generate Report Forms
+                    </button>
+
+                    <button class="btn btn-outline-success">
+                        Download Class List
+                    </button>
+
+                    <button class="btn btn-outline-warning">
+                        Manage Attendance
+                    </button>
+
+                    <button class="btn btn-outline-danger">
+                        View Discipline Cases
+                    </button>
+
+                </div>
+
+            </div>
+
+
+            <!-- CLASS ANNOUNCEMENTS -->
+            <div class="card border-0 shadow-lg rounded-4">
+
+                <div class="card-header bg-warning rounded-top-4">
+
+                    <h5 class="mb-0 text-dark">
+                        Announcements
+                    </h5>
+
+                </div>
+
+                <div class="card-body">
+
+                    <div class="alert alert-info">
+
+                        CAT exams begin next week.
+
+                    </div>
+
+                    <div class="alert alert-success">
+
+                        Report forms submission due Friday.
+
+                    </div>
+
+                    <div class="alert alert-warning">
+
+                        Ensure attendance records are updated daily.
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

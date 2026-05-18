@@ -1,0 +1,41 @@
+{% extends 'dashboards/base.html' %}
+{% load static %}
+
+{% block content %}
+
+<div class="container-fluid py-4">
+
+    <div class="card border-0 shadow-lg rounded-4">
+
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">School Details</h5>
+        </div>
+
+        <div class="card-body">
+
+            <h3>{{ school.name }}</h3>
+
+            <p><strong>Email:</strong> {{ school.email }}</p>
+            <p><strong>Phone:</strong> {{ school.phone }}</p>
+
+            <p>
+                <strong>Status:</strong>
+
+                {% if school.is_active %}
+                    <span class="badge bg-success">Active</span>
+                {% else %}
+                    <span class="badge bg-danger">Inactive</span>
+                {% endif %}
+            </p>
+
+            <a href="{% url 'superuser_dashboard' %}" class="btn btn-secondary">
+                Back
+            </a>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

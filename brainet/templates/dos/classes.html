@@ -1,0 +1,361 @@
+{% extends 'dashboards/base.html' %}
+{% load static %}
+
+{% block content %}
+
+<div class="container-fluid py-4">
+
+    <!-- PAGE HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+            <h2 class="fw-bold text-primary mb-1">
+                Classes Management
+            </h2>
+
+            <p class="text-muted mb-0">
+                Manage school classes, class lists, printing and student organization.
+            </p>
+        </div>
+
+        <div class="d-flex gap-2">
+
+            <a href="{% url 'dos_dashboard' %}"
+               class="btn btn-outline-primary shadow-sm">
+
+                Dashboard
+
+            </a>
+
+            <a href="{% url 'manage_classes' %}"
+               class="btn btn-dark shadow-sm">
+
+                Refresh
+
+            </a>
+
+        </div>
+
+    </div>
+
+
+    <!-- STATISTICS -->
+    <div class="row g-4 mb-4">
+
+        <div class="col-md-3">
+
+            <div class="card border-0 shadow-lg rounded-4 bg-primary text-white">
+
+                <div class="card-body">
+
+                    <h6>Total Classes</h6>
+
+                    <h2 class="fw-bold">
+                        {{ classes|length }}
+                    </h2>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-md-3">
+
+            <div class="card border-0 shadow-lg rounded-4 bg-success text-white">
+
+                <div class="card-body">
+
+                    <h6>Active Classes</h6>
+
+                    <h2 class="fw-bold">
+                        {{ active_classes|default:classes|length }}
+                    </h2>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-md-3">
+
+            <div class="card border-0 shadow-lg rounded-4 bg-warning text-dark">
+
+                <div class="card-body">
+
+                    <h6>Total Students</h6>
+
+                    <h2 class="fw-bold">
+                        {{ total_students }}
+                    </h2>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-md-3">
+
+            <div class="card border-0 shadow-lg rounded-4 bg-danger text-white">
+
+                <div class="card-body">
+
+                    <h6>Archived</h6>
+
+                    <h2 class="fw-bold">
+                        {{ archived_classes|default:"0" }}
+                    </h2>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- CREATE CLASS -->
+    <div class="card border-0 shadow-lg rounded-4 mb-4">
+
+        <div class="card-header bg-dark text-white">
+
+            <h5 class="mb-0">
+                Create New Class
+            </h5>
+
+        </div>
+
+        <div class="card-body">
+
+            <form method="post"
+                  action="{% url 'add_class' %}">
+
+                {% csrf_token %}
+
+                <div class="row">
+
+                    <div class="col-md-5 mb-3">
+
+                        <label class="form-label fw-bold">
+                            Class Name
+                        </label>
+
+                        <input type="text"
+                               name="name"
+                               class="form-control"
+                               placeholder="e.g Grade 8 Blue"
+                               required>
+
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+
+                        <label class="form-label fw-bold">
+                            Class Code
+                        </label>
+
+                        <input type="text"
+                               name="code"
+                               class="form-control"
+                               placeholder="e.g G8B">
+
+                    </div>
+
+                    <div class="col-md-3 mb-3 d-flex align-items-end">
+
+                        <button type="submit"
+                                class="btn btn-success w-100">
+
+                            Add Class
+
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+    <!-- CLASS LIST -->
+    <div class="card border-0 shadow-lg rounded-4">
+
+        <div class="card-header bg-primary text-white">
+
+            <div class="d-flex justify-content-between align-items-center">
+
+                <h5 class="mb-0">
+                    All Classes
+                </h5>
+
+                <span class="badge bg-light text-dark px-3 py-2">
+                    {{ classes|length }} Classes
+                </span>
+
+            </div>
+
+        </div>
+
+        <div class="card-body table-responsive">
+
+            <table class="table table-hover align-middle">
+
+                <thead class="table-light">
+
+                    <tr>
+
+                        <th>#</th>
+
+                        <th>Class Name</th>
+
+                        <th>Code</th>
+
+                        <th>Students</th>
+
+                        <th>Status</th>
+
+                        <th width="45%">
+                            Management Actions
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    {% for c in classes %}
+
+                    <tr>
+
+                        <td>
+                            {{ forloop.counter }}
+                        </td>
+
+                        <td>
+
+                            <strong class="text-primary">
+                                {{ c.name }}
+                            </strong>
+
+                        </td>
+
+                        <td>
+
+                            <span class="badge bg-secondary">
+                                {{ c.code|default:"N/A" }}
+                            </span>
+
+                        </td>
+
+                        <td>
+
+                            <span class="badge bg-info">
+                                {{ c.student_set.count }} Students
+                            </span>
+
+                        </td>
+
+                        <td>
+
+                            {% if c.is_active %}
+
+                                <span class="badge bg-success">
+                                    Active
+                                </span>
+
+                            {% else %}
+
+                                <span class="badge bg-danger">
+                                    Inactive
+                                </span>
+
+                            {% endif %}
+
+                        </td>
+
+                        <td>
+
+                            <div class="d-flex flex-wrap gap-2">
+
+                                <!-- OPEN CLASS LIST -->
+                                <a href="{% url 'view_class_students' c.id %}"
+                                   class="btn btn-primary btn-sm">
+
+                                    Open Class
+
+                                </a>
+
+                                <!-- PRINT -->
+                                <a href="{% url 'print_class_list' c.id %}"
+                                   class="btn btn-dark btn-sm"
+                                   target="_blank">
+
+                                    Print
+
+                                </a>
+
+                                <!-- PDF -->
+                                <a href="{% url 'download_class_list_pdf' c.id %}"
+                                   class="btn btn-success btn-sm">
+
+                                    PDF
+
+                                </a>
+
+                                <!-- EDIT -->
+                                <a href="{% url 'edit_class' c.id %}"
+                                   class="btn btn-warning btn-sm text-dark">
+
+                                    Edit
+
+                                </a>
+
+                                <!-- DELETE -->
+                                <a href="{% url 'delete_class' c.id %}"
+                                   class="btn btn-danger btn-sm"
+                                   onclick="return confirm('Delete this class permanently?')">
+
+                                    Delete
+
+                                </a>
+
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+                    {% empty %}
+
+                    <tr>
+
+                        <td colspan="6"
+                            class="text-center text-muted py-4">
+
+                            No classes available
+
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,703 @@
+{% extends 'dashboards/base.html' %}
+{% load static %}
+
+{% block content %}
+
+<div class="container-fluid py-4">
+
+    <!-- HEADER -->
+    <div class="row align-items-center mb-4">
+
+        <div class="col-lg-8 col-md-12 mb-3 mb-lg-0">
+
+            <h2 class="fw-bold text-primary mb-1">
+                Director of Studies Dashboard
+            </h2>
+
+            <p class="text-muted mb-0">
+                Academic management center for students, examinations,
+                reports, marks entry and school operations.
+            </p>
+
+        </div>
+
+        <div class="col-lg-4 col-md-12">
+
+            <div class="d-flex flex-wrap gap-2 justify-content-lg-end">
+
+                <a href="{% url 'dos_dashboard' %}"
+                   class="btn btn-outline-primary rounded-3 shadow-sm">
+
+                    Refresh
+
+                </a>
+
+                <a href="{% url 'logout' %}"
+                   class="btn btn-danger rounded-3 shadow-sm">
+
+                    Logout
+
+                </a>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ALERTS -->
+    {% if messages %}
+
+        {% for message in messages %}
+
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm">
+
+                {{ message }}
+
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="alert"></button>
+
+            </div>
+
+        {% endfor %}
+
+    {% endif %}
+
+
+    <!-- STATS -->
+    <div class="row g-4 mb-4">
+
+        <div class="col-lg-3 col-md-6">
+
+            <div class="card border-0 shadow-lg rounded-4 bg-primary text-white h-100">
+
+                <div class="card-body">
+
+                    <h6 class="text-uppercase">
+                        Students
+                    </h6>
+
+                    <h1 class="fw-bold">
+                        {{ students|length }}
+                    </h1>
+
+                    <small>
+                        Registered students
+                    </small>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-lg-3 col-md-6">
+
+            <div class="card border-0 shadow-lg rounded-4 bg-success text-white h-100">
+
+                <div class="card-body">
+
+                    <h6 class="text-uppercase">
+                        Classes
+                    </h6>
+
+                    <h1 class="fw-bold">
+                        {{ classes|length }}
+                    </h1>
+
+                    <small>
+                        Active classes
+                    </small>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-lg-3 col-md-6">
+
+            <div class="card border-0 shadow-lg rounded-4 bg-warning text-dark h-100">
+
+                <div class="card-body">
+
+                    <h6 class="text-uppercase">
+                        Dormitories
+                    </h6>
+
+                    <h1 class="fw-bold">
+                        {{ dorms|length }}
+                    </h1>
+
+                    <small>
+                        Boarding houses
+                    </small>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-lg-3 col-md-6">
+
+            <div class="card border-0 shadow-lg rounded-4 bg-danger text-white h-100">
+
+                <div class="card-body">
+
+                    <h6 class="text-uppercase">
+                        Exam Status
+                    </h6>
+
+                    <h3 class="fw-bold">
+                        OPEN
+                    </h3>
+
+                    <small>
+                        Marks entry enabled
+                    </small>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="row">
+
+        <!-- SIDEBAR -->
+        <div class="col-xl-3 col-lg-4 mb-4">
+
+            <div class="card border-0 shadow-lg rounded-4">
+
+                <div class="card-header bg-dark text-white rounded-top-4">
+
+                    <h5 class="mb-0">
+                        DOS Navigation
+                    </h5>
+
+                </div>
+
+                <div class="card-body p-3">
+
+                    <div class="d-grid gap-3">
+
+                        <!-- STUDENTS -->
+                        <div>
+
+                            <h6 class="text-muted fw-bold mb-2">
+                                Students
+                            </h6>
+
+                            <div class="d-grid gap-2">
+
+                                <a href="{% url 'manage_students' %}"
+                                   class="btn btn-outline-primary text-start">
+
+                                    👨‍🎓 Manage Students
+
+                                </a>
+
+                                <a href="{% url 'add_student' %}"
+                                   class="btn btn-outline-success text-start">
+
+                                    ➕ Add Student
+
+                                </a>
+
+                            </div>
+
+                        </div>
+
+                        <!-- ACADEMICS -->
+                        <div>
+
+                            <h6 class="text-muted fw-bold mb-2">
+                                Academics
+                            </h6>
+
+                            <div class="d-grid gap-2">
+
+                                <a href="{% url 'manage_classes' %}"
+                                   class="btn btn-outline-info text-start">
+
+                                    🏫 Manage Classes
+
+                                </a>
+
+                                <a href="{% url 'manage_dorms' %}"
+                                   class="btn btn-outline-warning text-start">
+
+                                    🛏 Manage Dormitories
+
+                                </a>
+
+                            </div>
+
+                        </div>
+
+                        <!-- EXAMS -->
+                        <div>
+
+                            <h6 class="text-muted fw-bold mb-2">
+                                Examinations
+                            </h6>
+
+                            <div class="d-grid gap-2">
+
+                                <a href="{% url 'manage_exams' %}"
+                                   class="btn btn-outline-danger text-start">
+
+                                    📝 Manage Exams
+
+                                </a>
+
+                                <a href="{% url 'enter_marks' %}"
+                                   class="btn btn-outline-primary text-start">
+
+                                    📊 Enter Marks
+
+                                </a>
+
+                            </div>
+
+                        </div>
+
+                        <!-- REPORTS -->
+                        <div>
+
+                            <h6 class="text-muted fw-bold mb-2">
+                                Reports
+                            </h6>
+
+                            <div class="d-grid gap-2">
+
+                                <a href="{% url 'report_center' %}"
+                                   class="btn btn-outline-success text-start">
+
+                                    📄 Report Forms
+
+                                </a>
+
+                                <a href="{% url 'generate_marksheets' %}"
+                                   class="btn btn-outline-dark text-start">
+
+                                    📑 Marksheets
+
+                                </a>
+
+                                <a href="{% url 'generate_merit_list' %}"
+                                   class="btn btn-outline-secondary text-start">
+
+                                    🏆 Merit Lists
+
+                                </a>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- MAIN CONTENT -->
+        <div class="col-xl-9 col-lg-8">
+
+            <!-- EXAM CONTROLS -->
+            <div class="card border-0 shadow-lg rounded-4 mb-4">
+
+                <div class="card-header bg-primary text-white rounded-top-4">
+
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+
+                        <h5 class="mb-0">
+                            Examination Control Center
+                        </h5>
+
+                        <span class="badge bg-light text-dark px-3 py-2">
+                            Academic Operations
+                        </span>
+
+                    </div>
+
+                </div>
+
+                <div class="card-body">
+
+                    <div class="row g-3">
+
+                        <div class="col-md-3 col-sm-6">
+
+                            <form method="post"
+                                  action="{% url 'open_exam_window' %}">
+
+                                {% csrf_token %}
+
+                                <button class="btn btn-success w-100 py-3">
+
+                                    Open Exams
+
+                                </button>
+
+                            </form>
+
+                        </div>
+
+                        <div class="col-md-3 col-sm-6">
+
+                            <form method="post"
+                                  action="{% url 'close_exam_window' %}">
+
+                                {% csrf_token %}
+
+                                <button class="btn btn-danger w-100 py-3">
+
+                                    Close Exams
+
+                                </button>
+
+                            </form>
+
+                        </div>
+
+                        <div class="col-md-3 col-sm-6">
+
+                            <a href="{% url 'enter_marks' %}"
+                               class="btn btn-primary w-100 py-3">
+
+                                Enter Marks
+
+                            </a>
+
+                        </div>
+
+                        <div class="col-md-3 col-sm-6">
+
+                            <a href="{% url 'manage_exams' %}"
+                               class="btn btn-dark w-100 py-3">
+
+                                Manage Exams
+
+                            </a>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- REPORTS -->
+            <div class="card border-0 shadow-lg rounded-4 mb-4">
+
+                <div class="card-header bg-success text-white rounded-top-4">
+
+                    <h5 class="mb-0">
+                        Academic Reports & PDFs
+                    </h5>
+
+                </div>
+
+                <div class="card-body">
+
+                    <div class="row g-4">
+
+                        <div class="col-md-4">
+
+                            <div class="border rounded-4 p-4 text-center bg-light h-100">
+
+                                <h6 class="fw-bold text-primary mb-3">
+                                    Report Forms
+                                </h6>
+
+                                <a href="{% url 'report_center' %}"
+                                   class="btn btn-primary w-100">
+
+                                    Generate PDFs
+
+                                </a>
+
+                            </div>
+
+                        </div>
+
+                        <div class="col-md-4">
+
+                            <div class="border rounded-4 p-4 text-center bg-light h-100">
+
+                                <h6 class="fw-bold text-success mb-3">
+                                    Marksheets
+                                </h6>
+
+                                <a href="{% url 'generate_marksheets' %}"
+                                   class="btn btn-success w-100">
+
+                                    Download PDFs
+
+                                </a>
+
+                            </div>
+
+                        </div>
+
+                        <div class="col-md-4">
+
+                            <div class="border rounded-4 p-4 text-center bg-light h-100">
+
+                                <h6 class="fw-bold text-danger mb-3">
+                                    Merit Lists
+                                </h6>
+
+                                <a href="{% url 'generate_merit_list' %}"
+                                   class="btn btn-danger w-100">
+
+                                    Generate Rankings
+
+                                </a>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- QUICK ACTIONS -->
+            <div class="row">
+
+                <!-- QUICK ADD STUDENT -->
+                <div class="col-lg-6 mb-4">
+
+                    <div class="card border-0 shadow-lg rounded-4 h-100">
+
+                        <div class="card-header bg-primary text-white rounded-top-4">
+
+                            <h5 class="mb-0">
+                                Quick Add Student
+                            </h5>
+
+                        </div>
+
+                        <div class="card-body">
+
+                            <form method="post"
+                                  action="{% url 'add_student' %}">
+
+                                {% csrf_token %}
+
+                                <div class="mb-3">
+
+                                    <label class="form-label fw-bold">
+                                        Student Name
+                                    </label>
+
+                                    <input type="text"
+                                           name="name"
+                                           class="form-control"
+                                           required>
+
+                                </div>
+
+                                <div class="mb-3">
+
+                                    <label class="form-label fw-bold">
+                                        Admission Number
+                                    </label>
+
+                                    <input type="text"
+                                           name="admission_number"
+                                           class="form-control"
+                                           required>
+
+                                </div>
+
+                                <div class="mb-3">
+
+                                    <label class="form-label fw-bold">
+                                        Gender
+                                    </label>
+
+                                    <select name="gender"
+                                            class="form-select">
+
+                                        <option value="Male">
+                                            Male
+                                        </option>
+
+                                        <option value="Female">
+                                            Female
+                                        </option>
+
+                                    </select>
+
+                                </div>
+
+                                <div class="mb-3">
+
+                                    <label class="form-label fw-bold">
+                                        Class
+                                    </label>
+
+                                    <select name="class_id"
+                                            class="form-select">
+
+                                        {% for class in classes %}
+
+                                        <option value="{{ class.id }}">
+                                            {{ class.name }}
+                                        </option>
+
+                                        {% endfor %}
+
+                                    </select>
+
+                                </div>
+
+                                <button class="btn btn-success w-100">
+
+                                    Register Student
+
+                                </button>
+
+                            </form>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- QUICK ADD CLASS + DORM -->
+                <div class="col-lg-6">
+
+                    <!-- ADD CLASS -->
+                    <div class="card border-0 shadow-lg rounded-4 mb-4">
+
+                        <div class="card-header bg-warning text-dark rounded-top-4">
+
+                            <h5 class="mb-0">
+                                Add Class
+                            </h5>
+
+                        </div>
+
+                        <div class="card-body">
+
+                            <form method="post"
+                                  action="{% url 'add_class' %}">
+
+                                {% csrf_token %}
+
+                                <div class="mb-3">
+
+                                    <label class="form-label fw-bold">
+                                        Class Name
+                                    </label>
+
+                                    <input type="text"
+                                           name="name"
+                                           class="form-control"
+                                           placeholder="Grade 7 East"
+                                           required>
+
+                                </div>
+
+                                <div class="mb-3">
+
+                                    <label class="form-label fw-bold">
+                                        Class Level
+                                    </label>
+
+                                    <input type="number"
+                                           name="level"
+                                           class="form-control"
+                                           placeholder="7"
+                                           required>
+
+                                </div>
+
+                                <button class="btn btn-warning w-100">
+
+                                    Create Class
+
+                                </button>
+
+                            </form>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- ADD DORM -->
+                    <div class="card border-0 shadow-lg rounded-4 mb-4">
+
+                        <div class="card-header bg-dark text-white rounded-top-4">
+
+                            <h5 class="mb-0">
+                                Add Dormitory
+                            </h5>
+
+                        </div>
+
+                        <div class="card-body">
+
+                            <form method="post"
+                                  action="{% url 'add_dorm' %}">
+
+                                {% csrf_token %}
+
+                                <div class="mb-3">
+
+                                    <label class="form-label fw-bold">
+                                        Dormitory Name
+                                    </label>
+
+                                    <input type="text"
+                                           name="name"
+                                           class="form-control"
+                                           required>
+
+                                </div>
+
+                                <button class="btn btn-dark w-100">
+
+                                    Create Dormitory
+
+                                </button>
+
+                            </form>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

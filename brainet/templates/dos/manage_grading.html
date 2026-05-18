@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+    <title>Manage Grading</title>
+
+    <style>
+
+        body{
+            font-family: Arial;
+            background: #f4f6f9;
+            padding: 20px;
+        }
+
+        .container{
+            width: 95%;
+            margin: auto;
+        }
+
+        .card{
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        h1{
+            color: #1e3a8a;
+        }
+
+        form{
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+
+        input{
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+
+        button{
+            padding: 10px;
+            background: #1e3a8a;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        table{
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        table th{
+            background: #1e3a8a;
+            color: white;
+            padding: 12px;
+        }
+
+        table td{
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .edit-btn{
+            background: green;
+            color: white;
+            padding: 7px 12px;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+
+        .delete-btn{
+            background: red;
+            color: white;
+            padding: 7px 12px;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+
+        .message{
+            background: #d1fae5;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="card">
+
+        <h1>
+            Manage Grading Policy
+        </h1>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="message">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <form method="POST" action="{% url 'add_grading_policy' %}">
+
+            {% csrf_token %}
+
+            <input
+                type="text"
+                name="grade_letter"
+                placeholder="Grade"
+                required
+            >
+
+            <input
+                type="text"
+                name="short_form"
+                placeholder="Short Form"
+            >
+
+            <input
+                type="number"
+                name="min_score"
+                placeholder="Min Score"
+                required
+            >
+
+            <input
+                type="number"
+                name="max_score"
+                placeholder="Max Score"
+                required
+            >
+
+            <input
+                type="number"
+                step="0.1"
+                name="points"
+                placeholder="Points"
+            >
+
+            <input
+                type="text"
+                name="remarks"
+                placeholder="Remarks"
+            >
+
+            <button type="submit">
+                Save Grading
+            </button>
+
+        </form>
+
+    </div>
+
+    <div class="card">
+
+        <table>
+
+            <thead>
+
+                <tr>
+
+                    <th>#</th>
+                    <th>Grade</th>
+                    <th>Short Form</th>
+                    <th>Range</th>
+                    <th>Points</th>
+                    <th>Remarks</th>
+                    <th>Actions</th>
+
+                </tr>
+
+            </thead>
+
+            <tbody>
+
+                {% for grading in gradings %}
+
+                <tr>
+
+                    <td>
+                        {{ forloop.counter }}
+                    </td>
+
+                    <td>
+                        {{ grading.grade_letter }}
+                    </td>
+
+                    <td>
+                        {{ grading.short_form }}
+                    </td>
+
+                    <td>
+                        {{ grading.min_score }}
+                        -
+                        {{ grading.max_score }}
+                    </td>
+
+                    <td>
+                        {{ grading.points }}
+                    </td>
+
+                    <td>
+                        {{ grading.remarks }}
+                    </td>
+
+                    <td>
+
+                        <a
+                            href="{% url 'edit_grading_policy' grading.id %}"
+                            class="edit-btn"
+                        >
+                            Edit
+                        </a>
+
+                        <a
+                            href="{% url 'delete_grading_policy' grading.id %}"
+                            class="delete-btn"
+                            onclick="return confirm('Delete grading?')"
+                        >
+                            Delete
+                        </a>
+
+                    </td>
+
+                </tr>
+
+                {% empty %}
+
+                <tr>
+
+                    <td colspan="7">
+                        No grading policy added yet.
+                    </td>
+
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+</body>
+</html>

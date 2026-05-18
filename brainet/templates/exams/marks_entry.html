@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Marks Entry</title>
+
+    <style>
+        body {
+            font-family: Arial;
+            background: #f4f6f9;
+            padding: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        select, button {
+            padding: 10px;
+            margin: 5px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: center;
+        }
+
+        th {
+            background: #2c3e50;
+            color: white;
+        }
+
+        input {
+            width: 80px;
+            padding: 5px;
+            text-align: center;
+        }
+
+        .btn {
+            background: #27ae60;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            background: #219150;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="card">
+    <h2>Teacher Marks Entry</h2>
+
+    <select id="classSubject">
+        <option value="">Select Class Subject</option>
+        {% for cs in class_subjects %}
+            <option value="{{ cs.id }}">
+                {{ cs.class_name.name }} - {{ cs.subject.name }}
+            </option>
+        {% endfor %}
+    </select>
+
+    <select id="term">
+        {% for t in terms %}
+            <option value="{{ t.id }}">{{ t.name }}</option>
+        {% endfor %}
+    </select>
+
+    <button onclick="loadStudents()">Load Students</button>
+</div>
+
+<div class="card">
+    <table id="marksTable">
+        <thead>
+            <tr>
+                <th>Student</th>
+                <th>Marks</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <button class="btn" onclick="submitMarks()">Save All</button>
+</div>
+
+<script>
+let studentsData = [];
+
+function loadStudents() {
+    const classSubjectId = document.getElementById("classSubject").value;
+
+    fetch(`/students/by-class-subject/${classSubjectId}/`)
+        .then(res => res.json())
+        .then(data => {
+            studentsData = data.students;
+
+            let tbody = document.querySelector("#marksTable tbody");
+            tbody.innerHTML = "";
+
+            data.students.forEach(s => {
+                let row = `
+                    <tr>
+                        <td>${s.name}</td>
+                        <td>
+                            <input type="number" id="mark_${s.id}" />
+                        </td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+        });
+}
+
+function submitMarks() {
+    const classSubjectId = document.getElementById("classSubject").value;
+    const termId = document.getElementById("term").value;
+
+    let marks = [];
+
+    studentsData.forEach(s => {
+        let val = document.getElementById(`mark_${s.id}`).value;
+
+        if (val !== "") {
+            marks.push({
+                student_id: s.id,
+                marks: val
+            });
+        }
+    });
+
+    fetch("/exams/bulk-enter-marks/", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            class_subject_id: classSubjectId,
+            term_id: termId,
+            marks: marks
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert("Marks saved successfully!");
+        console.log(data);
+    });
+}
+</script>
+
+</body>
+</html>

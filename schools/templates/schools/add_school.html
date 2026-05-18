@@ -1,0 +1,144 @@
+{% extends 'dashboards/base.html' %}
+{% load static %}
+
+{% block content %}
+
+<div class="container-fluid py-4">
+
+    <div class="card border-0 shadow-lg rounded-4">
+
+        <div class="card-header bg-primary text-white rounded-top-4">
+            <h4 class="mb-0">Add New School</h4>
+        </div>
+
+        <div class="card-body">
+
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+
+                <!-- SCHOOL NAME -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold">
+                        School Name
+                    </label>
+
+                    <input
+                        type="text"
+                        name="name"
+                        class="form-control"
+                        required
+                    >
+                </div>
+
+                <!-- ADDRESS -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold">
+                        School Address
+                    </label>
+
+                    <textarea
+                        name="address"
+                        class="form-control"
+                        rows="3"
+                        required
+                    ></textarea>
+                </div>
+
+                <!-- EMAIL -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold">
+                        School Email
+                    </label>
+
+                    <input
+                        type="email"
+                        name="email"
+                        class="form-control"
+                        required
+                    >
+                </div>
+
+                <!-- PHONE -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold">
+                        School Phone
+                    </label>
+
+                    <input
+                        type="text"
+                        name="phone"
+                        class="form-control"
+                        required
+                    >
+                </div>
+
+                <!-- LOGO -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold">
+                        School Logo
+                    </label>
+
+                    <input
+                        type="file"
+                        name="logo"
+                        class="form-control"
+                    >
+                </div>
+
+                <!-- PRINCIPAL NAME -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold">
+                        Principal Name
+                    </label>
+
+                    <input
+                        type="text"
+                        name="principal_name"
+                        class="form-control"
+                    >
+                </div>
+
+                <!-- PRINCIPAL PHONE -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold">
+                        Principal Contact
+                    </label>
+
+                    <input
+                        type="text"
+                        name="principal_contact"
+                        class="form-control"
+                    >
+                </div>
+
+                <!-- SUBSCRIPTION -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold">
+                        Subscription Balance
+                    </label>
+
+                    <input
+                        type="number"
+                        step="0.01"
+                        name="subscription_balance"
+                        class="form-control"
+                        value="0"
+                    >
+                </div>
+
+                <button
+                    type="submit"
+                    class="btn btn-success w-100"
+                >
+                    Save School
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Register Student</title>
+
+    <style>
+
+        body{
+            font-family: Arial;
+            background:#f4f6f9;
+        }
+
+        .container{
+            width:500px;
+            margin:40px auto;
+            background:white;
+            padding:25px;
+            border-radius:10px;
+            box-shadow:0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        input, select{
+            width:100%;
+            padding:10px;
+            margin-top:8px;
+            margin-bottom:15px;
+        }
+
+        button{
+            width:100%;
+            padding:12px;
+            background:#1f3c88;
+            color:white;
+            border:none;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <h2>Register Student</h2>
+
+    <form method="post">
+
+        {% csrf_token %}
+
+        <label>Student Name</label>
+        <input type="text" name="name" required>
+
+        <label>Gender</label>
+        <select name="gender">
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+        </select>
+
+        <label>Class</label>
+        <select name="class_id">
+
+            {% for class in classes %}
+                <option value="{{ class.id }}">
+                    {{ class.name }}
+                </option>
+            {% endfor %}
+
+        </select>
+
+        <label>Dormitory</label>
+        <select name="dormitory_id">
+
+            {% for dormitory in dormitories %}
+                <option value="{{ dormitory.id }}">
+                    {{ dormitory.name }}
+                </option>
+            {% endfor %}
+
+        </select>
+
+        <label>Parent Phone</label>
+        <input type="text" name="parent_phone">
+
+        <button type="submit">
+            Register Student
+        </button>
+
+    </form>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,921 @@
+{% extends 'dashboards/base.html' %}
+{% load static %}
+
+{% block content %}
+
+{% if messages %}
+
+    <div class="mb-4">
+
+        {% for message in messages %}
+
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm rounded-3">
+
+                {{ message }}
+
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="alert"></button>
+
+            </div>
+
+        {% endfor %}
+
+    </div>
+
+{% endif %}
+
+<div class="container-fluid py-4">
+
+    <!-- HEADER -->
+    <div class="row mb-4">
+
+        <div class="col-lg-8">
+
+            <h2 class="fw-bold text-primary mb-1">
+                Brainet Superuser Control Center
+            </h2>
+
+            <p class="text-muted mb-0">
+                Manage schools, subscriptions, DOS accounts,
+                platform analytics, vouchers and Brainet ERP operations.
+            </p>
+
+        </div>
+
+        <div class="col-lg-4 text-end">
+
+            <a href="{% url 'superuser_dashboard' %}"
+               class="btn btn-outline-primary shadow-sm rounded-3">
+
+                Refresh Dashboard
+
+            </a>
+
+            <a href="/admin/"
+               class="btn btn-dark shadow-sm rounded-3">
+
+                Django Admin
+
+            </a>
+
+            <a href="{% url 'logout' %}"
+               class="btn btn-danger shadow-sm rounded-3">
+
+                Logout
+
+            </a>
+
+        </div>
+
+    </div>
+
+
+    <!-- STATISTICS -->
+    <div class="row g-4 mb-4">
+
+        <div class="col-md-3">
+
+            <div class="card border-0 shadow-lg rounded-4 bg-primary text-white">
+
+                <div class="card-body">
+
+                    <h6 class="text-uppercase">
+                        Total Schools
+                    </h6>
+
+                    <h1 class="fw-bold">
+                        {{ schools.count }}
+                    </h1>
+
+                    <small>
+                        Registered institutions
+                    </small>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-md-3">
+
+            <div class="card border-0 shadow-lg rounded-4 bg-success text-white">
+
+                <div class="card-body">
+
+                    <h6 class="text-uppercase">
+                        Active Schools
+                    </h6>
+
+                    <h1 class="fw-bold">
+                        {{ active_schools }}
+                    </h1>
+
+                    <small>
+                        Operational schools
+                    </small>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-md-3">
+
+            <div class="card border-0 shadow-lg rounded-4 bg-warning text-dark">
+
+                <div class="card-body">
+
+                    <h6 class="text-uppercase">
+                        Pending Vouchers
+                    </h6>
+
+                    <h1 class="fw-bold">
+                        {{ pending_vouchers }}
+                    </h1>
+
+                    <small>
+                        Awaiting approval
+                    </small>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-md-3">
+
+            <div class="card border-0 shadow-lg rounded-4 bg-danger text-white">
+
+                <div class="card-body">
+
+                    <h6 class="text-uppercase">
+                        DOS Queries
+                    </h6>
+
+                    <h1 class="fw-bold">
+                        {{ queries.count }}
+                    </h1>
+
+                    <small>
+                        Support messages
+                    </small>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- MAIN GRID -->
+    <div class="row">
+
+        <!-- SIDEBAR -->
+        <div class="col-lg-3 mb-4">
+
+            <div class="card border-0 shadow-lg rounded-4">
+
+                <div class="card-header bg-dark text-white rounded-top-4">
+
+                    <h5 class="mb-0">
+                        Superuser Navigation
+                    </h5>
+
+                </div>
+
+                <div class="card-body p-2">
+
+                    <div class="d-grid gap-2">
+
+                        <a href="{% url 'superuser_dashboard' %}"
+                           class="btn btn-outline-primary text-start py-3">
+
+                            🏠 Dashboard Home
+
+                        </a>
+
+                        <a href="/admin/"
+                           class="btn btn-outline-dark text-start py-3">
+
+                            ⚙ Django Admin
+
+                        </a>
+
+                        <a href="{% url 'add_school' %}"
+                           class="btn btn-outline-success text-start py-3">
+
+                            ➕ Register School
+
+                        </a>
+
+                        <a href="{% url 'register_dos_by_superuser' %}"
+                           class="btn btn-outline-info text-start py-3">
+
+                            👨‍💼 Create DOS Account
+
+                        </a>
+
+                        <a href="{% url 'create_staff' %}"
+                           class="btn btn-outline-warning text-start py-3">
+
+                            👥 Create Staff
+
+                        </a>
+
+                        <a href="{% url 'superuser_dashboard' %}"
+                           class="btn btn-outline-danger text-start py-3">
+
+                            📊 Analytics
+
+                        </a>
+
+                        <a href="{% url 'superuser_dashboard' %}"
+                           class="btn btn-outline-secondary text-start py-3">
+
+                            🎫 Voucher Requests
+
+                        </a>
+
+                        <a href="{% url 'superuser_dashboard' %}"
+                           class="btn btn-outline-primary text-start py-3">
+
+                            💬 DOS Queries
+
+                        </a>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- MAIN CONTENT -->
+        <div class="col-lg-9">
+
+            <!-- REGISTER SCHOOL -->
+            <div class="card border-0 shadow-lg rounded-4 mb-4">
+
+                <div class="card-header bg-success text-white rounded-top-4">
+
+                    <div class="d-flex justify-content-between align-items-center">
+
+                        <h5 class="mb-0">
+                            Register New School
+                        </h5>
+
+                        <a href="{% url 'superuser_dashboard' %}"
+                           class="btn btn-light btn-sm">
+
+                            Refresh
+
+                        </a>
+
+                    </div>
+
+                </div>
+
+                <div class="card-body">
+
+                    <form method="post"
+                          action="{% url 'add_school' %}"
+                          enctype="multipart/form-data">
+
+                        {% csrf_token %}
+
+                        <div class="row">
+
+                            <div class="col-md-6 mb-3">
+
+                                <label class="form-label fw-bold">
+                                    School Name
+                                </label>
+
+                                <input type="text"
+                                       name="name"
+                                       class="form-control"
+                                       required>
+
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+
+                                <label class="form-label fw-bold">
+                                    School Email
+                                </label>
+
+                                <input type="email"
+                                       name="email"
+                                       class="form-control"
+                                       required>
+
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+
+                                <label class="form-label fw-bold">
+                                    Phone Number
+                                </label>
+
+                                <input type="text"
+                                       name="phone"
+                                       class="form-control"
+                                       required>
+
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+
+                                <label class="form-label fw-bold">
+                                    School Adress
+                    
+                                </label>
+
+                                <input type="text"
+                                       name="adress"
+                                       class="form-control"
+                                       required>
+
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+
+                                <label class="form-label fw-bold">
+                                    Subscription Balance
+                                </label>
+
+                                <input type="number"
+                                       name="subscription_balance"
+                                       value="0"
+                                       class="form-control">
+
+                            </div>
+
+                            <div class="col-md-12 mb-3">
+
+                                <label class="form-label fw-bold">
+                                    School Logo
+                                </label>
+
+                                <input type="file"
+                                       name="logo"
+                                       class="form-control">
+
+                            </div>
+
+                        </div>
+
+                        <button type="submit"
+                                class="btn btn-success px-4">
+
+                            Add School
+
+                        </button>
+
+                    </form>
+
+                </div>
+
+            </div>
+
+
+            <!-- SCHOOL MANAGEMENT -->
+            <div class="card border-0 shadow-lg rounded-4 mb-4">
+
+                <div class="card-header bg-primary text-white rounded-top-4">
+
+                    <div class="d-flex justify-content-between align-items-center">
+
+                        <h5 class="mb-0">
+                            Registered Schools
+                        </h5>
+
+                        <div>
+
+                            <span class="badge bg-light text-dark px-3 py-2 me-2">
+                                {{ schools.count }} Schools
+                            </span>
+
+                            <a href="{% url 'superuser_dashboard' %}"
+                               class="btn btn-light btn-sm">
+
+                                Refresh
+
+                            </a>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div class="card-body table-responsive">
+
+                    <table class="table table-hover align-middle">
+
+                        <thead class="table-light">
+
+                            <tr>
+
+                                <th>School</th>
+                                <th>Email</th>
+                                <th>Phone</th>
+                                <th>Status</th>
+                                 <th>Adress</th>
+                                <th>Subscription</th>
+                                <th>Controls</th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody>
+
+                            {% for school in schools %}
+
+                            <tr>
+
+                                <td>
+
+                                    <div class="d-flex align-items-center">
+
+                                        {% if school.logo %}
+
+                                        <img src="{{ school.logo.url }}"
+                                             width="45"
+                                             height="45"
+                                             class="rounded-circle me-2">
+
+                                        {% endif %}
+
+                                        <div>
+
+                                            <strong>
+                                                {{ school.name }}
+                                            </strong>
+
+                                        </div>
+
+                                    </div>
+
+                                </td>
+
+                                <td>
+                                    {{ school.email }}
+                                </td>
+
+                                <td>
+                                    {{ school.phone }}
+                                </td>
+
+                                <td>
+
+                                    {% if school.is_active %}
+
+                                    <span class="badge bg-success px-3 py-2">
+                                        Active
+                                    </span>
+
+                                    {% else %}
+
+                                    <span class="badge bg-danger px-3 py-2">
+                                        Inactive
+                                    </span>
+
+                                    {% endif %}
+
+                                </td>
+
+                                <td>
+                                    KES {{ school.subscription_balance }}
+                                </td>
+
+                                <td>
+
+                                    <div class="d-flex gap-2 flex-wrap">
+
+                                        {% if school.is_active %}
+
+                                        <form method="post"
+                                              action="{% url 'deactivate_school' school.id %}">
+
+                                            {% csrf_token %}
+
+                                            <button type="submit"
+                                                    class="btn btn-danger btn-sm">
+
+                                                Deactivate
+
+                                            </button>
+
+                                        </form>
+
+                                        {% else %}
+
+                                        <form method="post"
+                                              action="{% url 'activate_school' school.id %}">
+
+                                            {% csrf_token %}
+
+                                            <button type="submit"
+                                                    class="btn btn-success btn-sm">
+
+                                                Activate
+
+                                            </button>
+
+                                        </form>
+
+                                        {% endif %}
+
+                                        <a href="{% url 'view_school' school.id %}"
+                                           class="btn btn-primary btn-sm">
+
+                                            View
+
+                                        </a>
+
+                                        <a href="{% url 'edit_school' school.id %}"
+                                           class="btn btn-warning btn-sm text-dark">
+
+                                            Edit
+
+                                        </a>
+
+                                        <a href="{% url 'delete_school' school.id %}"
+                                           class="btn btn-dark btn-sm"
+                                           onclick="return confirm('Delete this school permanently?')">
+
+                                            Delete
+
+                                        </a>
+
+                                    </div>
+
+                                </td>
+
+                            </tr>
+
+                            {% empty %}
+
+                            <tr>
+
+                                <td colspan="6"
+                                    class="text-center text-muted">
+
+                                    No schools registered
+
+                                </td>
+
+                            </tr>
+
+                            {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+
+            <!-- DOS + VOUCHERS -->
+            <div class="row">
+
+                <!-- REGISTER DOS -->
+                <div class="col-lg-5 mb-4">
+
+                    <div class="card border-0 shadow-lg rounded-4 h-100">
+
+                        <div class="card-header bg-dark text-white rounded-top-4">
+
+                            <div class="d-flex justify-content-between align-items-center">
+
+                                <h5 class="mb-0">
+                                    Register DOS
+                                </h5>
+
+                                <a href="{% url 'superuser_dashboard' %}"
+                                   class="btn btn-light btn-sm">
+
+                                    Refresh
+
+                                </a>
+
+                            </div>
+
+                        </div>
+
+                        <div class="card-body">
+
+                            <form method="post"
+                                  action="{% url 'register_dos_by_superuser' %}">
+
+                                {% csrf_token %}
+
+                                <div class="mb-3">
+
+                                    <label class="form-label fw-bold">
+                                        Full Name
+                                    </label>
+
+                                    <input type="text"
+                                           name="name"
+                                           class="form-control"
+                                           required>
+
+                                </div>
+
+                                <div class="mb-3">
+
+                                    <label class="form-label fw-bold">
+                                        Email
+                                    </label>
+
+                                    <input type="email"
+                                           name="email"
+                                           class="form-control"
+                                           required>
+
+                                </div>
+
+                                <div class="mb-3">
+
+                                    <label class="form-label fw-bold">
+                                        Phone
+                                    </label>
+
+                                    <input type="text"
+                                           name="phone"
+                                           class="form-control"
+                                           required>
+
+                                </div>
+
+                                <div class="mb-3">
+
+                                    <label class="form-label fw-bold">
+                                        School
+                                    </label>
+
+                                    <select name="school"
+                                            class="form-select"
+                                            required>
+
+                                        {% for school in schools %}
+
+                                        <option value="{{ school.id }}">
+                                            {{ school.name }}
+                                        </option>
+
+                                        {% endfor %}
+
+                                    </select>
+
+                                </div>
+
+                                <div class="mb-3">
+
+                                    <label class="form-label fw-bold">
+                                        Password
+                                    </label>
+
+                                    <input type="password"
+                                           name="password"
+                                           class="form-control"
+                                           required>
+
+                                </div>
+
+                                <button type="submit"
+                                        class="btn btn-success w-100">
+
+                                    Create DOS Account
+
+                                </button>
+
+                            </form>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- VOUCHERS -->
+                <div class="col-lg-7 mb-4">
+
+                    <div class="card border-0 shadow-lg rounded-4 h-100">
+
+                        <div class="card-header bg-warning rounded-top-4">
+
+                            <div class="d-flex justify-content-between align-items-center">
+
+                                <h5 class="mb-0 text-dark">
+                                    Pending Voucher Requests
+                                </h5>
+
+                                <a href="{% url 'superuser_dashboard' %}"
+                                   class="btn btn-dark btn-sm">
+
+                                    Refresh
+
+                                </a>
+
+                            </div>
+
+                        </div>
+
+                        <div class="card-body table-responsive">
+
+                            <table class="table table-bordered align-middle">
+
+                                <thead>
+
+                                    <tr>
+
+                                        <th>School</th>
+                                        <th>Term</th>
+                                        <th>Students</th>
+                                        <th>Action</th>
+
+                                    </tr>
+
+                                </thead>
+
+                                <tbody>
+
+                                    {% for v in vouchers %}
+
+                                    <tr>
+
+                                        <td>{{ v.school.name }}</td>
+
+                                        <td>{{ v.term }}</td>
+
+                                        <td>{{ v.student_count }}</td>
+
+                                        <td>
+
+                                            <form method="post"
+                                                  action="{% url 'approve_voucher' v.id %}">
+
+                                                {% csrf_token %}
+
+                                                <button type="submit"
+                                                        class="btn btn-success btn-sm">
+
+                                                    Approve
+
+                                                </button>
+
+                                            </form>
+
+                                        </td>
+
+                                    </tr>
+
+                                    {% empty %}
+
+                                    <tr>
+
+                                        <td colspan="4"
+                                            class="text-center text-muted">
+
+                                            No pending voucher requests
+
+                                        </td>
+
+                                    </tr>
+
+                                    {% endfor %}
+
+                                </tbody>
+
+                            </table>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- DOS QUERIES -->
+            <div class="card border-0 shadow-lg rounded-4">
+
+                <div class="card-header bg-info text-white rounded-top-4">
+
+                    <div class="d-flex justify-content-between align-items-center">
+
+                        <h5 class="mb-0">
+                            DOS Queries & Support Messages
+                        </h5>
+
+                        <a href="{% url 'superuser_dashboard' %}"
+                           class="btn btn-light btn-sm">
+
+                            Refresh
+
+                        </a>
+
+                    </div>
+
+                </div>
+
+                <div class="card-body">
+
+                    {% for q in queries %}
+
+                    <div class="border rounded-4 p-4 mb-4 bg-light">
+
+                        <div class="d-flex justify-content-between">
+
+                            <div>
+
+                                <h6 class="fw-bold text-primary">
+                                    {{ q.school.name }}
+                                </h6>
+
+                                <small class="text-muted">
+                                    {{ q.dos.name }}
+                                </small>
+
+                            </div>
+
+                            <div>
+
+                                <span class="badge bg-warning">
+                                    {{ q.status }}
+                                </span>
+
+                            </div>
+
+                        </div>
+
+                        <hr>
+
+                        <h6>
+                            {{ q.subject }}
+                        </h6>
+
+                        <p>
+                            {{ q.message }}
+                        </p>
+
+                        {% if q.status == 'pending' %}
+
+                        <form method="post"
+                              action="{% url 'reply_query' q.id %}">
+
+                            {% csrf_token %}
+
+                            <textarea name="reply"
+                                      rows="3"
+                                      class="form-control mb-3"
+                                      placeholder="Type reply..."></textarea>
+
+                            <button type="submit"
+                                    class="btn btn-primary">
+
+                                Send Reply
+
+                            </button>
+
+                        </form>
+
+                        {% endif %}
+
+                    </div>
+
+                    {% empty %}
+
+                    <p class="text-muted">
+                        No pending DOS queries.
+                    </p>
+
+                    {% endfor %}
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

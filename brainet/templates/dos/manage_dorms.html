@@ -1,0 +1,67 @@
+{% extends 'dashboards/base.html' %}
+
+{% block content %}
+
+<div class="container py-4">
+
+    <h3 class="mb-3">Dormitories Management</h3>
+
+    <div class="card shadow rounded-4 mb-4">
+
+        <div class="card-body">
+
+            <form method="post"
+                  action="{% url 'add_dorm' %}">
+
+                {% csrf_token %}
+
+                <div class="row">
+
+                    <div class="col-md-10">
+
+                        <input type="text"
+                               name="name"
+                               class="form-control"
+                               placeholder="Dormitory Name">
+
+                    </div>
+
+                    <div class="col-md-2">
+
+                        <button class="btn btn-warning w-100">
+                            Add
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+    <div class="card shadow rounded-4">
+
+        <div class="card-body">
+
+            <ul class="list-group">
+
+                {% for d in dorms %}
+
+                <li class="list-group-item">
+                    {{ d.name }}
+                </li>
+
+                {% endfor %}
+
+            </ul>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

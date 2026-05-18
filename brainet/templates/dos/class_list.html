@@ -1,0 +1,318 @@
+{% extends 'dashboards/base.html' %}
+{% load static %}
+
+{% block content %}
+
+<div class="container-fluid py-4">
+
+    <!-- PAGE HEADER -->
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+
+        <div>
+
+            <h2 class="fw-bold text-primary mb-1">
+                {{ school_class.name }} Class List
+            </h2>
+
+            <p class="text-muted mb-0">
+                Manage students, print class lists and generate reports.
+            </p>
+
+        </div>
+
+        <div class="d-flex gap-2 flex-wrap">
+
+            <a href="{% url 'manage_classes' %}"
+               class="btn btn-outline-dark shadow-sm">
+
+                Back to Classes
+
+            </a>
+
+            <a href="{% url 'print_class_list' school_class.pk %}"
+               target="_blank"
+               class="btn btn-dark shadow-sm">
+
+                Print List
+
+            </a>
+
+            <a href="{% url 'download_class_list_pdf' school_class.pk %}"
+               class="btn btn-success shadow-sm">
+
+                Download PDF
+
+            </a>
+
+        </div>
+
+    </div>
+
+
+    <!-- SUMMARY CARDS -->
+    <div class="row g-4 mb-4">
+
+        <div class="col-md-3">
+
+            <div class="card border-0 shadow-lg rounded-4 bg-primary text-white">
+
+                <div class="card-body">
+
+                    <h6 class="text-uppercase">
+                        Total Students
+                    </h6>
+
+                    <h2 class="fw-bold">
+                        {{ students|length }}
+                    </h2>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-md-3">
+
+            <div class="card border-0 shadow-lg rounded-4 bg-success text-white">
+
+                <div class="card-body">
+
+                    <h6 class="text-uppercase">
+                        Class Status
+                    </h6>
+
+                    <h2 class="fw-bold">
+                        Active
+                    </h2>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-md-3">
+
+            <div class="card border-0 shadow-lg rounded-4 bg-warning text-dark">
+
+                <div class="card-body">
+
+                    <h6 class="text-uppercase">
+                        Class Teacher
+                    </h6>
+
+                    <h5 class="fw-bold">
+                        {{ school_class.teacher|default:"Not Assigned" }}
+                    </h5>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-md-3">
+
+            <div class="card border-0 shadow-lg rounded-4 bg-danger text-white">
+
+                <div class="card-body">
+
+                    <h6 class="text-uppercase">
+                        Academic Year
+                    </h6>
+
+                    <h5 class="fw-bold">
+                        2026
+                    </h5>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- STUDENT MANAGEMENT -->
+    <div class="card border-0 shadow-lg rounded-4">
+
+        <div class="card-header bg-primary text-white">
+
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+
+                <h5 class="mb-0">
+                    Students List
+                </h5>
+
+                <div class="d-flex gap-2">
+
+                    <input type="text"
+                           id="studentSearch"
+                           class="form-control form-control-sm"
+                           placeholder="Search student...">
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="card-body table-responsive">
+
+            <table class="table table-hover align-middle"
+                   id="studentsTable">
+
+                <thead class="table-light">
+
+                    <tr>
+
+                        <th>#</th>
+
+                        <th>Admission No</th>
+
+                        <th>Student Name</th>
+
+                        <th>Gender</th>
+
+                        <th>Status</th>
+
+                        <th>
+                            Actions
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    {% for student in students %}
+
+                    <tr>
+
+                        <td>
+                            {{ forloop.counter }}
+                        </td>
+
+                        <td>
+
+                            <span class="badge bg-dark">
+                                {{ student.admission_number }}
+                            </span>
+
+                        </td>
+
+                        <td>
+
+                            <strong class="text-primary">
+                                {{ student.name }}
+                            </strong>
+
+                        </td>
+
+                        <td>
+                            {{ student.gender }}
+                        </td>
+
+                        <td>
+
+                            <span class="badge bg-success">
+                                Active
+                            </span>
+
+                        </td>
+
+                        <td>
+
+                            <div class="d-flex flex-wrap gap-2">
+
+                                <!-- VIEW -->
+                                <a href="{% url 'view_student' student.id %}"
+                                   class="btn btn-primary btn-sm">
+
+                                    View
+
+                                </a>
+
+                                <!-- EDIT -->
+                                <a href="{% url 'edit_student' student.id %}"
+                                   class="btn btn-warning btn-sm text-dark">
+
+                                    Edit
+
+                                </a>
+
+                                <!-- REPORT -->
+                                <a href="{% url 'student_report' student.id %}"
+                                   class="btn btn-success btn-sm">
+
+                                    Report
+
+                                </a>
+
+                                <!-- DELETE -->
+                                <a href="{% url 'delete_student' student.id %}"
+                                   class="btn btn-danger btn-sm"
+                                   onclick="return confirm('Delete this student?')">
+
+                                    Delete
+
+                                </a>
+
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+                    {% empty %}
+
+                    <tr>
+
+                        <td colspan="6"
+                            class="text-center text-muted py-5">
+
+                            No students found in this class
+
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- SEARCH SCRIPT -->
+<script>
+
+document.getElementById("studentSearch").addEventListener("keyup", function() {
+
+    let value = this.value.toLowerCase();
+
+    let rows = document.querySelectorAll("#studentsTable tbody tr");
+
+    rows.forEach(function(row) {
+
+        row.style.display =
+            row.innerText.toLowerCase().includes(value)
+            ? ""
+            : "none";
+
+    });
+
+});
+
+</script>
+
+{% endblock %}

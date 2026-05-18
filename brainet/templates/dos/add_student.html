@@ -1,0 +1,68 @@
+{% extends 'dashboards/base.html' %}
+
+{% block content %}
+
+<div class="container py-4">
+
+    <div class="card shadow rounded-4">
+
+        <div class="card-header bg-primary text-white">
+            <h4>Add Student</h4>
+        </div>
+
+        <div class="card-body">
+
+            <form method="post">
+
+                {% csrf_token %}
+
+                <input type="text"
+                       name="name"
+                       class="form-control mb-3"
+                       placeholder="Student Name"
+                       required>
+
+                <input type="text"
+                       name="admission_number"
+                       class="form-control mb-3"
+                       placeholder="Admission Number"
+                       required>
+
+                <select name="gender"
+                        class="form-control mb-3">
+
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+
+                </select>
+
+                <select name="class_id"
+                        class="form-control mb-3">
+
+                    <option value="">
+                        Select Class
+                    </option>
+
+                    {% for c in classes %}
+
+                    <option value="{{ c.id }}">
+                        {{ c.name }}
+                    </option>
+
+                    {% endfor %}
+
+                </select>
+
+                <button class="btn btn-success w-100">
+                    Save Student
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

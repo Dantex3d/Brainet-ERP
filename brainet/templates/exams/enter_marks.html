@@ -1,0 +1,38 @@
+<h2>Marks Entry System</h2>
+
+<form id="loadForm">
+    <label>Class & Subject</label>
+    <select name="class_subject" id="class_subject">
+        {% for cs in classes %}
+            <option value="{{ cs.id }}">
+                {{ cs.class_name.name }} - {{ cs.subject.name }}
+            </option>
+        {% endfor %}
+    </select>
+
+    <label>Term</label>
+    <select name="term" id="term">
+        {% for t in terms %}
+            <option value="{{ t.id }}">{{ t.name }}</option>
+        {% endfor %}
+    </select>
+
+    <button type="button" onclick="loadStudents()">Load Students</button>
+</form>
+
+<hr>
+
+<div id="marks_table"></div>
+
+<script>
+function loadStudents() {
+    let class_subject = document.getElementById("class_subject").value;
+    let term = document.getElementById("term").value;
+
+    fetch(`/schools/principal/load-students/?class_subject=${class_subject}&term=${term}`)
+        .then(res => res.text())
+        .then(data => {
+            document.getElementById("marks_table").innerHTML = data;
+        });
+}
+</script>
