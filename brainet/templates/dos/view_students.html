@@ -1,0 +1,185 @@
+{% extends 'dashboards/base.html' %}
+
+{% block content %}
+
+<div class="container-fluid py-4">
+
+    <!-- HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+            <h3 class="fw-bold text-primary mb-1">
+                Student Profile
+            </h3>
+
+            <p class="text-muted mb-0">
+                Full academic and registration details
+            </p>
+        </div>
+
+        <div class="d-flex gap-2">
+
+            <a href="{% url 'manage_students' %}"
+               class="btn btn-outline-dark">
+                ← Back
+            </a>
+
+            <a href="{% url 'edit_student' student.id %}"
+               class="btn btn-warning">
+                Edit
+            </a>
+
+        </div>
+
+    </div>
+
+
+    <!-- PROFILE CARD -->
+    <div class="row">
+
+        <div class="col-md-4">
+
+            <div class="card shadow rounded-4">
+
+                <div class="card-body text-center">
+
+                    <!-- Avatar -->
+                    <div class="mb-3">
+                        <div class="bg-primary text-white rounded-circle d-inline-flex justify-content-center align-items-center"
+                             style="width:80px; height:80px; font-size:28px;">
+                            {{ student.name|slice:":1" }}
+                        </div>
+                    </div>
+
+                    <h4 class="fw-bold">
+                        {{ student.name }}
+                    </h4>
+
+                    <p class="text-muted">
+                        {{ student.admission_number }}
+                    </p>
+
+                    <span class="badge bg-success">
+                        Active Student
+                    </span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- DETAILS -->
+        <div class="col-md-8">
+
+            <div class="card shadow rounded-4">
+
+                <div class="card-header bg-primary text-white">
+                    <strong>Student Information</strong>
+                </div>
+
+                <div class="card-body">
+
+                    <div class="row g-3">
+
+                        <div class="col-md-6">
+                            <label class="text-muted">Full Name</label>
+                            <div class="fw-bold">{{ student.name }}</div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="text-muted">Admission Number</label>
+                            <div class="fw-bold">{{ student.admission_number }}</div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="text-muted">Gender</label>
+                            <div class="fw-bold">{{ student.gender }}</div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="text-muted">Class</label>
+                            <div class="fw-bold">
+                                {{ student.class_id.name }}
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="text-muted">School</label>
+                            <div class="fw-bold">
+                                {{ student.school.name }}
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="text-muted">Status</label>
+                            <div class="fw-bold text-success">
+                                Active
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ACTIONS -->
+    <div class="card shadow rounded-4 mt-4">
+
+        <div class="card-header bg-dark text-white">
+            <strong>Quick Actions</strong>
+        </div>
+
+        <div class="card-body">
+
+            <div class="row g-3">
+
+                <div class="col-md-3">
+                    <a href="{% url 'edit_student' student.id %}"
+                       class="btn btn-warning w-100">
+                        ✏ Edit Student
+                    </a>
+                </div>
+
+                <div class="col-md-3">
+                    <form method="post"
+                          action="{% url 'delete_student' student.id %}">
+                        {% csrf_token %}
+                        <button class="btn btn-danger w-100"
+                                onclick="return confirm('Delete this student?')">
+                            🗑 Delete
+                        </button>
+                    </form>
+                </div>
+
+                <div class="col-md-3">
+                    <a href="#"
+                       class="btn btn-primary w-100">
+                        📊 View Results
+                    </a>
+                </div>
+
+                <div class="col-md-3">
+                    <a href="#"
+                       class="btn btn-success w-100">
+                        📄 Generate Report
+                    </a>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
+

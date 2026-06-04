@@ -13,11 +13,18 @@ from students.models import Student
 from teachers.models import Teacher
 
 
+
 # =========================================================
 # EXAM MODEL
 # =========================================================
 
 class Exam(models.Model):
+    
+    EXAM_TYPES = (
+        ("CAT", "CAT"),
+        ("MIDTERM", "Midterm"),
+        ("FINAL", "Final"),
+    )
 
     school = models.ForeignKey(
         School,
@@ -34,37 +41,58 @@ class Exam(models.Model):
     )
 
     exam_type = models.CharField(
-        max_length=50,
-        default="Main Exam"
+        max_length=20,
+        choices=EXAM_TYPES
     )
 
-    start_date = models.DateField()
-
-    end_date = models.DateField()
-
-    is_open = models.BooleanField(
-        default=False
+    is_active = models.BooleanField(
+        default=True
     )
 
     created_at = models.DateTimeField(
         auto_now_add=True
     )
 
+    def __str__(self):
+        return f"{self.name} - {self.exam_type}"
+
+# =========================================================
+# EXAM SUBJECTS
+# =========================================================
+
+class ExamSubject(models.Model):
+
+    exam = models.ForeignKey(
+        Exam,
+        on_delete=models.CASCADE,
+        related_name="exam_subjects"
+    )
+
+    subject = models.ForeignKey(
+        Subject,
+        on_delete=models.CASCADE
+    )
+
     class Meta:
-        ordering = ["-start_date"]
+        unique_together = (
+            "exam",
+            "subject"
+        )
 
     def __str__(self):
-        return f"{self.name} - {self.term.name}"
-
-
+        return f"{self.exam.name} - {self.subject.name}"
 # =========================================================
 # MARK MODEL
 # =========================================================
 
 class Mark(models.Model):
-
     exam = models.ForeignKey(
         Exam,
+        on_delete=models.CASCADE
+    )
+
+    term = models.ForeignKey(   # ✅ new field
+        Term,
         on_delete=models.CASCADE
     )
 
@@ -113,30 +141,17 @@ class Mark(models.Model):
         null=True
     )
 
-    created_at = models.DateTimeField(
-        auto_now_add=True
-    )
-
-    updated_at = models.DateTimeField(
-        auto_now=True
-    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-
         unique_together = (
             "exam",
+            "term",       # ✅ include term in uniqueness
             "student",
             "subject"
         )
-
-        ordering = [
-            "student",
-            "subject"
-        ]
+        ordering = ["student", "subject"]
 
     def __str__(self):
-        return (
-            f"{self.student.name} - "
-            f"{self.subject.name} - "
-            f"{self.score}"
-        )
+        return f"{self.student.name} - {self.subject.name} - {self.score}"

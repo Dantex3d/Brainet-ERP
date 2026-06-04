@@ -1,0 +1,252 @@
+{% extends 'dashboards/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    
+    <!-- PAGE HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary">➕ Add New Teacher</h2>
+        <a href="{% url 'manage_teachers' %}" class="btn btn-outline-primary shadow-sm">⬅ Back to Teachers</a>
+    </div>
+
+    <!-- MAIN FORM -->
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            
+            <!-- TEACHER INFORMATION -->
+            <div class="card shadow-sm rounded-3 border-0 mb-4">
+                <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <h6 class="mb-0">👤 Teacher Information</h6>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'add_teacher' %}" id="teacherForm">
+                        {% csrf_token %}
+
+                        <!-- NAME -->
+                        <div class="mb-3">
+                            <label for="name" class="form-label fw-semibold">Full Name *</label>
+                            <input 
+                                type="text" 
+                                id="name"
+                                name="name" 
+                                class="form-control form-control-lg" 
+                                placeholder="e.g., John Doe" 
+                                required>
+                            <small class="text-muted">Teacher's full name</small>
+                        </div>
+
+                        <!-- EMAIL -->
+                        <div class="mb-3">
+                            <label for="email" class="form-label fw-semibold">Email Address *</label>
+                            <input 
+                                type="email" 
+                                id="email"
+                                name="email" 
+                                class="form-control form-control-lg" 
+                                placeholder="e.g., john@school.com" 
+                                required>
+                            <small class="text-muted">Used for login and communication</small>
+                        </div>
+
+                        <!-- PHONE -->
+                        <div class="mb-3">
+                            <label for="phone" class="form-label fw-semibold">Phone Number *</label>
+                            <input 
+                                type="tel" 
+                                id="phone"
+                                name="phone" 
+                                class="form-control form-control-lg" 
+                                placeholder="e.g., +254712345678" 
+                                required>
+                            <small class="text-muted">Contact phone number</small>
+                        </div>
+
+                        <!-- PASSWORD -->
+                        <div class="mb-3">
+                            <label for="password" class="form-label fw-semibold">Initial Password *</label>
+                            <input 
+                                type="password" 
+                                id="password"
+                                name="password" 
+                                class="form-control form-control-lg" 
+                                placeholder="Create a strong password" 
+                                required>
+                            <small class="text-muted">Teacher should change this on first login</small>
+                        </div>
+
+                        <!-- ROLE -->
+                        <div class="mb-4">
+                            <label for="role" class="form-label fw-semibold">Teacher Role *</label>
+                            <select 
+                                id="role"
+                                name="role" 
+                                class="form-select form-select-lg" 
+                                required>
+                                <option value="">-- Select Role --</option>
+                                <option value="form_teacher">Form Teacher (Class Master)</option>
+                                <option value="subject_teacher">Subject Teacher</option>
+                                <option value="admin_teacher">Admin Teacher</option>
+                                <option value="senior_teacher">Senior Teacher</option>
+                            </select>
+                            <small class="text-muted">The teacher's role in the school</small>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- CLASS ASSIGNMENT -->
+            <div class="card shadow-sm rounded-3 border-0 mb-4">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0">🏫 Assign Class</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="assigned_class" class="form-label fw-semibold">Class (Optional)</label>
+                        <select 
+                            id="assigned_class"
+                            name="assigned_class" 
+                            class="form-select form-select-lg"
+                            form="teacherForm">
+                            <option value="">-- No Class Assignment --</option>
+                            {% for class in classes %}
+                            <option value="{{ class.id }}">
+                                {{ class.name }} (Level {{ class.level }})
+                                {% if class.streams.all %}
+                                    - Streams: {% for stream in class.streams.all %}{{ stream.name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+                                {% endif %}
+                            </option>
+                            {% empty %}
+                            <option disabled>No classes available</option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">Assign the teacher as a class master/form teacher</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SUBJECT ASSIGNMENT -->
+            <div class="card shadow-sm rounded-3 border-0 mb-4">
+                <div class="card-header bg-success text-white">
+                    <h6 class="mb-0">📖 Assign Subjects (Select multiple with Ctrl/Cmd+Click)</h6>
+                </div>
+                <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                    <div id="subjectsList" class="subject-list">
+                        {% for subject in subjects %}
+                        <div class="form-check mb-2">
+                            <input 
+                                class="form-check-input subject-checkbox" 
+                                type="checkbox" 
+                                name="subjects" 
+                                value="{{ subject.id }}" 
+                                id="subject_{{ subject.id }}"
+                                form="teacherForm"
+                                onchange="updateSelectedSubjects()">
+                            <label class="form-check-label w-100" for="subject_{{ subject.id }}">
+                                <span class="fw-semibold">{{ subject.name }}</span>
+                                <small class="text-muted">({{ subject.short_name }})</small>
+                            </label>
+                        </div>
+                        {% empty %}
+                        <p class="text-muted mb-0">No subjects available. Create subjects first in the admin panel.</p>
+                        {% endfor %}
+                    </div>
+
+                    <!-- SELECTED SUBJECTS DISPLAY -->
+                    <div id="assignedSubjectsList" class="mt-3 pt-3 border-top">
+                        <small class="fw-semibold text-muted">Selected Subjects:</small>
+                        <div id="assignedList" class="d-flex flex-wrap gap-2 mt-2">
+                            <small class="text-muted">None</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ACTION BUTTONS -->
+            <div class="d-flex gap-2 mb-4">
+                <a href="{% url 'manage_teachers' %}" class="btn btn-outline-secondary btn-lg flex-fill">❌ Cancel</a>
+                <button type="submit" form="teacherForm" class="btn btn-primary btn-lg flex-fill">
+                    ✓ Add Teacher
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+<style>
+    .bg-gradient {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    .card {
+        transition: all 0.3s ease;
+    }
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+    .form-control-lg,
+    .form-select-lg {
+        padding: 0.75rem 1rem;
+        font-size: 0.95rem;
+    }
+    .form-check-input:checked {
+        background-color: #667eea;
+        border-color: #667eea;
+    }
+    .form-check-input {
+        cursor: pointer;
+        width: 1.25em;
+        height: 1.25em;
+    }
+    .form-check-label {
+        cursor: pointer;
+        padding-left: 0.5rem;
+    }
+    .subject-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.35rem 0.75rem;
+        background-color: #d1ecf1;
+        border: 1px solid #bee5eb;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+    .subject-badge .remove-btn {
+        cursor: pointer;
+        font-weight: bold;
+        color: #dc3545;
+        margin-left: 0.35rem;
+    }
+</style>
+
+<script>
+function updateSelectedSubjects() {
+    const checkboxes = document.querySelectorAll('.subject-checkbox:checked');
+    const assignedList = document.getElementById('assignedList');
+    
+    if (checkboxes.length === 0) {
+        assignedList.innerHTML = '<small class="text-muted">None</small>';
+        return;
+    }
+    
+    let html = '';
+    checkboxes.forEach(checkbox => {
+        const label = document.querySelector(`label[for="${checkbox.id}"]`);
+        const subjectName = label.querySelector('.fw-semibold').textContent.trim();
+        html += `<span class="subject-badge">${subjectName}</span>`;
+    });
+    
+    assignedList.innerHTML = html;
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    updateSelectedSubjects();
+});
+</script>
+
+{% endblock %}

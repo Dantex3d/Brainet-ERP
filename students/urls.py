@@ -9,5 +9,7 @@ urlpatterns = [
         name='register_student'
     ),
 # students/urls.py
-path("by-class-subject/<int:class_subject_id>/", views.students_by_class_subject),
+path("by-subject/<int:subject_id>/", views.students_by_subject),
+ path("student/login/", views.student_login, name="student_login"),
+ path("student-login-logs/",views.student_login_logs,name="student_login_logs"),
 ]

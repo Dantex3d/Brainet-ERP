@@ -3,913 +3,601 @@
 
 {% block content %}
 
+<!-- MESSAGES SECTION -->
 {% if messages %}
-
-    <div class="mb-4">
-
-        {% for message in messages %}
-
-            <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm rounded-3">
-
-                {{ message }}
-
-                <button type="button"
-                        class="btn-close"
-                        data-bs-dismiss="alert"></button>
-
+<div class="container-fluid px-4 py-3">
+    <div class="row">
+        <div class="col-lg-12">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm rounded-3 d-flex align-items-center" role="alert">
+                <span class="me-3">
+                    {% if message.tags == 'success' %}✓{% elif message.tags == 'danger' %}✕{% elif message.tags == 'warning' %}⚠{% else %}ℹ{% endif %}
+                </span>
+                <div>{{ message }}</div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
-
-        {% endfor %}
-
+            {% endfor %}
+        </div>
     </div>
-
+</div>
 {% endif %}
 
 <div class="container-fluid py-4">
 
-    <!-- HEADER -->
+    <!-- HEADER WITH CONTROLS -->
     <div class="row mb-4">
-
         <div class="col-lg-8">
-
-            <h2 class="fw-bold text-primary mb-1">
-                Brainet Superuser Control Center
-            </h2>
-
-            <p class="text-muted mb-0">
-                Manage schools, subscriptions, DOS accounts,
-                platform analytics, vouchers and Brainet ERP operations.
-            </p>
-
+            <div>
+                <h1 class="fw-bold text-primary mb-1">
+                    🎯 Superuser Control Center
+                </h1>
+                <p class="text-muted mb-0">
+                    Manage schools, subscriptions, staff, platform analytics, vouchers and system operations.
+                </p>
+            </div>
         </div>
 
-        <div class="col-lg-4 text-end">
+        <div class="col-lg-4">
+            <div class="d-flex justify-content-end gap-2 align-items-center flex-wrap">
 
-            <a href="{% url 'superuser_dashboard' %}"
-               class="btn btn-outline-primary shadow-sm rounded-3">
+                <!-- NOTIFICATION BELL WITH DROPDOWN -->
+                <div class="dropdown position-relative">
+                    <button class="btn btn-light shadow-sm rounded-3 position-relative" data-bs-toggle="dropdown" title="Notifications">
+                        🔔
+                        {% if queries.count > 0 or pending_vouchers > 0 %}
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                            {{ queries.count|add:pending_vouchers }}
+                        </span>
+                        {% endif %}
+                    </button>
 
-                Refresh Dashboard
+                    <ul class="dropdown-menu dropdown-menu-end shadow-lg rounded-3" style="min-width: 280px;">
+                        <li class="dropdown-header">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span>🔔 Notifications</span>
+                                {% if queries.count > 0 or pending_vouchers > 0 %}
+                                <form method="POST" action="{% url 'reset_notification_count' %}" style="display: inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Reset notifications">Clear</button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
 
-            </a>
+                        {% if queries.count > 0 %}
+                            {% for q in queries|slice:":3" %}
+                            <li>
+                                <a class="dropdown-item text-truncate small" href="#dos-queries" data-bs-toggle="collapse">
+                                    <span class="badge bg-danger me-2">📧</span> {{ q.school.name }} - {{ q.subject|truncatewords:3 }}
+                                </a>
+                            </li>
+                            {% endfor %}
+                            {% if queries.count > 3 %}
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-center small text-muted" href="#dos-queries">+{{ queries.count|add:"-3" }} more messages</a></li>
+                            {% endif %}
+                        {% endif %}
 
-            <a href="/admin/"
-               class="btn btn-dark shadow-sm rounded-3">
+                        {% if pending_vouchers > 0 %}
+                            {% if queries.count > 0 %}<li><hr class="dropdown-divider"></li>{% endif %}
+                            {% for v in vouchers|slice:":2" %}
+                            <li>
+                                <a class="dropdown-item text-truncate small" href="#vouchers" data-bs-toggle="collapse">
+                                    <span class="badge bg-warning me-2">🎫</span> {{ v.school.name }} - {{ v.term }}
+                                </a>
+                            </li>
+                            {% endfor %}
+                            {% if pending_vouchers > 2 %}
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-center small text-muted" href="#vouchers">+{{ pending_vouchers|add:"-2" }} more vouchers</a></li>
+                            {% endif %}
+                        {% endif %}
 
-                Django Admin
+                        {% if queries.count == 0 and pending_vouchers == 0 %}
+                        <li><a class="dropdown-item text-muted text-center small py-3" href="#">✓ All caught up!</a></li>
+                        {% endif %}
+                    </ul>
+                </div>
 
-            </a>
+                <!-- ACTION BUTTONS -->
+                <button onclick="location.reload()" class="btn btn-outline-primary shadow-sm rounded-3" title="Refresh Dashboard">
+                    🔄 Refresh
+                </button>
+                <a href="/admin/" class="btn btn-dark shadow-sm rounded-3" title="Django Admin">
+                    ⚙️ Admin
+                </a>
+                <a href="{% url 'logout' %}" class="btn btn-danger shadow-sm rounded-3" title="Logout">
+                    🚪 Logout
+                </a>
 
-            <a href="{% url 'logout' %}"
-               class="btn btn-danger shadow-sm rounded-3">
-
-                Logout
-
-            </a>
-
+            </div>
         </div>
-
     </div>
 
-
-    <!-- STATISTICS -->
-    <div class="row g-4 mb-4">
-
+    <!-- STATISTICS CARDS -->
+    <div class="row g-3 mb-4">
         <div class="col-md-3">
-
-            <div class="card border-0 shadow-lg rounded-4 bg-primary text-white">
-
+            <div class="card border-0 shadow-lg rounded-4 bg-primary text-white h-100">
                 <div class="card-body">
-
-                    <h6 class="text-uppercase">
-                        Total Schools
-                    </h6>
-
-                    <h1 class="fw-bold">
-                        {{ schools.count }}
-                    </h1>
-
-                    <small>
-                        Registered institutions
-                    </small>
-
-                </div>
-
-            </div>
-
-        </div>
-
-        <div class="col-md-3">
-
-            <div class="card border-0 shadow-lg rounded-4 bg-success text-white">
-
-                <div class="card-body">
-
-                    <h6 class="text-uppercase">
-                        Active Schools
-                    </h6>
-
-                    <h1 class="fw-bold">
-                        {{ active_schools }}
-                    </h1>
-
-                    <small>
-                        Operational schools
-                    </small>
-
-                </div>
-
-            </div>
-
-        </div>
-
-        <div class="col-md-3">
-
-            <div class="card border-0 shadow-lg rounded-4 bg-warning text-dark">
-
-                <div class="card-body">
-
-                    <h6 class="text-uppercase">
-                        Pending Vouchers
-                    </h6>
-
-                    <h1 class="fw-bold">
-                        {{ pending_vouchers }}
-                    </h1>
-
-                    <small>
-                        Awaiting approval
-                    </small>
-
-                </div>
-
-            </div>
-
-        </div>
-
-        <div class="col-md-3">
-
-            <div class="card border-0 shadow-lg rounded-4 bg-danger text-white">
-
-                <div class="card-body">
-
-                    <h6 class="text-uppercase">
-                        DOS Queries
-                    </h6>
-
-                    <h1 class="fw-bold">
-                        {{ queries.count }}
-                    </h1>
-
-                    <small>
-                        Support messages
-                    </small>
-
-                </div>
-
-            </div>
-
-        </div>
-
-    </div>
-
-
-    <!-- MAIN GRID -->
-    <div class="row">
-
-        <!-- SIDEBAR -->
-        <div class="col-lg-3 mb-4">
-
-            <div class="card border-0 shadow-lg rounded-4">
-
-                <div class="card-header bg-dark text-white rounded-top-4">
-
-                    <h5 class="mb-0">
-                        Superuser Navigation
-                    </h5>
-
-                </div>
-
-                <div class="card-body p-2">
-
-                    <div class="d-grid gap-2">
-
-                        <a href="{% url 'superuser_dashboard' %}"
-                           class="btn btn-outline-primary text-start py-3">
-
-                            🏠 Dashboard Home
-
-                        </a>
-
-                        <a href="/admin/"
-                           class="btn btn-outline-dark text-start py-3">
-
-                            ⚙ Django Admin
-
-                        </a>
-
-                        <a href="{% url 'add_school' %}"
-                           class="btn btn-outline-success text-start py-3">
-
-                            ➕ Register School
-
-                        </a>
-
-                        <a href="{% url 'register_dos_by_superuser' %}"
-                           class="btn btn-outline-info text-start py-3">
-
-                            👨‍💼 Create DOS Account
-
-                        </a>
-
-                        <a href="{% url 'create_staff' %}"
-                           class="btn btn-outline-warning text-start py-3">
-
-                            👥 Create Staff
-
-                        </a>
-
-                        <a href="{% url 'superuser_dashboard' %}"
-                           class="btn btn-outline-danger text-start py-3">
-
-                            📊 Analytics
-
-                        </a>
-
-                        <a href="{% url 'superuser_dashboard' %}"
-                           class="btn btn-outline-secondary text-start py-3">
-
-                            🎫 Voucher Requests
-
-                        </a>
-
-                        <a href="{% url 'superuser_dashboard' %}"
-                           class="btn btn-outline-primary text-start py-3">
-
-                            💬 DOS Queries
-
-                        </a>
-
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase text-white-50 mb-2">Total Schools</h6>
+                            <h2 class="fw-bold mb-0">{{ schools.count }}</h2>
+                        </div>
+                        <div style="font-size: 2.5rem; opacity: 0.3;">🏫</div>
                     </div>
-
+                    <small class="text-white-50">Registered institutions</small>
                 </div>
-
             </div>
-
         </div>
 
+        <div class="col-md-3">
+            <div class="card border-0 shadow-lg rounded-4 bg-success text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase text-white-50 mb-2">Active Schools</h6>
+                            <h2 class="fw-bold mb-0">{{ active_schools }}</h2>
+                        </div>
+                        <div style="font-size: 2.5rem; opacity: 0.3;">✓</div>
+                    </div>
+                    <small class="text-white-50">Operational</small>
+                </div>
+            </div>
+        </div>
 
-        <!-- MAIN CONTENT -->
+        <div class="col-md-3">
+            <div class="card border-0 shadow-lg rounded-4 bg-warning text-dark h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase mb-2">Pending Vouchers</h6>
+                            <h2 class="fw-bold mb-0">{{ pending_vouchers }}</h2>
+                        </div>
+                        <div style="font-size: 2.5rem; opacity: 0.3;">🎫</div>
+                    </div>
+                    <small>Awaiting approval</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-lg rounded-4 bg-danger text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase text-white-50 mb-2">DOS Queries</h6>
+                            <h2 class="fw-bold mb-0">{{ queries.count }}</h2>
+                        </div>
+                        <div style="font-size: 2.5rem; opacity: 0.3;">📧</div>
+                    </div>
+                    <small class="text-white-50">Support messages</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN GRID: SIDEBAR + CONTENT -->
+    <div class="row g-4">
+
+        <!-- SIDEBAR NAVIGATION -->
+        <div class="col-lg-3 mb-4">
+            <div class="card border-0 shadow-lg rounded-4 sticky-top" style="top: 20px;">
+                <div class="card-header bg-dark text-white rounded-top-4">
+                    <h5 class="mb-0">📋 Navigation Menu</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="nav flex-column gap-1 p-3">
+                        <a href="{% url 'superuser_dashboard' %}" class="nav-link btn btn-outline-primary text-start rounded-3 py-2">
+                            🏠 Dashboard Home
+                        </a>
+                        <a href="{% url 'add_school' %}" class="nav-link btn btn-outline-success text-start rounded-3 py-2">
+                            ➕ Register School
+                        </a>
+                        <a href="#schools-section" data-bs-toggle="collapse" class="nav-link btn btn-outline-info text-start rounded-3 py-2">
+                            🏢 Manage Schools
+                        </a>
+                        <a href="#principals-section" data-bs-toggle="collapse" class="nav-link btn btn-outline-primary text-start rounded-3 py-2">
+                            👨‍💼 Manage Principals
+                        </a>
+                        <a href="#dos-section" data-bs-toggle="collapse" class="nav-link btn btn-outline-info text-start rounded-3 py-2">
+                            👩‍💻 Register DOS
+                        </a>
+                        <a href="#vouchers" data-bs-toggle="collapse" class="nav-link btn btn-outline-warning text-start rounded-3 py-2">
+                            🎫 Vouchers ({{ pending_vouchers }})
+                        </a>
+                        <a href="#dos-queries" data-bs-toggle="collapse" class="nav-link btn btn-outline-danger text-start rounded-3 py-2">
+                            📧 Queries ({{ queries.count }})
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAIN CONTENT AREA -->
         <div class="col-lg-9">
 
-            <!-- REGISTER SCHOOL -->
+            <!-- REGISTER NEW SCHOOL -->
             <div class="card border-0 shadow-lg rounded-4 mb-4">
-
                 <div class="card-header bg-success text-white rounded-top-4">
-
                     <div class="d-flex justify-content-between align-items-center">
-
-                        <h5 class="mb-0">
-                            Register New School
-                        </h5>
-
-                        <a href="{% url 'superuser_dashboard' %}"
-                           class="btn btn-light btn-sm">
-
-                            Refresh
-
-                        </a>
-
+                        <h5 class="mb-0">➕ Register New School</h5>
+                        <small class="text-white-50">Quick Add</small>
                     </div>
-
                 </div>
-
                 <div class="card-body">
-
-                    <form method="post"
-                          action="{% url 'add_school' %}"
-                          enctype="multipart/form-data">
-
+                    <form method="post" action="{% url 'add_school' %}" enctype="multipart/form-data">
                         {% csrf_token %}
-
                         <div class="row">
-
                             <div class="col-md-6 mb-3">
-
-                                <label class="form-label fw-bold">
-                                    School Name
-                                </label>
-
-                                <input type="text"
-                                       name="name"
-                                       class="form-control"
-                                       required>
-
+                                <label class="form-label fw-bold">School Name</label>
+                                <input type="text" name="name" class="form-control rounded-3" required>
                             </div>
-
                             <div class="col-md-6 mb-3">
-
-                                <label class="form-label fw-bold">
-                                    School Email
-                                </label>
-
-                                <input type="email"
-                                       name="email"
-                                       class="form-control"
-                                       required>
-
+                                <label class="form-label fw-bold">Email</label>
+                                <input type="email" name="email" class="form-control rounded-3" required>
                             </div>
-
                             <div class="col-md-6 mb-3">
-
-                                <label class="form-label fw-bold">
-                                    Phone Number
-                                </label>
-
-                                <input type="text"
-                                       name="phone"
-                                       class="form-control"
-                                       required>
-
+                                <label class="form-label fw-bold">Phone</label>
+                                <input type="text" name="phone" class="form-control rounded-3" required>
                             </div>
-
                             <div class="col-md-6 mb-3">
-
-                                <label class="form-label fw-bold">
-                                    School Adress
-                    
-                                </label>
-
-                                <input type="text"
-                                       name="adress"
-                                       class="form-control"
-                                       required>
-
+                                <label class="form-label fw-bold">Address</label>
+                                <input type="text" name="address" class="form-control rounded-3" required>
                             </div>
-
                             <div class="col-md-6 mb-3">
-
-                                <label class="form-label fw-bold">
-                                    Subscription Balance
-                                </label>
-
-                                <input type="number"
-                                       name="subscription_balance"
-                                       value="0"
-                                       class="form-control">
-
+                                <label class="form-label fw-bold">Subscription Balance</label>
+                                <input type="number" name="subscription_balance" value="0" class="form-control rounded-3">
                             </div>
-
-                            <div class="col-md-12 mb-3">
-
-                                <label class="form-label fw-bold">
-                                    School Logo
-                                </label>
-
-                                <input type="file"
-                                       name="logo"
-                                       class="form-control">
-
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">School Logo</label>
+                                <input type="file" name="logo" class="form-control rounded-3">
                             </div>
-
                         </div>
-
-                        <button type="submit"
-                                class="btn btn-success px-4">
-
-                            Add School
-
+                        <button type="submit" class="btn btn-success px-4 rounded-3">
+                            ✓ Add School
                         </button>
-
                     </form>
-
                 </div>
-
             </div>
 
-
-            <!-- SCHOOL MANAGEMENT -->
-            <div class="card border-0 shadow-lg rounded-4 mb-4">
-
+            <!-- REGISTER PRINCIPAL -->
+            <div class="card border-0 shadow-lg rounded-4 mb-4" id="principals-section">
                 <div class="card-header bg-primary text-white rounded-top-4">
-
-                    <div class="d-flex justify-content-between align-items-center">
-
-                        <h5 class="mb-0">
-                            Registered Schools
-                        </h5>
-
-                        <div>
-
-                            <span class="badge bg-light text-dark px-3 py-2 me-2">
-                                {{ schools.count }} Schools
-                            </span>
-
-                            <a href="{% url 'superuser_dashboard' %}"
-                               class="btn btn-light btn-sm">
-
-                                Refresh
-
-                            </a>
-
-                        </div>
-
-                    </div>
-
+                    <h5 class="mb-0">👨‍💼 Register Principal</h5>
                 </div>
+                <div class="card-body">
+                    <form method="POST" action="{% url 'register_principal_by_superuser' %}">
+                        {% csrf_token %}
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Full Name</label>
+                                <input type="text" name="name" class="form-control rounded-3" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Email</label>
+                                <input type="email" name="email" class="form-control rounded-3" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Phone</label>
+                                <input type="text" name="phone" class="form-control rounded-3" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Password</label>
+                                <input type="password" name="password" class="form-control rounded-3" required>
+                            </div>
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label fw-bold">Select School</label>
+                                <select name="school" class="form-select rounded-3" required>
+                                    <option value="">-- Choose School --</option>
+                                    {% for school in schools %}
+                                    <option value="{{ school.id }}">{{ school.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary px-4 rounded-3">
+                            ✓ Register Principal
+                        </button>
+                    </form>
+                </div>
+            </div>
 
-                <div class="card-body table-responsive">
-
-                    <table class="table table-hover align-middle">
-
+            <!-- SCHOOLS MANAGEMENT TABLE -->
+            <div class="card border-0 shadow-lg rounded-4 mb-4" id="schools-section">
+                <div class="card-header bg-info text-white rounded-top-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">🏢 Registered Schools ({{ schools.count }})</h5>
+                        <div class="badge bg-light text-dark px-3 py-2">Active: {{ active_schools }}/{{ schools.count }}</div>
+                    </div>
+                </div>
+                <div class="card-body p-0 table-responsive">
+                    <table class="table table-hover align-middle mb-0">
                         <thead class="table-light">
-
                             <tr>
-
-                                <th>School</th>
+                                <th class="ps-4">School Name</th>
                                 <th>Email</th>
                                 <th>Phone</th>
                                 <th>Status</th>
-                                 <th>Adress</th>
                                 <th>Subscription</th>
-                                <th>Controls</th>
-
+                                <th class="pe-4">Actions</th>
                             </tr>
-
                         </thead>
-
                         <tbody>
-
                             {% for school in schools %}
-
                             <tr>
-
-                                <td>
-
+                                <td class="ps-4">
                                     <div class="d-flex align-items-center">
-
                                         {% if school.logo %}
-
-                                        <img src="{{ school.logo.url }}"
-                                             width="45"
-                                             height="45"
-                                             class="rounded-circle me-2">
-
-                                        {% endif %}
-
-                                        <div>
-
-                                            <strong>
-                                                {{ school.name }}
-                                            </strong>
-
-                                        </div>
-
-                                    </div>
-
-                                </td>
-
-                                <td>
-                                    {{ school.email }}
-                                </td>
-
-                                <td>
-                                    {{ school.phone }}
-                                </td>
-
-                                <td>
-
-                                    {% if school.is_active %}
-
-                                    <span class="badge bg-success px-3 py-2">
-                                        Active
-                                    </span>
-
-                                    {% else %}
-
-                                    <span class="badge bg-danger px-3 py-2">
-                                        Inactive
-                                    </span>
-
-                                    {% endif %}
-
-                                </td>
-
-                                <td>
-                                    KES {{ school.subscription_balance }}
-                                </td>
-
-                                <td>
-
-                                    <div class="d-flex gap-2 flex-wrap">
-
-                                        {% if school.is_active %}
-
-                                        <form method="post"
-                                              action="{% url 'deactivate_school' school.id %}">
-
-                                            {% csrf_token %}
-
-                                            <button type="submit"
-                                                    class="btn btn-danger btn-sm">
-
-                                                Deactivate
-
-                                            </button>
-
-                                        </form>
-
+                                        <img src="{{ school.logo.url }}" width="40" height="40" class="rounded-circle me-3" alt="{{ school.name }}">
                                         {% else %}
-
-                                        <form method="post"
-                                              action="{% url 'activate_school' school.id %}">
-
-                                            {% csrf_token %}
-
-                                            <button type="submit"
-                                                    class="btn btn-success btn-sm">
-
-                                                Activate
-
-                                            </button>
-
-                                        </form>
-
+                                        <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">{{ school.name|first }}</div>
                                         {% endif %}
-
-                                        <a href="{% url 'view_school' school.id %}"
-                                           class="btn btn-primary btn-sm">
-
-                                            View
-
-                                        </a>
-
-                                        <a href="{% url 'edit_school' school.id %}"
-                                           class="btn btn-warning btn-sm text-dark">
-
-                                            Edit
-
-                                        </a>
-
-                                        <a href="{% url 'delete_school' school.id %}"
-                                           class="btn btn-dark btn-sm"
-                                           onclick="return confirm('Delete this school permanently?')">
-
-                                            Delete
-
-                                        </a>
-
+                                        <strong>{{ school.name }}</strong>
                                     </div>
-
                                 </td>
-
+                                <td><small>{{ school.email }}</small></td>
+                                <td><small>{{ school.phone }}</small></td>
+                                <td>
+                                    {% if school.is_active %}
+                                    <span class="badge bg-success px-3 py-2">✓ Active</span>
+                                    {% else %}
+                                    <span class="badge bg-danger px-3 py-2">✕ Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td><strong>KES {{ school.subscription_balance }}</strong></td>
+                                <td class="pe-4">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        {% if school.is_active %}
+                                        <form method="post" action="{% url 'deactivate_school' school.id %}" style="display: inline;">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Deactivate">🔒</button>
+                                        </form>
+                                        {% else %}
+                                        <form method="post" action="{% url 'activate_school' school.id %}" style="display: inline;">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-success" title="Activate">✓</button>
+                                        </form>
+                                        {% endif %}
+                                        <a href="{% url 'view_school' school.id %}" class="btn btn-sm btn-outline-primary" title="View">👁️</a>
+                                        <a href="{% url 'edit_school' school.id %}" class="btn btn-sm btn-outline-warning" title="Edit">✏️</a>
+                                        <a href="{% url 'delete_school' school.id %}" class="btn btn-sm btn-outline-dark" title="Delete" onclick="return confirm('Delete {{ school.name }}?')">🗑️</a>
+                                    </div>
+                                </td>
                             </tr>
-
                             {% empty %}
-
                             <tr>
-
-                                <td colspan="6"
-                                    class="text-center text-muted">
-
-                                    No schools registered
-
+                                <td colspan="6" class="text-center text-muted py-5">
+                                    <p>No schools registered yet.</p>
+                                    <a href="{% url 'add_school' %}" class="btn btn-sm btn-primary">Register First School</a>
                                 </td>
-
                             </tr>
-
                             {% endfor %}
-
                         </tbody>
-
                     </table>
-
                 </div>
-
             </div>
 
-
-            <!-- DOS + VOUCHERS -->
-            <div class="row">
+            <!-- DOS & VOUCHERS GRID -->
+            <div class="row g-4 mb-4">
 
                 <!-- REGISTER DOS -->
-                <div class="col-lg-5 mb-4">
-
+                <div class="col-lg-6" id="dos-section">
                     <div class="card border-0 shadow-lg rounded-4 h-100">
-
                         <div class="card-header bg-dark text-white rounded-top-4">
-
-                            <div class="d-flex justify-content-between align-items-center">
-
-                                <h5 class="mb-0">
-                                    Register DOS
-                                </h5>
-
-                                <a href="{% url 'superuser_dashboard' %}"
-                                   class="btn btn-light btn-sm">
-
-                                    Refresh
-
-                                </a>
-
-                            </div>
-
+                            <h5 class="mb-0">👩‍💻 Register DOS</h5>
                         </div>
-
                         <div class="card-body">
-
-                            <form method="post"
-                                  action="{% url 'register_dos_by_superuser' %}">
-
+                            <form method="post" action="{% url 'register_dos_by_superuser' %}">
                                 {% csrf_token %}
-
                                 <div class="mb-3">
-
-                                    <label class="form-label fw-bold">
-                                        Full Name
-                                    </label>
-
-                                    <input type="text"
-                                           name="name"
-                                           class="form-control"
-                                           required>
-
+                                    <label class="form-label fw-bold">Full Name</label>
+                                    <input type="text" name="name" class="form-control rounded-3" required>
                                 </div>
-
                                 <div class="mb-3">
-
-                                    <label class="form-label fw-bold">
-                                        Email
-                                    </label>
-
-                                    <input type="email"
-                                           name="email"
-                                           class="form-control"
-                                           required>
-
+                                    <label class="form-label fw-bold">Email</label>
+                                    <input type="email" name="email" class="form-control rounded-3" required>
                                 </div>
-
                                 <div class="mb-3">
-
-                                    <label class="form-label fw-bold">
-                                        Phone
-                                    </label>
-
-                                    <input type="text"
-                                           name="phone"
-                                           class="form-control"
-                                           required>
-
+                                    <label class="form-label fw-bold">Phone</label>
+                                    <input type="text" name="phone" class="form-control rounded-3" required>
                                 </div>
-
                                 <div class="mb-3">
-
-                                    <label class="form-label fw-bold">
-                                        School
-                                    </label>
-
-                                    <select name="school"
-                                            class="form-select"
-                                            required>
-
+                                    <label class="form-label fw-bold">School</label>
+                                    <select name="school" class="form-select rounded-3" required>
+                                        <option value="">-- Choose School --</option>
                                         {% for school in schools %}
-
-                                        <option value="{{ school.id }}">
-                                            {{ school.name }}
-                                        </option>
-
+                                        <option value="{{ school.id }}">{{ school.name }}</option>
                                         {% endfor %}
-
                                     </select>
-
                                 </div>
-
                                 <div class="mb-3">
-
-                                    <label class="form-label fw-bold">
-                                        Password
-                                    </label>
-
-                                    <input type="password"
-                                           name="password"
-                                           class="form-control"
-                                           required>
-
+                                    <label class="form-label fw-bold">Password</label>
+                                    <input type="password" name="password" class="form-control rounded-3" required>
                                 </div>
-
-                                <button type="submit"
-                                        class="btn btn-success w-100">
-
-                                    Create DOS Account
-
+                                <button type="submit" class="btn btn-success w-100 rounded-3">
+                                    ✓ Create DOS Account
                                 </button>
-
                             </form>
-
                         </div>
-
                     </div>
-
                 </div>
 
-
-                <!-- VOUCHERS -->
-                <div class="col-lg-7 mb-4">
-
+                <!-- PENDING VOUCHERS -->
+                <div class="col-lg-6" id="vouchers">
                     <div class="card border-0 shadow-lg rounded-4 h-100">
-
-                        <div class="card-header bg-warning rounded-top-4">
-
+                        <div class="card-header bg-warning text-dark rounded-top-4">
                             <div class="d-flex justify-content-between align-items-center">
-
-                                <h5 class="mb-0 text-dark">
-                                    Pending Voucher Requests
-                                </h5>
-
-                                <a href="{% url 'superuser_dashboard' %}"
-                                   class="btn btn-dark btn-sm">
-
-                                    Refresh
-
-                                </a>
-
+                                <h5 class="mb-0">🎫 Pending Vouchers ({{ pending_vouchers }})</h5>
                             </div>
-
                         </div>
-
                         <div class="card-body table-responsive">
-
-                            <table class="table table-bordered align-middle">
-
+                            {% if pending_vouchers > 0 %}
+                            <table class="table table-sm mb-0">
                                 <thead>
-
                                     <tr>
-
                                         <th>School</th>
                                         <th>Term</th>
                                         <th>Students</th>
                                         <th>Action</th>
-
                                     </tr>
-
                                 </thead>
-
                                 <tbody>
-
                                     {% for v in vouchers %}
-
                                     <tr>
-
-                                        <td>{{ v.school.name }}</td>
-
-                                        <td>{{ v.term }}</td>
-
-                                        <td>{{ v.student_count }}</td>
-
+                                        <td><small><strong>{{ v.school.name }}</strong></small></td>
+                                        <td><small>{{ v.term }}</small></td>
+                                        <td><small>{{ v.student_count }}</small></td>
                                         <td>
-
-                                            <form method="post"
-                                                  action="{% url 'approve_voucher' v.id %}">
-
+                                            {% if v.status == "pending" %}
+                                            <form method="POST" action="{% url 'approve_voucher' v.id %}" style="display: inline;">
                                                 {% csrf_token %}
-
-                                                <button type="submit"
-                                                        class="btn btn-success btn-sm">
-
-                                                    Approve
-
-                                                </button>
-
+                                                <button type="submit" class="btn btn-success btn-sm rounded-2">✓ Approve</button>
                                             </form>
-
+                                            {% else %}
+                                            <span class="badge bg-success">Approved</span>
+                                            {% endif %}
                                         </td>
-
                                     </tr>
-
-                                    {% empty %}
-
-                                    <tr>
-
-                                        <td colspan="4"
-                                            class="text-center text-muted">
-
-                                            No pending voucher requests
-
-                                        </td>
-
-                                    </tr>
-
                                     {% endfor %}
-
                                 </tbody>
-
                             </table>
-
+                            {% else %}
+                            <p class="text-muted text-center py-5">✓ No pending voucher requests</p>
+                            {% endif %}
                         </div>
-
                     </div>
-
                 </div>
 
             </div>
 
-
-            <!-- DOS QUERIES -->
-            <div class="card border-0 shadow-lg rounded-4">
-
-                <div class="card-header bg-info text-white rounded-top-4">
-
+            <!-- DOS QUERIES & SUPPORT MESSAGES -->
+            <!-- PENDING LICENSE RENEWALS -->
+            <div class="card border-0 shadow-lg rounded-4 mb-4" id="renewals">
+                <div class="card-header bg-secondary text-white rounded-top-4">
                     <div class="d-flex justify-content-between align-items-center">
-
-                        <h5 class="mb-0">
-                            DOS Queries & Support Messages
-                        </h5>
-
-                        <a href="{% url 'superuser_dashboard' %}"
-                           class="btn btn-light btn-sm">
-
-                            Refresh
-
-                        </a>
-
-                    </div>
-
-                </div>
-
-                <div class="card-body">
-
-                    {% for q in queries %}
-
-                    <div class="border rounded-4 p-4 mb-4 bg-light">
-
-                        <div class="d-flex justify-content-between">
-
-                            <div>
-
-                                <h6 class="fw-bold text-primary">
-                                    {{ q.school.name }}
-                                </h6>
-
-                                <small class="text-muted">
-                                    {{ q.dos.name }}
-                                </small>
-
-                            </div>
-
-                            <div>
-
-                                <span class="badge bg-warning">
-                                    {{ q.status }}
-                                </span>
-
-                            </div>
-
-                        </div>
-
-                        <hr>
-
-                        <h6>
-                            {{ q.subject }}
-                        </h6>
-
-                        <p>
-                            {{ q.message }}
-                        </p>
-
-                        {% if q.status == 'pending' %}
-
-                        <form method="post"
-                              action="{% url 'reply_query' q.id %}">
-
-                            {% csrf_token %}
-
-                            <textarea name="reply"
-                                      rows="3"
-                                      class="form-control mb-3"
-                                      placeholder="Type reply..."></textarea>
-
-                            <button type="submit"
-                                    class="btn btn-primary">
-
-                                Send Reply
-
-                            </button>
-
-                        </form>
-
+                        <h5 class="mb-0">🔁 Pending Reactivation Requests ({{ pending_renewals_count }})</h5>
+                        {% if pending_renewals_count > 0 %}
+                        <small class="text-white-50">Review requests below</small>
                         {% endif %}
-
                     </div>
-
-                    {% empty %}
-
-                    <p class="text-muted">
-                        No pending DOS queries.
-                    </p>
-
-                    {% endfor %}
-
                 </div>
+                <div class="card-body">
+                    {% if pending_renewals_count > 0 %}
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead>
+                                <tr>
+                                    <th>School</th>
+                                    <th>Requested By</th>
+                                    <th>Requested At</th>
+                                    <th>Days</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for r in pending_renewals|slice:":5" %}
+                                <tr>
+                                    <td><strong>{{ r.school.name }}</strong></td>
+                                    <td><small>{{ r.requested_by.get_full_name|default:r.requested_by.username }}</small></td>
+                                    <td><small>{{ r.requested_at|date:"d M, Y H:i" }}</small></td>
+                                    <td><small>{{ r.renewal_period_days }}</small></td>
+                                    <td>
+                                        <form method="post" action="{% url 'approve_license_renewal' r.id %}" style="display: inline;">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="status" value="approved">
+                                            <button type="submit" class="btn btn-sm btn-success">✓ Approve</button>
+                                        </form>
+                                        <form method="post" action="{% url 'approve_license_renewal' r.id %}" style="display: inline; margin-left:6px;">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="status" value="rejected">
+                                            <button type="submit" class="btn btn-sm btn-danger">✕ Reject</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4 text-muted">✓ No pending reactivation requests</div>
+                    {% endif %}
+                </div>
+            </div>
 
+            <div class="card border-0 shadow-lg rounded-4" id="dos-queries">
+                <div class="card-header bg-danger text-white rounded-top-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">📧 DOS Queries & Support Messages ({{ queries.count }})</h5>
+                        {% if queries.count > 0 %}
+                        <form method="POST" action="{% url 'clear_all_messages' %}" style="display: inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-light" title="Clear all messages">🗑️ Clear All</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if queries %}
+                        {% for q in queries %}
+                        <div class="border rounded-4 p-4 mb-4 bg-light position-relative">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <div>
+                                    <h6 class="fw-bold text-primary mb-1">
+                                        🏫 {{ q.school.name }}
+                                    </h6>
+                                    <small class="text-muted">
+                                        👤 {{ q.sender.get_full_name|default:q.sender.username }} • 
+                                        📅 {{ q.created_at|date:"d M, H:i" }}
+                                    </small>
+                                </div>
+                                <div>
+                                    <span class="badge bg-warning text-dark px-3 py-2">{{ q.status|upper }}</span>
+                                </div>
+                            </div>
+
+                            <hr class="my-3">
+
+                            <h6 class="fw-bold">📌 {{ q.subject }}</h6>
+                            <p class="mb-3">{{ q.message }}</p>
+
+                            {% if q.status == 'pending' %}
+                            <form method="post" action="{% url 'reply_message' q.id %}">
+                                {% csrf_token %}
+                                <div class="mb-3">
+                                    <textarea name="reply" rows="3" class="form-control rounded-3" placeholder="Type your reply..." required></textarea>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary btn-sm rounded-3">
+                                        ✓ Send Reply
+                                    </button>
+                                    <form method="POST" action="{% url 'delete_single_message' q.id %}" style="display: inline;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-outline-danger btn-sm rounded-3" onclick="return confirm('Delete this message?')">
+                                            🗑️ Delete
+                                        </button>
+                                    </form>
+                                </div>
+                            </form>
+                            {% elif q.status == 'replied' %}
+                            <div class="alert alert-success alert-sm py-2 px-3 rounded-3">
+                                ✓ Reply sent - Waiting for acknowledgment
+                            </div>
+                            {% else %}
+                            <div class="alert alert-info alert-sm py-2 px-3 rounded-3">
+                                ℹ️ Status: {{ q.status|title }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                    <div class="text-center py-5">
+                        <p class="text-muted fs-5">✓ No pending DOS queries</p>
+                        <small class="text-muted">All messages have been handled</small>
+                    </div>
+                    {% endif %}
+                </div>
             </div>
 
         </div>
@@ -917,5 +605,17 @@
     </div>
 
 </div>
+
+<style>
+    .badge { font-weight: 500; }
+    .card { transition: all 0.3s ease; }
+    .card:hover { box-shadow: 0 8px 20px rgba(0,0,0,0.1) !important; }
+    .nav-link { border: 1px solid transparent; }
+    .nav-link:hover { border-color: #0d6efd; }
+    .table tbody tr { transition: background-color 0.2s ease; }
+    .table tbody tr:hover { background-color: rgba(13, 110, 253, 0.05); }
+    .dropdown-menu { animation: slideDown 0.2s ease; }
+    @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+</style>
 
 {% endblock %}

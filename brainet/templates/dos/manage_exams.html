@@ -1,0 +1,298 @@
+{% extends 'dashboards/base.html' %}
+
+{% block content %}
+
+<div class="container-fluid py-4">
+
+    <!-- HEADER -->
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+
+            <h3 class="fw-bold text-primary">
+                Examination Management
+            </h3>
+
+            <p class="text-muted mb-0">
+                Create and manage school examinations
+            </p>
+
+        </div>
+
+        <a href="{% url 'dashboard' %}"
+           class="btn btn-dark">
+
+            Back Dashboard
+
+        </a>
+
+    </div>
+
+    <!-- ALERTS -->
+
+    {% if messages %}
+        {% for message in messages %}
+
+            <div class="alert alert-{{ message.tags }}">
+                {{ message }}
+            </div>
+
+        {% endfor %}
+    {% endif %}
+
+    <!-- CREATE EXAM -->
+
+    <div class="card shadow border-0 rounded-4 mb-4">
+
+        <div class="card-header bg-primary text-white">
+
+            <h5 class="mb-0">
+                Create Exam
+            </h5>
+
+        </div>
+
+        <div class="card-body">
+
+            <form method="post">
+
+                {% csrf_token %}
+
+                <div class="row">
+
+                    <!-- NAME -->
+
+                    <div class="col-md-4 mb-3">
+
+                        <label class="form-label fw-bold">
+                            Exam Name
+                        </label>
+
+                        <input type="text"
+                               name="name"
+                               class="form-control"
+                               placeholder="e.g Midterm Exam"
+                               required>
+
+                    </div>
+
+                    <!-- TERM -->
+
+                    <div class="col-md-4 mb-3">
+
+                        <label class="form-label fw-bold">
+                            Term
+                        </label>
+
+                        <select name="term"
+                                class="form-select"
+                                required>
+
+                            {% for term in terms %}
+
+                            <option value="{{ term.id }}">
+                                {{ term.name }}
+                            </option>
+
+                            {% endfor %}
+
+                        </select>
+
+                    </div>
+
+                    <!-- TYPE -->
+
+                    <div class="col-md-4 mb-3">
+
+                        <label class="form-label fw-bold">
+                            Exam Type
+                        </label>
+
+                        <select name="exam_type"
+                                class="form-select"
+                                required>
+
+                            <option value="CAT">
+                                CAT
+                            </option>
+
+                            <option value="MIDTERM">
+                                Midterm
+                            </option>
+
+                            <option value="FINAL">
+                                Final
+                            </option>
+
+                        </select>
+
+                    </div>
+
+                </div>
+
+                <!-- SUBJECTS -->
+
+                <div class="mb-4">
+
+                    <label class="form-label fw-bold">
+                        Subjects Included
+                    </label>
+
+                    <div class="row">
+
+                        {% for subject in subjects %}
+
+                        <div class="col-md-3 mb-2">
+
+                            <div class="form-check">
+
+                                <input class="form-check-input"
+                                       type="checkbox"
+                                       name="subjects"
+                                       value="{{ subject.id }}"
+                                       id="subject{{ subject.id }}">
+
+                                <label class="form-check-label"
+                                       for="subject{{ subject.id }}">
+
+                                    {{ subject.name }}
+
+                                </label>
+
+                            </div>
+
+                        </div>
+
+                        {% endfor %}
+
+                    </div>
+
+                </div>
+
+                <button type="submit"
+                        class="btn btn-success">
+
+                    Create Exam
+
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+    <!-- EXAMS TABLE -->
+
+    <div class="card shadow border-0 rounded-4">
+
+        <div class="card-header bg-dark text-white">
+
+            <h5 class="mb-0">
+                Existing Exams
+            </h5>
+
+        </div>
+
+        <div class="card-body table-responsive">
+
+            <table class="table table-bordered align-middle">
+
+                <thead class="table-light">
+
+                    <tr>
+
+                        <th>#</th>
+                        <th>Exam</th>
+                        <th>Type</th>
+                        <th>Term</th>
+                        <th>Subjects</th>
+                        <th>Status</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    {% for exam in exams %}
+
+                    <tr>
+
+                        <td>
+                            {{ forloop.counter }}
+                        </td>
+
+                        <td>
+                            {{ exam.name }}
+                        </td>
+
+                        <td>
+                            {{ exam.exam_type }}
+                        </td>
+
+                        <td>
+                            {{ exam.term.name }}
+                        </td>
+
+                        <td>
+
+                            {% for es in exam.exam_subjects.all %}
+
+                                <span class="badge bg-primary">
+
+                                    {{ es.subject.name }}
+
+                                </span>
+
+                            {% endfor %}
+
+                        </td>
+
+                        <td>
+
+                            {% if exam.is_active %}
+
+                            <span class="badge bg-success">
+                                Active
+                            </span>
+
+                            {% else %}
+
+                            <span class="badge bg-danger">
+                                Closed
+                            </span>
+
+                            {% endif %}
+
+                        </td>
+
+                    </tr>
+
+                    {% empty %}
+
+                    <tr>
+
+                        <td colspan="6"
+                            class="text-center text-muted">
+
+                            No exams created yet.
+
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

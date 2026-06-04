@@ -2,69 +2,150 @@
 
 {% block content %}
 
-<div class="container py-4">
+<div class="container-fluid py-4">
 
-    <div class="d-flex justify-content-between mb-3">
+    <h3 class="fw-bold text-primary mb-4">
+        Students Management
+    </h3>
 
-        <h3>Students Management</h3>
+    <!-- ADD STUDENT QUICK -->
+    <div class="card shadow rounded-4 mb-4">
+        <div class="card-body">
 
-        <a href="{% url 'add_student' %}"
-           class="btn btn-primary">
-            Add Student
-        </a>
+            <form method="post" action="{% url 'add_student' %}">
+                {% csrf_token %}
 
+                <div class="row g-2">
+
+                    <!-- Student Name -->
+                    <div class="col-md-3">
+                        <input type="text" name="name"
+                               class="form-control"
+                               placeholder="Student Name" required>
+                    </div>
+
+                    <!-- Admission Number -->
+                    <div class="col-md-3">
+                        <input type="text" name="admission_number"
+                               class="form-control"
+                               placeholder="Admission No" required>
+                    </div>
+
+                    <!-- Gender -->
+                    <div class="col-md-2">
+                        <select name="gender" class="form-select" required>
+                            <option value="">Select Gender</option>
+                            <option>Male</option>
+                            <option>Female</option>
+                        </select>
+                    </div>
+
+                    <!-- Pull Class -->
+                    <div class="col-md-3">
+                        <select name="class_id" class="form-select" required>
+                            <option value="">Select Class</option>
+                            {% for c in classes %}
+                                <option value="{{ c.id }}">{{ c.name }} ({{ c.level }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Stream (optional) -->
+                    <div class="col-md-2">
+                        <select name="stream_id" class="form-select" id="quickStreamSelect">
+                            <option value="">Stream (optional)</option>
+                            {% for stream in streams %}
+                                <option value="{{ stream.id }}" data-class="{{ stream.class_group.id }}">{{ stream.class_group.name }} - {{ stream.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Submit -->
+                    <div class="col-md-1">
+                        <button class="btn btn-success w-100">➕</button>
+                    </div>
+
+                </div>
+
+            </form>
+
+        </div>
     </div>
 
+    <!-- STUDENTS TABLE -->
     <div class="card shadow rounded-4">
 
         <div class="card-body table-responsive">
 
-            <table class="table table-hover">
+            <table class="table table-hover align-middle">
 
-                <thead>
+                <thead class="table-dark">
                     <tr>
-                        <th>Admission</th>
                         <th>Name</th>
-                        <th>Gender</th>
+                        <th>Admission No</th>
                         <th>Class</th>
-                        <th></th>
+                        <th>Gender</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
 
                 <tbody>
-
-                    {% for student in students %}
-
+                    {% for s in students %}
                     <tr>
-
-                        <td>{{ student.admission_number }}</td>
-                        <td>{{ student.name }}</td>
-                        <td>{{ student.gender }}</td>
-                        <td>{{ student.current_class }}</td>
-
+                        <td>{{ s.name }}</td>
+                        <td>{{ s.admission_number }}</td>
                         <td>
-
-                            <a href="{% url 'delete_student' student.id %}"
-                               class="btn btn-danger btn-sm">
-
-                                Delete
-
-                            </a>
-
+                            {% if s.current_class %}
+                                {{ s.current_class.name }} ({{ s.current_class.level }}){% if s.stream %} / {{ s.stream.name }}{% endif %}
+                            {% else %}
+                                -
+                            {% endif %}
                         </td>
-
+                        <td>{{ s.gender }}</td>
+                        <td>
+                            <div class="d-flex gap-2 flex-wrap">
+                                <a href="{% url 'view_student' s.id %}" class="btn btn-sm btn-primary">View</a>
+                                <a href="{% url 'edit_student' s.id %}" class="btn btn-sm btn-warning">Edit</a>
+                                <form method="post" action="{% url 'delete_student' s.id %}">
+                                    {% csrf_token %}
+                                    <button class="btn btn-sm btn-danger"
+                                            onclick="return confirm('Delete this student?')">
+                                        Delete
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
                     </tr>
-
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted">No students added yet.</td>
+                    </tr>
                     {% endfor %}
-
                 </tbody>
 
             </table>
 
         </div>
-
     </div>
 
 </div>
 
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// filter quick-add stream options when class changes
+const classSelect = document.querySelector('select[name="class_id"]');
+const quickStream = document.getElementById('quickStreamSelect');
+if(classSelect && quickStream){
+    classSelect.addEventListener('change', function(){
+        const classId = this.value;
+        Array.from(quickStream.options).forEach(function(opt){
+            if(!opt.dataset.class) return;
+            opt.style.display = (!classId || opt.dataset.class === classId) ? '' : 'none';
+        });
+        quickStream.value = '';
+    });
+}
+</script>
 {% endblock %}

@@ -1,0 +1,37 @@
+<h2>Edit Teacher</h2>
+<form method="post">
+  {% csrf_token %}
+  <label>Name:</label>
+  <input type="text" name="name" value="{{ teacher.name }}" required><br><br>
+
+  <label>Phone:</label>
+  <input type="text" name="phone" value="{{ teacher.phone }}" required><br><br>
+
+  <label>Role:</label>
+  <select name="role" required>
+    <option value="subject" {% if teacher.role == "subject" %}selected{% endif %}>Subject Teacher</option>
+    <option value="class" {% if teacher.role == "class" %}selected{% endif %}>Class Teacher</option>
+  </select><br><br>
+
+  <!-- ✅ Subject Assignment -->
+  <label>Subject:</label>
+  <select name="subject">
+    <option value="">-- Select Subject --</option>
+    {% for subject in subjects %}
+      <option value="{{ subject.id }}">{{ subject.name }}</option>
+    {% endfor %}
+  </select><br><br>
+
+  <!-- ✅ Class Assignment -->
+  <label>Assigned Class:</label>
+  <select name="assigned_class">
+    <option value="">-- Select Class --</option>
+    {% for class in classes %}
+      <option value="{{ class.id }}" {% if class_assignment and class_assignment.class_obj.id == class.id %}selected{% endif %}>
+        {{ class.name }}
+      </option>
+    {% endfor %}
+  </select><br><br>
+
+  <button type="submit" class="btn btn-primary">Update</button>
+</form>

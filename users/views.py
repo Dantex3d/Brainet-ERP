@@ -30,8 +30,8 @@ class CustomLoginView(LoginView):
         elif role == 'principal':
             return reverse_lazy('principal_dashboard')
 
-        elif role == 'class_teacher':
-            return reverse_lazy('class_teacher_dashboard')
+        elif role == 'teacher':
+            return reverse_lazy('teacher_dashboard')
 
         elif role == 'subject_teacher':
             return reverse_lazy('subject_teacher_dashboard')
@@ -49,29 +49,31 @@ class CustomLoginView(LoginView):
 
 @login_required
 def dashboard(request):
-
+    # Redirect to the richer role-specific dashboard views which prepare data
     user = request.user
 
-    # SUPERUSER
     if user.is_superuser:
-        return render(request, 'dashboards/superuser.html')
+        return redirect('superuser_dashboard')
 
     role = getattr(user, 'role', None)
 
     if role == 'dos':
-        return render(request, 'dashboards/dos.html')
+        return redirect('dos_dashboard')
 
     elif role == 'principal':
-        return render(request, 'dashboards/principal.html')
+        return redirect('principal_dashboard')
 
     elif role == 'class_teacher':
-        return render(request, 'dashboards/class_teacher.html')
+        return redirect('principal_dashboard')
+
+    elif role == 'teacher':
+        return redirect('teacher_dashboard')
 
     elif role == 'subject_teacher':
-        return render(request, 'dashboards/subject_teacher.html')
+        return redirect('teacher_dashboard')
 
     elif role == 'student':
-        return render(request, 'dashboards/student.html')
+        return redirect('student_dashboard')
 
     # SAFE FALLBACK
     return render(request, 'dashboards/landing.html')
@@ -80,3 +82,36 @@ def custom_logout(request):
     logout(request)
     return redirect('home')
 
+from django.contrib import messages
+from django.contrib.auth import get_user_model
+from schools.models import School
+
+User = get_user_model()
+
+
+def create_custom_user(request):
+    if request.method == "POST":
+
+        email = request.POST.get("email")
+        password = request.POST.get("password")
+        role = request.POST.get("role")
+        school_id = request.POST.get("school")
+
+        if User.objects.filter(email=email).exists():
+            messages.error(request, "Email already taken")
+            return redirect("superuser_dashboard")
+
+        school = None
+        if school_id:
+            school = School.objects.get(id=school_id)
+
+        user = User.objects.create_user(
+            email=email,
+            password=password,
+            role=role,
+            school=school
+        )
+
+        messages.success(request, f"{role} account created successfully")
+
+        return redirect("superuser_dashboard")

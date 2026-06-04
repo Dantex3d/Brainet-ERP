@@ -1,0 +1,109 @@
+{% extends 'dashboards/base.html' %}
+
+{% block content %}
+
+<div class="container py-4">
+
+    <h3 class="fw-bold mb-4">
+        📥 Assignment Submissions
+    </h3>
+
+    <div class="card border-0 shadow-sm rounded-4">
+
+        <div class="card-body p-0">
+
+            <div class="table-responsive">
+
+                <table class="table table-hover align-middle mb-0">
+
+                    <thead class="table-dark">
+
+                        <tr>
+                            <th>Student</th>
+                            <th>Submitted</th>
+                            <th>Score</th>
+                            <th>Status</th>
+                            <th>File</th>
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                        {% for submission in submissions %}
+
+                        <tr>
+
+                            <td>
+                                {{ submission.student.name }}
+                            </td>
+
+                            <td>
+                                {{ submission.submitted_at }}
+                            </td>
+
+                            <td>
+
+                                {% if submission.score %}
+                                    {{ submission.score }}
+                                {% else %}
+                                    -
+                                {% endif %}
+
+                            </td>
+
+                            <td>
+
+                                {% if submission.is_marked %}
+                                    <span class="badge bg-success">
+                                        Marked
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-warning text-dark">
+                                        Pending
+                                    </span>
+                                {% endif %}
+
+                            </td>
+
+                            <td>
+
+                                <a href="{{ submission.file.url }}"
+                                   class="btn btn-sm btn-outline-primary">
+
+                                    Download
+
+                                </a>
+
+                            </td>
+
+                        </tr>
+
+                        {% empty %}
+
+                        <tr>
+
+                            <td colspan="5"
+                                class="text-center text-muted py-4">
+
+                                No submissions found
+
+                            </td>
+
+                        </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

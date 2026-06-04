@@ -1,0 +1,148 @@
+{% extends 'dashboards/base.html' %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    <!-- PAGE HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary mb-0">📚 Promote Class: {{ class.name }}</h2>
+        <a href="{% url 'promotion_center' %}" class="btn btn-outline-primary shadow-sm">⬅ Back</a>
+    </div>
+
+    <!-- CLASS INFO -->
+    <div class="card shadow rounded-4 mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Class Information</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Class Name:</strong> {{ class.name }}</p>
+                    <p><strong>Level:</strong> {{ class.level }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>School:</strong> {{ class.school.name }}</p>
+                    <p><strong>Total Students:</strong> {{ students.count }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- WARNING -->
+    <div class="alert alert-warning alert-dismissible fade show mb-4" role="alert">
+        <h4 class="alert-heading fw-bold">⚠️ Important</h4>
+        <p class="mb-0">
+            This will promote <strong>all {{ students.count }} active students</strong> in {{ class.name }} to the next level.
+            {% if class.level >= 3 %}
+            These students will be <strong>marked as graduated</strong>.
+            {% else %}
+            New classes will be created if necessary (e.g., if "Grade {{ class.level|add:1 }} East" doesn't exist).
+            {% endif %}
+        </p>
+    </div>
+
+    <!-- STUDENTS TO BE PROMOTED -->
+    <div class="card shadow rounded-4 mb-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">Students to be Promoted</h5>
+        </div>
+        <div class="card-body table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>#</th>
+                        <th>Name</th>
+                        <th>Admission #</th>
+                        <th>Current Stream</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for student in students %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td><strong>{{ student.name }}</strong></td>
+                        <td><small class="text-muted">{{ student.admission_number }}</small></td>
+                        <td>
+                            {% if student.stream %}
+                                <span class="badge bg-secondary">{{ student.stream.name }}</span>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-success">Active</span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">
+                            No active students in this class
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- CONFIRMATION FORM -->
+    <div class="card shadow rounded-4">
+        <div class="card-header bg-danger text-white">
+            <h5 class="mb-0">🔒 Confirm Promotion</h5>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                
+                <div class="mb-3 form-check">
+                    <input 
+                        type="checkbox" 
+                        class="form-check-input"
+                        id="confirmCheck" 
+                        required>
+                    <label class="form-check-label" for="confirmCheck">
+                        I confirm the promotion of all students in {{ class.name }}
+                    </label>
+                </div>
+
+                <div class="d-grid gap-2 mb-3">
+                    <button type="submit" class="btn btn-danger btn-lg" id="promoteBtn">
+                        🚀 Promote Class
+                    </button>
+                </div>
+            </form>
+
+            <a href="{% url 'promotion_center' %}" class="btn btn-outline-secondary w-100">
+                ⬅ Cancel
+            </a>
+        </div>
+    </div>
+
+</div>
+
+<style>
+    .card {
+        border-radius: 1rem;
+        border: none;
+    }
+    
+    .card-header {
+        border-radius: 1rem 1rem 0 0;
+    }
+    
+    .badge {
+        padding: 0.5rem 0.8rem;
+        font-size: 0.85rem;
+    }
+</style>
+
+<script>
+document.querySelector('form')?.addEventListener('submit', function() {
+    const btn = document.getElementById('promoteBtn');
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Processing...';
+});
+</script>
+
+{% endblock %}

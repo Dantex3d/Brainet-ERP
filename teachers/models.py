@@ -1,31 +1,102 @@
-# teachers/models.py
 from django.db import models
-from schools.models import School, Class
-
+from schools.models import Class
+from django.conf import settings
+from subjects.models import Subject
 class Teacher(models.Model):
-    ROLE_CHOICES = [
-        ('subject', 'Subject Teacher'),
-        ('class', 'Class Teacher'),
-    ]
-
-    school = models.ForeignKey(School, on_delete=models.CASCADE)
-    name = models.CharField(max_length=200)
-    email = models.EmailField(unique=True)
-    phone = models.CharField(max_length=20, unique=True)
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES)
-    subject = models.CharField(max_length=100, blank=True, null=True)
-
-    # ✅ Add related_name to avoid clash
-    assigned_class = models.ForeignKey(
-        Class,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="assigned_teachers"
+    
+    ROLE_CHOICES = (
+        ("subject", "Subject Teacher"),
+        ("class", "Class Teacher"),
+        ("both", "Class + Subject Teacher"),
     )
 
-    is_active = models.BooleanField(default=True)
-    date_joined = models.DateField(auto_now_add=True)
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE
+    )
+
+    school = models.ForeignKey(
+        "schools.School",
+        on_delete=models.CASCADE,
+        related_name="teachers"
+    )
+
+    name = models.CharField(max_length=100)
+
+    email = models.EmailField()
+
+    phone = models.CharField(max_length=20)
+
+    role = models.CharField(
+        max_length=20,
+        choices=ROLE_CHOICES,
+        default="subject"
+    )
+
+    date_joined = models.DateTimeField(
+        auto_now_add=True
+    )
 
     def __str__(self):
-        return f"{self.name} ({self.role}) - {self.school.name}"
+        return self.name
+    
+class ClassTeacherAssignment(models.Model):
+    
+    school = models.ForeignKey(
+        "schools.School",
+        on_delete=models.CASCADE
+    )
+
+    class_obj = models.ForeignKey(
+        "classes.Class",
+        on_delete=models.CASCADE
+    )
+
+    stream = models.ForeignKey(
+        "classes.Stream",
+        on_delete=models.CASCADE
+    )
+
+    teacher = models.ForeignKey(
+        "teachers.Teacher",
+        on_delete=models.CASCADE
+    )
+
+    class Meta:
+        unique_together = ("class_obj", "stream")
+        
+class TeacherSubjectAssignment(models.Model):
+    
+    school = models.ForeignKey(
+        "schools.School",
+        on_delete=models.CASCADE
+    )
+
+    class_obj = models.ForeignKey(
+        "classes.Class",
+        on_delete=models.CASCADE
+    )
+
+    stream = models.ForeignKey(
+        "classes.Stream",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True
+    )
+
+    subject = models.ForeignKey(
+        "subjects.Subject",
+        on_delete=models.CASCADE
+    )
+
+    teacher = models.ForeignKey(
+        "teachers.Teacher",
+        on_delete=models.CASCADE
+    )
+
+    class Meta:
+        unique_together = (
+            "class_obj",
+            "stream",
+            "subject"
+        )            

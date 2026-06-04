@@ -1,0 +1,20 @@
+<form method="post">
+    {% csrf_token %}
+
+    <label>Email</label>
+    <input type="email" name="email" class="form-control" required>
+
+    <label>Password</label>
+    <input type="password" name="password" class="form-control" required>
+
+    <label>Role</label>
+    <select name="role" class="form-control">
+        <option value="admin">Admin</option>
+        <option value="dos">DOS</option>
+        <option value="teacher">Teacher</option>
+    </select>
+
+    <button type="submit" class="btn btn-primary mt-3">
+        Create User
+    </button>
+</form>

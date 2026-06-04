@@ -9,8 +9,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = 'django-insecure-l6vov(6_ef1_xt(t7pt&clvlotk1al)jg2q$3h)a7fbbvb-g+2'
 DEBUG = True
-ALLOWED_HOSTS = []
-
+ALLOWED_HOSTS = ["*"]
 
 # =========================================================
 # APPS
@@ -31,9 +30,9 @@ INSTALLED_APPS = [
     'students',
     'exams',
     'reports',
-    'assignments',
-    'billing',
     'classes',
+    'assignments',
+    'subjects',
 ]
 
 
@@ -97,6 +96,7 @@ DATABASES = {
 
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'dashboard'
+LOGIN_REDIRECT_URL = '/teachers/dashboard/'
 
 
 # =========================================================
@@ -104,6 +104,9 @@ LOGIN_REDIRECT_URL = 'dashboard'
 # =========================================================
 
 STATIC_URL = 'static/'
+STATICFILES_DIRS = [
+    BASE_DIR / "static",
+]
 
 
 # =========================================================
@@ -117,8 +120,10 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+    "schools.middleware.SchoolActivationMiddleware",
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+

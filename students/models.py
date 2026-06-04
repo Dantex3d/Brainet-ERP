@@ -37,11 +37,22 @@ class Student(models.Model):
         choices=GENDER_CHOICES
     )
 
+    # ✅ FIXED: point to classes.Class instead of schools.Class
     current_class = models.ForeignKey(
-        'schools.Class',
+        'classes.Class',
         on_delete=models.SET_NULL,
         null=True,
-        blank=True
+        blank=True,
+        related_name='students'
+    )
+        
+    stream = models.ForeignKey(
+        "classes.Stream",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="students"
+
     )
 
     dormitory = models.ForeignKey(
@@ -67,3 +78,42 @@ class Student(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.admission_number})"
+
+class StudentLoginLog(models.Model):
+    
+    STATUS_CHOICES = (
+        ("success", "Success"),
+        ("failed", "Failed"),
+    )
+
+    student = models.ForeignKey(
+        "students.Student",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True
+    )
+
+    username = models.CharField(max_length=255)
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES
+    )
+
+    ip_address = models.CharField(
+        max_length=120,
+        null=True,
+        blank=True
+    )
+
+    user_agent = models.TextField(
+        null=True,
+        blank=True
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    def __str__(self):
+        return f"{self.username} - {self.status}"

@@ -14,11 +14,14 @@ class DOSAdmin(admin.ModelAdmin):
     list_display = ('name', 'school', 'email', 'phone', 'email_verified', 'phone_verified')
     search_fields = ('name', 'email', 'phone')
     list_filter = ('email_verified', 'phone_verified')
+from django.contrib import admin
+from .models import Term
+
 @admin.register(Term)
 class TermAdmin(admin.ModelAdmin):
-    list_display = ('school', 'name', 'opening_date', 'closing_date', 'status')
-    list_filter = ('status', 'school')
-    search_fields = ('name',)
+    list_display = ("name", "start_date", "end_date")
+    list_filter = ("start_date", "end_date")
+
 
 @admin.register(Dormitory)
 class DormitoryAdmin(admin.ModelAdmin):
@@ -31,3 +34,9 @@ class ClassAdmin(admin.ModelAdmin):
     list_display = ('name', 'level', 'school')
     list_filter = ('school', 'level')
     search_fields = ('name', 'school__name')
+    
+from django.contrib import admin
+from .models import DOSQuery, VoucherRequest
+
+admin.site.register(DOSQuery)
+admin.site.register(VoucherRequest)    

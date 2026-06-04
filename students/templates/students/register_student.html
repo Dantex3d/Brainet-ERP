@@ -58,14 +58,23 @@
         </select>
 
         <label>Class</label>
-        <select name="class_id">
-
+        <select name="class_id" required>
+            <option value="">-- Select Class --</option>
             {% for class in classes %}
                 <option value="{{ class.id }}">
                     {{ class.name }}
                 </option>
             {% endfor %}
+        </select>
 
+        <label>Stream (Optional)</label>
+        <select name="stream_id">
+            <option value="">-- Select Stream --</option>
+            {% for stream in streams %}
+                <option value="{{ stream.id }}">
+                    {{ stream.class_group.name }} — {{ stream.name }}
+                </option>
+            {% endfor %}
         </select>
 
         <label>Dormitory</label>

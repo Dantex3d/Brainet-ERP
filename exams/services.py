@@ -1,5 +1,5 @@
-from .models import StudentMark, GradingPolicy
-from schools.models import ClassSubject
+
+from schools.models import GradingPolicy, StudentMark
 
 
 def calculate_grade_and_points(school, score):

@@ -1,91 +1,245 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Brainet</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        .login-container {
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-            width: 100%;
-            max-width: 400px;
-            padding: 40px;
-        }
-        .login-container h1 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 30px;
-            font-size: 28px;
-        }
-        .form-group {
-            margin-bottom: 20px;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            color: #555;
-            font-weight: 500;
-        }
-        .form-group input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 14px;
-            transition: border-color 0.3s;
-        }
-        .form-group input:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 5px rgba(102, 126, 234, 0.1);
-        }
-        .login-btn {
-            width: 100%;
-            padding: 12px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 5px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-        .login-btn:hover {
-            transform: translateY(-2px);
-        }
-        .error-message {
-            background: #fee;
-            color: #c33;
-            padding: 12px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            border-left: 4px solid #c33;
-        }
-        .non-field-errors {
-            list-style: none;
-        }
-    </style>
-</head>
-<body>
-    <div class="login-container">
-        <h1>Brainet Login</h1>
-        
+{% extends "dashboards/base.html" %}
+{% load static %}
+{% block title %}Login - Brainet{% endblock %}
+
+{% block content %}
+
+<style>
+
+    *{
+        margin:0;
+        padding:0;
+        box-sizing:border-box;
+    }
+
+    .login-page{
+        min-height:100vh;
+        width:100%;
+        background-image: url("{% static 'images/background1.jpeg' %}");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        position: relative;
+
+        display:flex;
+        justify-content:center;
+        align-items:center;
+        padding:20px;
+    }
+
+    /* Dark overlay */
+    .login-page::before{
+        content:"";
+        position:absolute;
+        inset:0;
+        background: rgba(0,0,0,0.55);
+        backdrop-filter: blur(2px);
+    }
+
+    .top-actions{
+        position:absolute;
+        top:20px;
+        right:30px;
+        display:flex;
+        gap:12px;
+        z-index:10;
+    }
+
+    .top-actions a{
+        text-decoration:none;
+        padding:10px 18px;
+        border-radius:10px;
+        font-size:14px;
+        font-weight:600;
+        color:white;
+        transition:0.3s ease;
+        backdrop-filter: blur(10px);
+        border:1px solid rgba(255,255,255,0.2);
+    }
+
+    .home-btn{
+        background: rgba(255,255,255,0.12);
+    }
+
+    .contact-btn{
+        background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    }
+
+    .top-actions a:hover{
+        transform:translateY(-2px);
+    }
+
+    .login-card{
+        position:relative;
+        z-index:2;
+
+        width:100%;
+        max-width:420px;
+        padding:38px 34px;
+
+        border-radius:22px;
+
+        background: rgba(255,255,255,0.12);
+        border:1px solid rgba(255,255,255,0.18);
+
+        backdrop-filter: blur(15px);
+
+        box-shadow:0 8px 32px rgba(0,0,0,0.35);
+
+        color:white;
+    }
+
+    .brand-logo{
+        width:75px;
+        height:75px;
+        margin:0 auto 18px;
+        border-radius:50%;
+
+        display:flex;
+        align-items:center;
+        justify-content:center;
+
+        background: rgba(255,255,255,0.12);
+
+        font-size:30px;
+        font-weight:bold;
+    }
+
+    .login-title{
+        text-align:center;
+        font-size:30px;
+        font-weight:700;
+        margin-bottom:8px;
+    }
+
+    .login-subtitle{
+        text-align:center;
+        color:rgba(255,255,255,0.75);
+        margin-bottom:28px;
+        font-size:14px;
+    }
+
+    .form-group{
+        margin-bottom:18px;
+    }
+
+    .form-group label{
+        display:block;
+        margin-bottom:8px;
+        font-size:14px;
+        font-weight:600;
+    }
+
+    .form-group input{
+        width:100%;
+        padding:14px 15px;
+
+        border:none;
+        border-radius:12px;
+
+        background: rgba(255,255,255,0.14);
+
+        color:white;
+        font-size:14px;
+
+        outline:none;
+
+        border:1px solid rgba(255,255,255,0.12);
+
+        transition:0.3s;
+    }
+
+    .form-group input::placeholder{
+        color:rgba(255,255,255,0.55);
+    }
+
+    .form-group input:focus{
+        border-color:#8b5cf6;
+        box-shadow:0 0 0 4px rgba(139,92,246,0.2);
+    }
+
+    .login-btn{
+        width:100%;
+        padding:14px;
+
+        border:none;
+        border-radius:12px;
+
+        background: linear-gradient(135deg, #4f46e5, #7c3aed);
+
+        color:white;
+
+        font-size:15px;
+        font-weight:700;
+
+        cursor:pointer;
+
+        transition:0.3s ease;
+    }
+
+    .login-btn:hover{
+        transform:translateY(-2px);
+        box-shadow:0 8px 20px rgba(124,58,237,0.35);
+    }
+
+    .bottom-links{
+        text-align:center;
+        margin-top:18px;
+    }
+
+    .bottom-links a{
+        color:rgba(255,255,255,0.8);
+        text-decoration:none;
+        font-size:14px;
+    }
+
+    .bottom-links a:hover{
+        color:white;
+    }
+
+    .error-message{
+        background: rgba(239,68,68,0.18);
+        border:1px solid rgba(239,68,68,0.3);
+        color:#fecaca;
+
+        padding:12px;
+        border-radius:10px;
+
+        margin-bottom:18px;
+    }
+
+    .non-field-errors{
+        list-style:none;
+        padding:0;
+        margin:0;
+    }
+
+</style>
+
+<div class="login-page">
+
+    <div class="top-actions">
+        <a href="{% url 'landing_page' %}" class="home-btn">
+            ⬅ Home
+        </a>
+
+        <a href="#" class="contact-btn">
+            Contact
+        </a>
+    </div>
+
+    <div class="login-card">
+
+        <div class="brand-logo">
+            B
+        </div>
+
+        <h1 class="login-title">Brainet Login</h1>
+
+        <p class="login-subtitle">
+            Welcome back. Login to continue.
+        </p>
+
         {% if form.non_field_errors %}
             <div class="error-message">
                 <ul class="non-field-errors">
@@ -98,25 +252,28 @@
 
         <form method="POST">
             {% csrf_token %}
-            
+
             <div class="form-group">
-                <label for="username">Username:</label>
+                <label>Username</label>
                 {{ form.username }}
-                {% if form.username.errors %}
-                    <div class="error-message">{{ form.username.errors.0 }}</div>
-                {% endif %}
             </div>
 
             <div class="form-group">
-                <label for="password">Password:</label>
+                <label>Password</label>
                 {{ form.password }}
-                {% if form.password.errors %}
-                    <div class="error-message">{{ form.password.errors.0 }}</div>
-                {% endif %}
             </div>
 
-            <button type="submit" class="login-btn">Login</button>
+            <button type="submit" class="login-btn">
+                Secure Login
+            </button>
         </form>
+
+        <div class="bottom-links">
+            <a href="#">Forgot Password?</a>
+        </div>
+
     </div>
-</body>
-</html>
+
+</div>
+
+{% endblock %}

@@ -1,38 +1,307 @@
-<h2>Marks Entry System</h2>
+{% extends 'dashboards/base.html' %}
+{% block content %}
 
-<form id="loadForm">
-    <label>Class & Subject</label>
-    <select name="class_subject" id="class_subject">
-        {% for cs in classes %}
-            <option value="{{ cs.id }}">
-                {{ cs.class_name.name }} - {{ cs.subject.name }}
-            </option>
+<div class="container py-4">
+
+    <!-- HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+            <h3 class="fw-bold mb-1">
+                Smart Marks Entry
+            </h3>
+
+            <small class="text-muted">
+                Enter and manage student marks safely
+            </small>
+        </div>
+
+        <div class="d-flex gap-2">
+
+            <button type="button"
+                    class="btn btn-outline-primary"
+                    onclick="location.reload();">
+
+                🔄 Refresh
+
+            </button>
+
+            <a href="{% url 'dashboard' %}"
+               class="btn btn-dark">
+
+                ⬅ Dashboard
+
+            </a>
+
+        </div>
+
+    </div>
+
+    <!-- ALERTS -->
+    {% if messages %}
+
+        {% for message in messages %}
+
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+
+                {{ message }}
+
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="alert"></button>
+
+            </div>
+
         {% endfor %}
-    </select>
 
-    <label>Term</label>
-    <select name="term" id="term">
-        {% for t in terms %}
-            <option value="{{ t.id }}">{{ t.name }}</option>
-        {% endfor %}
-    </select>
+    {% endif %}
 
-    <button type="button" onclick="loadStudents()">Load Students</button>
-</form>
+    <!-- FILTER -->
+    <form method="get"
+          class="card shadow border-0 mb-4">
 
-<hr>
+        <div class="card-body">
 
-<div id="marks_table"></div>
+            <div class="row g-3">
 
-<script>
-function loadStudents() {
-    let class_subject = document.getElementById("class_subject").value;
-    let term = document.getElementById("term").value;
+                <!-- CLASS -->
+                <div class="col-md-4">
 
-    fetch(`/schools/principal/load-students/?class_subject=${class_subject}&term=${term}`)
-        .then(res => res.text())
-        .then(data => {
-            document.getElementById("marks_table").innerHTML = data;
-        });
-}
-</script>
+                    <label class="form-label fw-bold">
+                        Class
+                    </label>
+
+                    <select name="class"
+                            class="form-select"
+                            onchange="this.form.submit()">
+
+                        <option value="">
+                            Select Class
+                        </option>
+
+                        {% for c in classes %}
+
+                            <option value="{{ c.id }}"
+                                {% if selected_class == c.id|stringformat:"s" %}
+                                    selected
+                                {% endif %}>
+
+                                {{ c.name }}
+
+                            </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+                <!-- SUBJECT -->
+                <div class="col-md-4">
+
+                    <label class="form-label fw-bold">
+                        Subject
+                    </label>
+
+                    <select name="subject"
+                            class="form-select"
+                            onchange="this.form.submit()">
+
+                        <option value="">
+                            Select Subject
+                        </option>
+
+                        {% for s in subjects %}
+
+                            <option value="{{ s.id }}"
+                                {% if selected_subject == s.id|stringformat:"s" %}
+                                    selected
+                                {% endif %}>
+
+                                {{ s.name }}
+
+                            </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+                <!-- TERM -->
+                <div class="col-md-4">
+
+                    <label class="form-label fw-bold">
+                        Term
+                    </label>
+
+                    <select name="term"
+                            class="form-select"
+                            onchange="this.form.submit()">
+
+                        <option value="">
+                            Select Term
+                        </option>
+
+                        {% for t in terms %}
+
+                            <option value="{{ t.id }}"
+                                {% if selected_term == t.id|stringformat:"s" %}
+                                    selected
+                                {% endif %}>
+
+                                {{ t.name }}
+
+                            </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </form>
+
+    <!-- MARKS TABLE -->
+    <form method="post">
+
+        {% csrf_token %}
+
+        <input type="hidden"
+               name="class"
+               value="{{ selected_class }}">
+
+        <input type="hidden"
+               name="subject"
+               value="{{ selected_subject }}">
+
+        <input type="hidden"
+               name="term"
+               value="{{ selected_term }}">
+
+        <div class="card shadow border-0">
+
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+
+                <span class="fw-bold">
+                    Students Marks Entry
+                </span>
+
+                {% if students and selected_subject and selected_term %}
+
+                    <button class="btn btn-light btn-sm">
+
+                        💾 Save Marks
+
+                    </button>
+
+                {% endif %}
+
+            </div>
+
+            <div class="card-body">
+
+                {% if students %}
+
+                    <div class="table-responsive">
+
+                        <table class="table table-bordered align-middle">
+
+                            <thead class="table-light">
+
+                                <tr>
+
+                                    <th width="60">
+                                        #
+                                    </th>
+
+                                    <th>
+                                        Student Name
+                                    </th>
+
+                                    <th width="200">
+                                        Admission No
+                                    </th>
+
+                                    <th width="180">
+                                        Marks
+                                    </th>
+
+                                </tr>
+
+                            </thead>
+
+                            <tbody>
+
+                                {% for student in students %}
+
+                                <tr>
+
+                                    <td>
+                                        {{ forloop.counter }}
+                                    </td>
+
+                                    <td>
+                                        {{ student.name }}
+                                    </td>
+
+                                    <td>
+                                        {{ student.admission_number }}
+                                    </td>
+
+                                    <td>
+
+                                        <input type="number"
+                                               name="mark_{{ student.id }}"
+                                               class="form-control"
+                                               min="0"
+                                               max="100"
+                                               step="0.1"
+                                               placeholder="0 - 100"
+                                               required>
+
+                                    </td>
+
+                                </tr>
+
+                                {% endfor %}
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                {% else %}
+
+                    <div class="text-center py-5">
+
+                        <h5 class="text-muted">
+
+                            No students loaded
+
+                        </h5>
+
+                        <p class="text-muted">
+
+                            Select class, subject and term first.
+
+                        </p>
+
+                    </div>
+
+                {% endif %}
+
+            </div>
+
+        </div>
+
+    </form>
+
+</div>
+
+{% endblock %}

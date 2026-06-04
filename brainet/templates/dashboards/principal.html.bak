@@ -1,0 +1,174 @@
+{% extends 'dashboards/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid py-3">
+
+    <!-- TOP BAR -->
+    <div class="d-flex justify-content-between align-items-center mb-4 p-3 bg-white shadow-sm rounded-4">
+        <div>
+            <h3 class="fw-bold text-primary mb-1">Principal Dashboard</h3>
+            <small class="text-muted">
+                {{ school.name }} • Academic Control Panel
+            </small>
+        </div>
+        <div class="d-flex gap-2">
+            <button id="refresh-btn" class="btn btn-outline-primary btn-sm">Refresh</button>
+            <a href="{% url 'logout' %}" class="btn btn-danger btn-sm">Logout</a>
+        </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white rounded-4 shadow">
+                <div class="card-body">
+                    <small>Students</small>
+                    <h2 class="fw-bold">{{ student_count }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white rounded-4 shadow">
+                <div class="card-body">
+                    <small>Teachers</small>
+                    <h2 class="fw-bold">{{ teacher_count }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-dark rounded-4 shadow">
+                <div class="card-body">
+                    <small>Dormitories</small>
+                    <h2 class="fw-bold">{{ dorm_count }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-dark text-white rounded-4 shadow">
+                <div class="card-body">
+                    <small>Status</small>
+                    <h2 class="fw-bold">ACTIVE</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN GRID -->
+    <div class="row g-4">
+
+        <!-- LEFT PANEL -->
+        <div class="col-lg-8">
+
+            <!-- SCHOOL CONTROL PANEL -->
+            <div class="card shadow rounded-4 mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">School Management Panel</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <button class="btn btn-primary w-100 py-3 ajax-btn" data-url="{% url 'register_student' %}">
+                                Register Student
+                            </button>
+                        </div>
+                        <div class="col-md-4">
+                            <button class="btn btn-primary w-100 py-3 ajax-btn" data-url="{% url 'manage_teachers' %}">
+                                Manage Teachers
+                            </button>
+                        </div>
+                        <div class="col-md-4">
+                            <button class="btn btn-warning w-100 py-3 ajax-btn" data-url="{% url 'manage_classes' %}">
+                                Manage Classes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AJAX CONTENT AREA -->
+            <div id="ajax-content" class="mt-4"></div>
+
+            <!-- PERFORMANCE TABLE -->
+            <div class="card shadow rounded-4">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">Subject Performance</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Subject</th>
+                                <th>Average Score</th>
+                                <th>Students</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for perf in subject_performance %}
+                            <tr>
+                                <td>{{ perf.subject__name }}</td>
+                                <td>{{ perf.avg_score|floatformat:2 }}</td>
+                                <td>{{ perf.student_count }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="text-center text-muted">No performance data yet.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT PANEL -->
+        <div class="col-lg-4">
+            <!-- QUICK LINKS -->
+            <div class="card shadow rounded-4 mb-4">
+                <div class="card-header bg-warning">
+                    <h5 class="mb-0 text-dark">Quick Actions</h5>
+                </div>
+                <div class="card-body d-grid gap-2">
+                    <button class="btn btn-outline-secondary ajax-btn" data-url="{% url 'manage_students' %}">
+                        Manage Students
+                    </button>
+                </div>
+            </div>
+
+            <!-- ANNOUNCEMENTS -->
+            <div class="card shadow rounded-4">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">Announcements</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-primary">Midterm exams next week</div>
+                    <div class="alert alert-success">Fee collection improved</div>
+                    <div class="alert alert-warning">Staff meeting Friday</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- AJAX SCRIPT -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+$(function(){
+    // Refresh button reloads page
+    $("#refresh-btn").click(function(){
+        location.reload();
+    });
+
+    // AJAX buttons load content dynamically
+    $(".ajax-btn").click(function(){
+        let url = $(this).data("url");
+        $("#ajax-content").html("<div class='text-center p-3'>Loading...</div>");
+        $.get(url, function(data){
+            $("#ajax-content").html(data);
+        }).fail(function(){
+            $("#ajax-content").html("<div class='alert alert-danger'>Failed to load content.</div>");
+        });
+    });
+});
+</script>
+{% endblock %}

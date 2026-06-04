@@ -1,0 +1,139 @@
+{% extends 'dashboards/base.html' %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            
+            <!-- DEACTIVATION NOTICE -->
+            <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+                <h4 class="alert-heading fw-bold">🔒 School Deactivated</h4>
+                <p class="mb-0">
+                    Your school account has been deactivated. To reactivate and continue using the system, 
+                    please renew your license.
+                </p>
+            </div>
+
+            <!-- SCHOOL INFO -->
+            <div class="card shadow rounded-4 mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">{{ school.name }}</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">Email:</dt>
+                        <dd class="col-sm-8">{{ school.email }}</dd>
+                        
+                        <dt class="col-sm-4">Phone:</dt>
+                        <dd class="col-sm-8">{{ school.phone }}</dd>
+                        
+                        <dt class="col-sm-4">Address:</dt>
+                        <dd class="col-sm-8">{{ school.address }}</dd>
+                        
+                        <dt class="col-sm-4">Status:</dt>
+                        <dd class="col-sm-8">
+                            <span class="badge bg-danger">Deactivated</span>
+                        </dd>
+                        
+                        {% if school.deactivation_reason %}
+                        <dt class="col-sm-4">Reason:</dt>
+                        <dd class="col-sm-8">{{ school.deactivation_reason }}</dd>
+                        {% endif %}
+                    </dl>
+                </div>
+            </div>
+
+            <!-- LICENSE EXPIRY INFO -->
+            {% if school.license_expiry %}
+            <div class="card shadow rounded-4 mb-4 border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">📅 License Expiry</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-2">
+                        <strong>Expiry Date:</strong> {{ school.license_expiry }}
+                    </p>
+                    <p class="text-muted mb-0">
+                        Your license expired on {{ school.license_expiry|date:"F d, Y" }}. 
+                        Renew now to regain access.
+                    </p>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- RENEWAL OPTIONS -->
+            <div class="card shadow rounded-4 mb-4 border-success">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">✅ Renew License</h5>
+                </div>
+                <div class="card-body">
+                    {% if has_pending_renewal %}
+                    <div class="alert alert-info mb-3">
+                        <strong>Pending Renewal:</strong> You have a renewal request awaiting approval. 
+                        Please wait for the administrator to process it.
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-3">
+                        Choose a renewal period and submit your request. Our team will review and approve it shortly.
+                    </p>
+                    
+                    <form method="post" action="{% url 'request_license_renewal' school.id %}">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="renewal_period" class="form-label fw-bold">Renewal Period</label>
+                            <select name="renewal_period" id="renewal_period" class="form-select">
+                                <option value="365" selected>1 Year (365 days)</option>
+                                <option value="730">2 Years (730 days)</option>
+                                <option value="1095">3 Years (1095 days)</option>
+                            </select>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-success w-100">
+                            🔄 Request License Renewal
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- HELP & SUPPORT -->
+            <div class="card shadow rounded-4 border-info">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">❓ Need Help?</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-3">
+                        If you have questions about your deactivation or need assistance with the renewal process, 
+                        please contact our support team.
+                    </p>
+                    
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'send_query' %}" class="btn btn-outline-info">
+                            📧 Send Inquiry
+                        </a>
+                        <a href="{% url 'landing_page' %}" class="btn btn-outline-secondary">
+                            ⬅ Go Back Home
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+<style>
+    .card {
+        border-radius: 1rem;
+        border: none;
+    }
+    
+    .alert {
+        border-radius: 1rem;
+    }
+</style>
+
+{% endblock %}

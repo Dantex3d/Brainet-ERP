@@ -1,0 +1,65 @@
+{% extends "dashboards/base.html" %}
+{% block content %}
+<div class="container py-4">
+  <h3>📄 Class Report Generator</h3>
+  <p>Select a class, term, and exam to generate the full class report PDF.</p>
+
+  {# ✅ Error messages block #}
+  {% if error_message %}
+    <div class="alert alert-danger">
+      ⚠️ {{ error_message }}
+    </div>
+  {% endif %}
+
+  <form method="get" action="">
+    <div class="row mb-3">
+      <div class="col-md-4">
+        <label for="class_id" class="form-label">Class</label>
+        <select id="class_id" name="class_id" class="form-select" required>
+          <option value="">-- Select Class --</option>
+          {% for class in classes %}
+            <option value="{{ class.id }}" {% if class_id == class.id|stringformat:"s" %}selected{% endif %}>
+              {{ class.name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label for="term_id" class="form-label">Term</label>
+        <select id="term_id" name="term_id" class="form-select" required>
+          <option value="">-- Select Term --</option>
+          {% for term in terms %}
+            <option value="{{ term.id }}" {% if term_id == term.id|stringformat:"s" %}selected{% endif %}>
+              {{ term.name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label for="exam_id" class="form-label">Exam</label>
+        <select id="exam_id" name="exam_id" class="form-select" required>
+          <option value="">-- Select Exam --</option>
+          {% for exam in exams %}
+            <option value="{{ exam.id }}" {% if exam_id == exam.id|stringformat:"s" %}selected{% endif %}>
+              {{ exam.name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary">
+      📄 Generate Class Report
+    </button>
+  </form>
+
+  {% if class_id and term_id and exam_id %}
+    <div class="mt-4">
+      <a href="{% url 'export_class_report' class_id term_id exam_id %}" 
+         class="btn btn-success" target="_blank">
+        📥 Open Generated Report
+      </a>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

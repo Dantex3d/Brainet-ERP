@@ -5,7 +5,7 @@ from io import BytesIO
 import qrcode
 
 from django.http import HttpResponse
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, render
 from django.contrib.auth.decorators import login_required
 
 from reportlab.lib import colors
@@ -21,8 +21,9 @@ from reportlab.platypus import (
 )
 from reportlab.lib.styles import getSampleStyleSheet
 
+from exams.models import Exam
 from students.models import Student
-from schools.models import Class, Dormitory
+from schools.models import Class, Dormitory, Subject
 
 
 # =========================================================
@@ -566,7 +567,7 @@ from django.views.decorators.csrf import csrf_exempt
 import json
 
 from students.models import Student
-from schools.models import ClassSubject, Term
+from schools.models import  Term
 from .services import create_or_update_mark
 
 
@@ -582,13 +583,13 @@ def enter_mark(request):
     data = json.loads(request.body)
 
     student = Student.objects.get(id=data["student_id"])
-    class_subject = ClassSubject.objects.get(id=data["class_subject_id"])
+    subject = Subject.objects.get(id=data["subject_id"])
     term = Term.objects.get(id=data["term_id"])
     marks = float(data["marks"])
 
     mark, created = create_or_update_mark(
         student,
-        class_subject,
+        subject,
         term,
         marks
     )
@@ -607,9 +608,9 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
 from students.models import Student
-from schools.models import ClassSubject, Term
+from schools.models import Term
 from .services import create_or_update_mark
-
+from subjects.models import ClassSubject
 
 @csrf_exempt
 def bulk_enter_marks(request):
@@ -649,4 +650,41 @@ def bulk_enter_marks(request):
         "success": True,
         "results": results
     })    
-    
+
+@login_required
+def exams_class_report(request):
+    school = request.user.school
+    classes = Class.objects.filter(school=school)
+    terms = Term.objects.filter(school=school)
+    exams = Exam.objects.filter(school=school)
+
+    class_id = request.GET.get("class_id")
+    term_id = request.GET.get("term_id")
+    exam_id = request.GET.get("exam_id")
+
+    error_message = None
+    selected_class = None
+    selected_term = None
+    selected_exam = None
+
+    if class_id and term_id and exam_id:
+        try:
+            selected_class = get_object_or_404(Class, id=class_id, school=school)
+            selected_term = get_object_or_404(Term, id=term_id, school=school)
+            selected_exam = get_object_or_404(Exam, id=exam_id, school=school)
+        except Exception as e:
+            error_message = f"Error: {str(e)}"
+
+    return render(request, "exams/class_report.html", {
+        "classes": classes,
+        "terms": terms,
+        "exams": exams,
+        "class_id": class_id,
+        "term_id": term_id,
+        "exam_id": exam_id,
+        "selected_class": selected_class,
+        "selected_term": selected_term,
+        "selected_exam": selected_exam,
+        "error_message": error_message,
+    })
+
