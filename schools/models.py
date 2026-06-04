@@ -43,6 +43,7 @@ class School(models.Model):
 
     name = models.CharField(max_length=200, unique=True)
     address = models.TextField()
+    motto = models.CharField(max_length=300, null=True, blank=True)
 
     phone = models.CharField(max_length=17, validators=[phone_regex], unique=True)
     email = models.EmailField(unique=True)
@@ -427,3 +428,34 @@ class LicenseRenewal(models.Model):
 
     def __str__(self):
         return f"{self.school.name} - Renewal Request ({self.status})"
+
+
+# =========================================================
+# SCHOOL NOTICE
+# =========================================================
+
+class SchoolNotice(models.Model):
+    RECIPIENT_CHOICES = [
+        ('teachers', 'Teachers Only'),
+        ('students', 'Students Only'),
+        ('all', 'Teachers & Students'),
+    ]
+
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='notices')
+    sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    
+    title = models.CharField(max_length=300)
+    message = models.TextField()
+    
+    recipient_type = models.CharField(max_length=20, choices=RECIPIENT_CHOICES, default='all')
+    
+    is_urgent = models.BooleanField(default=False)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.school.name} - {self.title}"

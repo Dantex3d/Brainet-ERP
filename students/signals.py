@@ -26,6 +26,7 @@ def submission_marked_signal(sender, instance, created, **kwargs):
         # Create notification for student about the grade
         Notification.objects.create(
             school=school,
+            sender=assignment.teacher.user,
             recipient=student.user,
             title="Assignment Graded",
             message=(

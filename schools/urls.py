@@ -160,4 +160,17 @@ urlpatterns = [
     path("promotion/school/", views.promote_school_view, name="promote_school"),
     path("promotion/history/", views.promotion_history, name="promotion_history"),
     
+    # =====================================================
+    # MESSAGE & NOTIFICATION MANAGEMENT
+    # =====================================================
+    path("messages/<int:message_id>/delete/", views.delete_message, name="delete_message"),
+    path("notifications/<int:notification_id>/read/", views.mark_notification_read, name="mark_notification_read"),
+    path("notifications/mark-all-read/", views.mark_all_notifications_read, name="mark_all_notifications_read"),
+    
+    # =====================================================
+    # SCHOOL NOTICES & INFO
+    # =====================================================
+    path("notices/send/", views.send_school_notice, name="send_school_notice"),
+    path("school/edit-info/", views.edit_school_info, name="edit_school_info"),
+    
 ]

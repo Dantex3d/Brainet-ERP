@@ -73,16 +73,17 @@
 
                         </div>
 
-                        <!-- CLASS + SUBJECT -->
+                        <!-- CLASS + STREAM + SUBJECT -->
                         <div class="row">
 
-                            <div class="col-md-6 mb-4">
+                            <div class="col-md-4 mb-4">
 
                                 <label class="form-label fw-bold">
                                     Select Class
                                 </label>
 
-                                <select name="class_id"
+                                <select id="class_select"
+                                        name="class_id"
                                         class="form-select form-select-lg rounded-3"
                                         required>
 
@@ -102,27 +103,40 @@
 
                             </div>
 
-                            <div class="col-md-6 mb-4">
+                            <div class="col-md-4 mb-4">
+
+                                <label class="form-label fw-bold">
+                                    Select Stream (Optional)
+                                </label>
+
+                                <select id="stream_select"
+                                        name="stream_id"
+                                        class="form-select form-select-lg rounded-3"
+                                        disabled>
+
+                                    <option value="">
+                                        Choose Stream
+                                    </option>
+
+                                </select>
+
+                            </div>
+
+                            <div class="col-md-4 mb-4">
 
                                 <label class="form-label fw-bold">
                                     Select Subject
                                 </label>
 
-                                <select name="subject_id"
+                                <select id="subject_select"
+                                        name="subject_id"
                                         class="form-select form-select-lg rounded-3"
-                                        required>
+                                        required
+                                        disabled>
 
                                     <option value="">
                                         Choose Subject
                                     </option>
-
-                                    {% for subject in subjects %}
-
-                                    <option value="{{ subject.id }}">
-                                        {{ subject.name }}
-                                    </option>
-
-                                    {% endfor %}
 
                                 </select>
 
@@ -251,5 +265,101 @@
     </div>
 
 </div>
+
+<script>
+    const classSelect = document.getElementById('class_select');
+    const streamSelect = document.getElementById('stream_select');
+    const subjectSelect = document.getElementById('subject_select');
+
+    // When class is selected, load available streams
+    classSelect.addEventListener('change', async function() {
+        const classId = this.value;
+        
+        // Reset stream and subject selects
+        streamSelect.innerHTML = '<option value="">Choose Stream</option>';
+        subjectSelect.innerHTML = '<option value="">Choose Subject</option>';
+        streamSelect.disabled = true;
+        subjectSelect.disabled = true;
+        
+        if (!classId) return;
+
+        try {
+            // Fetch streams for this class (only those teacher is assigned to)
+            const streamsResponse = await fetch(`/assignments/api/class-streams/?class_id=${classId}`);
+            const streams = await streamsResponse.json();
+            
+            if (streams.length > 0) {
+                streamSelect.disabled = false;
+                streams.forEach(stream => {
+                    const option = document.createElement('option');
+                    option.value = stream.id;
+                    option.textContent = stream.name || 'Default';
+                    streamSelect.appendChild(option);
+                });
+                
+                // If only one stream, auto-select it and load subjects
+                if (streams.length === 1) {
+                    streamSelect.value = streams[0].id;
+                    await loadSubjects(classId, streams[0].id);
+                } else {
+                    // Multiple streams - load all subjects for the class initially
+                    await loadSubjects(classId, null);
+                }
+            } else {
+                // No streams - load subjects for class without stream filter
+                await loadSubjects(classId, null);
+            }
+        } catch (error) {
+            console.error('Error loading streams:', error);
+            alert('Error loading streams. Please try again.');
+        }
+    });
+
+    // When stream is selected, reload subjects for that stream
+    streamSelect.addEventListener('change', async function() {
+        const classId = classSelect.value;
+        const streamId = this.value || null;
+        
+        if (!classId) return;
+        
+        try {
+            await loadSubjects(classId, streamId);
+        } catch (error) {
+            console.error('Error loading subjects:', error);
+            alert('Error loading subjects. Please try again.');
+        }
+    });
+
+    // Helper function to load subjects
+    async function loadSubjects(classId, streamId) {
+        let url = `/assignments/api/class-subjects/?class_id=${classId}`;
+        if (streamId) {
+            url += `&stream_id=${streamId}`;
+        }
+        
+        const response = await fetch(url);
+        const subjects = await response.json();
+        
+        subjectSelect.innerHTML = '<option value="">Choose Subject</option>';
+        subjectSelect.disabled = true;
+        
+        if (subjects.length > 0) {
+            subjectSelect.disabled = false;
+            subjects.forEach(subject => {
+                const option = document.createElement('option');
+                option.value = subject.id;
+                option.textContent = subject.name;
+                subjectSelect.appendChild(option);
+            });
+            
+            // If only one subject, auto-select it for convenience
+            if (subjects.length === 1) {
+                subjectSelect.value = subjects[0].id;
+            }
+        } else {
+            subjectSelect.innerHTML = '<option value="">No subjects assigned to you in this class</option>';
+        }
+    }
+</script>
 
 {% endblock %}

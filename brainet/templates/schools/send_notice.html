@@ -1,0 +1,83 @@
+{% extends 'dashboards/base.html' %}
+
+{% block content %}
+
+<div class="container py-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="fw-bold">📢 Send School Notice</h3>
+        <a href="{% url 'principal_dashboard' %}" class="btn btn-outline-secondary">
+            ← Back
+        </a>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-header bg-primary text-white py-3">
+                    <h5 class="mb-0">Compose Notice</h5>
+                </div>
+
+                <div class="card-body p-4">
+                    <form method="POST">
+                        {% csrf_token %}
+
+                        <!-- Title -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Notice Title</label>
+                            <input type="text" 
+                                   name="title" 
+                                   class="form-control form-control-lg rounded-3"
+                                   placeholder="e.g., School Holiday Announcement"
+                                   required>
+                        </div>
+
+                        <!-- Message -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Message</label>
+                            <textarea name="message" 
+                                      class="form-control rounded-3" 
+                                      rows="8"
+                                      placeholder="Write your notice here..."
+                                      required></textarea>
+                        </div>
+
+                        <!-- Recipient Type -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Send To</label>
+                            <select name="recipient_type" class="form-select form-select-lg rounded-3" required>
+                                <option value="all" selected>📤 Teachers & Students</option>
+                                <option value="teachers">👨‍🏫 Teachers Only</option>
+                                <option value="students">👨‍🎓 Students Only</option>
+                            </select>
+                        </div>
+
+                        <!-- Mark as Urgent -->
+                        <div class="mb-4 form-check">
+                            <input type="checkbox" 
+                                   name="is_urgent" 
+                                   class="form-check-input" 
+                                   id="is_urgent">
+                            <label class="form-check-label fw-bold" for="is_urgent">
+                                🚨 Mark as Urgent
+                            </label>
+                        </div>
+
+                        <!-- Buttons -->
+                        <div class="d-flex gap-2 justify-content-end">
+                            <a href="{% url 'principal_dashboard' %}" class="btn btn-light border rounded-3">
+                                Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary rounded-3">
+                                📢 Send Notice
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}

@@ -1,18 +1,85 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count
+from django.db.models import Count, Q
+from django.http import JsonResponse
+import json
 
 from .models import Assignment, Submission
 from schools.models import Notification
-from classes.models import Class
+from classes.models import Class, Stream
 from subjects.models import Subject
 from students.models import Student
+from teachers.models import TeacherSubjectAssignment
 
 
 # ==========================================
-# VIEW ASSIGNMENT SUBMISSIONS (TEACHER)
+# API: GET STREAMS FOR CLASS
 # ==========================================
+@login_required
+def get_class_streams(request):
+    """Fetch streams the teacher is assigned to in a class"""
+    class_id = request.GET.get("class_id")
+    
+    if not class_id:
+        return JsonResponse({"error": "class_id required"}, status=400)
+    
+    teacher = request.user.teacher
+    school = request.user.school
+    
+    # Get streams the teacher is assigned to in this class
+    stream_ids = TeacherSubjectAssignment.objects.filter(
+        teacher=teacher,
+        school=school,
+        class_obj_id=class_id,
+        stream__isnull=False
+    ).values_list("stream_id", flat=True).distinct()
+    
+    # Fetch the actual stream objects
+    streams = Stream.objects.filter(
+        id__in=stream_ids
+    ).order_by("name").values("id", "name")
+    
+    return JsonResponse(list(streams), safe=False)
+
+
+# ==========================================
+# API: GET SUBJECTS FOR CLASS+STREAM
+# ==========================================
+@login_required
+def get_class_subjects(request):
+    """Fetch subjects the teacher teaches for a class+stream combination"""
+    class_id = request.GET.get("class_id")
+    stream_id = request.GET.get("stream_id")
+    
+    if not class_id:
+        return JsonResponse({"error": "class_id required"}, status=400)
+    
+    teacher = request.user.teacher
+    school = request.user.school
+    
+    # Build query for teacher's subject assignments
+    query = TeacherSubjectAssignment.objects.filter(
+        teacher=teacher,
+        school=school,
+        class_obj_id=class_id
+    )
+    
+    # If stream is provided, filter by stream
+    if stream_id:
+        query = query.filter(stream_id=stream_id)
+    
+    # Get unique subjects
+    subject_ids = query.values_list("subject_id", flat=True).distinct()
+    subjects = Subject.objects.filter(
+        id__in=subject_ids,
+        school=school
+    ).order_by("name").values("id", "name")
+    
+    return JsonResponse(list(subjects), safe=False)
+
+
+
 @login_required
 def assignment_submissions(request, assignment_id):
     teacher = request.user.teacher
@@ -55,24 +122,21 @@ def create_assignment(request):
     teacher = request.user.teacher
     school = request.user.school
 
-    classes = (
-        Class.objects
-        .filter(school=school)
-        .order_by("name")
-    )
-
-    # limit subjects to those the teacher is assigned to
-    from teachers.models import TeacherSubjectAssignment
-    assigned_subject_ids = TeacherSubjectAssignment.objects.filter(
+    # Get classes that the teacher is assigned to (has subject assignments in)
+    assigned_class_ids = TeacherSubjectAssignment.objects.filter(
         teacher=teacher,
         school=school
-    ).values_list("subject_id", flat=True).distinct()
+    ).values_list("class_obj_id", flat=True).distinct()
 
-    subjects = (
-        Subject.objects
-        .filter(id__in=assigned_subject_ids, school=school)
+    classes = (
+        Class.objects
+        .filter(school=school, id__in=assigned_class_ids)
         .order_by("name")
     )
+
+    # Subjects will be loaded dynamically via AJAX based on class+stream selection
+    # Initially empty (will be populated when user selects a class)
+    subjects = Subject.objects.none()
 
     if request.method == "POST":
 
@@ -81,6 +145,7 @@ def create_assignment(request):
             title = request.POST.get("title")
             instructions = request.POST.get("instructions")
             class_id = request.POST.get("class_id")
+            stream_id = request.POST.get("stream_id")
             subject_id = request.POST.get("subject_id")
             due_date = request.POST.get("due_date")
             total_marks = request.POST.get("total_marks") or 100
@@ -92,16 +157,21 @@ def create_assignment(request):
                 messages.error(request, "Assignment title required")
                 return redirect("create_assignment")
 
-            # validate that the teacher is assigned to this subject for the chosen class
+            # Validate that the teacher is assigned to this subject for the chosen class+stream
             if subject_id and class_id:
-                allowed = TeacherSubjectAssignment.objects.filter(
+                query = TeacherSubjectAssignment.objects.filter(
                     teacher=teacher,
                     school=school,
                     subject_id=subject_id,
                     class_obj_id=class_id
-                ).exists()
-                if not allowed:
-                    messages.error(request, "You are not assigned to that subject for the selected class.")
+                )
+                
+                # If stream is selected, verify assignment includes that stream
+                if stream_id:
+                    query = query.filter(Q(stream_id=stream_id) | Q(stream__isnull=True))
+                
+                if not query.exists():
+                    messages.error(request, "You are not assigned to that subject for the selected class/stream.")
                     return redirect("create_assignment")
 
             assignment = Assignment.objects.create(
@@ -128,6 +198,7 @@ def create_assignment(request):
 
                 Notification.objects.create(
                     school=school,
+                    sender=request.user,
                     recipient=student.user,
                     title="New Assignment",
                     message=f"{title} has been posted."
@@ -289,6 +360,8 @@ def submit_assignment(request, assignment_id):
             # NOTIFY TEACHER
             # ===================================
             Notification.objects.create(
+                school=assignment.school,
+                sender=request.user,
                 recipient=assignment.teacher.user,
                 title="Assignment Submitted",
                 message=f"{student.name} submitted {assignment.title}"
@@ -362,6 +435,7 @@ def mark_submission(request, submission_id):
             # =========================
             Notification.objects.create(
                 school=submission.student.school,
+                sender=request.user,
                 recipient=submission.student.user,
                 title="Assignment Marked",
                 message=(

@@ -3085,6 +3085,156 @@ def marks_hub(request):
 
         students = processed_students
 
+
+# ==========================================
+# DELETE/CLEAR MESSAGES (SUPERUSER)
+# ==========================================
+@login_required
+@superuser_required
+def delete_message(request, message_id):
+    """Delete a single message"""
+    msg = get_object_or_404(DOSMessage, id=message_id, receiver=request.user)
+    msg.delete()
+    messages.success(request, "Message deleted successfully!")
+    return redirect("superuser_dashboard")
+
+
+@login_required
+@superuser_required
+def clear_all_messages(request):
+    """Clear all messages for superuser"""
+    DOSMessage.objects.filter(receiver=request.user).delete()
+    messages.success(request, "✓ All messages cleared successfully!")
+    return redirect("superuser_dashboard")
+
+
+# ==========================================
+# MARK NOTIFICATION AS READ
+# ==========================================
+@login_required
+def mark_notification_read(request, notification_id):
+    """Mark a notification as read"""
+    notification = get_object_or_404(Notification, id=notification_id, recipient=request.user)
+    notification.is_read = True
+    notification.save()
+    return redirect(request.META.get('HTTP_REFERER', 'dashboard'))
+
+
+@login_required
+def mark_all_notifications_read(request):
+    """Mark all notifications as read"""
+    Notification.objects.filter(recipient=request.user, is_read=False).update(is_read=True)
+    messages.success(request, "All notifications marked as read")
+    return redirect(request.META.get('HTTP_REFERER', 'dashboard'))
+
+
+# ==========================================
+# SEND SCHOOL NOTICE (ADMIN/PRINCIPAL)
+# ==========================================
+@login_required
+def send_school_notice(request):
+    """Allow principal/admin to send notices to teachers/students"""
+    school = request.user.school
+    
+    if not hasattr(request.user, 'principal') and request.user.role != 'admin':
+        messages.error(request, "Only admin or principal can send notices")
+        return redirect('dashboard')
+    
+    if request.method == "POST":
+        title = request.POST.get("title")
+        message = request.POST.get("message")
+        recipient_type = request.POST.get("recipient_type", "all")
+        is_urgent = request.POST.get("is_urgent") == "on"
+        
+        if not title or not message:
+            messages.error(request, "Title and message are required")
+            return redirect("send_school_notice")
+        
+        # Import here to avoid circular imports
+        from schools.models import SchoolNotice
+        
+        # Create notice
+        notice = SchoolNotice.objects.create(
+            school=school,
+            sender=request.user,
+            title=title,
+            message=message,
+            recipient_type=recipient_type,
+            is_urgent=is_urgent
+        )
+        
+        # Send notifications to recipients
+        if recipient_type in ['teachers', 'all']:
+            # Send to all teachers
+            teachers = User.objects.filter(school=school, role='teacher')
+            for teacher in teachers:
+                Notification.objects.create(
+                    school=school,
+                    sender=request.user,
+                    recipient=teacher,
+                    title=f"{'🚨 URGENT: ' if is_urgent else ''}Notice - {title}",
+                    message=message
+                )
+        
+        if recipient_type in ['students', 'all']:
+            # Send to all students
+            students = User.objects.filter(school=school, role='student')
+            for student in students:
+                Notification.objects.create(
+                    school=school,
+                    sender=request.user,
+                    recipient=student,
+                    title=f"{'🚨 URGENT: ' if is_urgent else ''}Notice - {title}",
+                    message=message
+                )
+        
+        messages.success(request, f"Notice sent to {recipient_type}")
+        return redirect("send_school_notice")
+    
+    return render(
+        request,
+        "schools/send_notice.html",
+        {"school": school}
+    )
+
+
+# ==========================================
+# EDIT SCHOOL INFO (ADMIN/PRINCIPAL)
+# ==========================================
+@login_required
+def edit_school_info(request):
+    """Allow principal/admin to edit school information"""
+    school = request.user.school
+    
+    if not hasattr(request.user, 'principal') and request.user.role != 'admin':
+        messages.error(request, "Only admin or principal can edit school info")
+        return redirect('dashboard')
+    
+    if request.method == "POST":
+        school.name = request.POST.get("name", school.name)
+        school.address = request.POST.get("address", school.address)
+        school.email = request.POST.get("email", school.email)
+        school.phone = request.POST.get("phone", school.phone)
+        school.motto = request.POST.get("motto", school.motto)
+        
+        # Handle logo upload
+        if 'logo' in request.FILES:
+            school.logo = request.FILES['logo']
+        
+        try:
+            school.save()
+            messages.success(request, "School information updated successfully ✓")
+            return redirect("edit_school_info")
+        except Exception as e:
+            messages.error(request, f"Error saving school info: {str(e)}")
+            return redirect("edit_school_info")
+    
+    return render(
+        request,
+        "schools/edit_school_info.html",
+        {"school": school}
+    )
+
     # =====================================================
     # RENDER
     # =====================================================
