@@ -76,9 +76,6 @@ urlpatterns = [
 
     path("classes/<int:class_id>/print/", views.print_class_list, name="print_class_list"),
     path("classes/<int:class_id>/pdf/", views.download_class_list_pdf, name="download_class_list_pdf"),
-    path("classes/assign-master/", views.assign_class_master, name="assign_class_master"),
-    path("classes/add-stream/", views.add_stream, name="add_stream"),
-    path("classes/add-subject/", views.add_class_subject, name="add_class_subject"),
 
     # =====================================================
     # TEACHER SUBJECT ASSIGNMENT

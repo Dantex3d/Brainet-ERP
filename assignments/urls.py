@@ -7,6 +7,7 @@ urlpatterns = [
     path("student/", views.student_assignments, name="student_assignments"),
     path("submit/<int:assignment_id>/", views.submit_assignment, name="submit_assignment"),
     path("submissions/<int:assignment_id>/", views.assignment_submissions, name="assignment_submissions"),
+    path("delete/<int:assignment_id>/", views.delete_assignment, name="delete_assignment"),
     path("submission/<int:submission_id>/mark/",views.mark_submission,name="mark_submission"),
     path("api/class-streams/", views.get_class_streams, name="get_class_streams"),
     path("api/class-subjects/", views.get_class_subjects, name="get_class_subjects"),

@@ -3,6 +3,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q
 from django.http import JsonResponse
+from django.utils import timezone
 import json
 
 from .models import Assignment, Submission
@@ -238,9 +239,17 @@ def teacher_assignments(request):
 
     teacher = request.user.teacher
 
+    # Automatically archive assignments that have passed their due date
+    Assignment.objects.filter(
+        teacher=teacher,
+        is_active=True,
+        due_date__lt=timezone.now().date()
+    ).update(is_active=False)
+
     assignments = (
         Assignment.objects
-        .filter(teacher=teacher)
+        .filter(teacher=teacher, is_active=True)
+        .select_related('class_assigned', 'subject')
         .annotate(
             submission_count=Count("submissions")
         )
@@ -257,12 +266,47 @@ def teacher_assignments(request):
 
 
 # ==========================================
+# DELETE ASSIGNMENT
+# ==========================================
+@login_required
+def delete_assignment(request, assignment_id):
+    teacher = request.user.teacher
+    assignment = get_object_or_404(
+        Assignment,
+        id=assignment_id,
+        teacher=teacher,
+        is_active=True
+    )
+
+    if request.method == "POST":
+        assignment.is_active = False
+        assignment.save()
+
+        messages.success(request, "Assignment deleted successfully")
+        return redirect("teacher_assignments")
+
+    return render(
+        request,
+        "assignments/confirm_delete_assignment.html",
+        {
+            "assignment": assignment
+        }
+    )
+
+
+# ==========================================
 # STUDENT ASSIGNMENTS
 # ==========================================
 @login_required
 def student_assignments(request):
 
     student = request.user.student_profile
+
+    # Ensure overdue assignments are archived for all users
+    Assignment.objects.filter(
+        is_active=True,
+        due_date__lt=timezone.now().date()
+    ).update(is_active=False)
 
     assignments = (
         Assignment.objects

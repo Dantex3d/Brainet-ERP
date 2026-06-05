@@ -5,20 +5,18 @@ import re
 from urllib import request
 from django.utils import timezone
 
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth import authenticate, get_user_model, login
 from django.db import transaction
 from django.urls import reverse
-from .models import DOSMessage, DOSQuery, Notification, School, DirectorOfStudies, Dormitory, Term, Class, Subject, GradingPolicy, StudentMark, StudentPromotion
+from .models import DOSMessage, DOSQuery, Notification, School, DirectorOfStudies, Dormitory, Term, Class, Subject, GradingPolicy, StudentMark, StudentPromotion, SchoolNotice
 from django.db import IntegrityError
 from students.models import Student
 from schools.models import School, Dormitory, DirectorOfStudies, Term
-from schools.models import Class, Subject, VoucherRequest
-from classes.models import Stream
-from subjects.models import ClassSubject
+from schools.models import Class, Subject,VoucherRequest
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
 from reportlab.platypus import Image as RLImage
 from reportlab.lib.pagesizes import A4
@@ -191,6 +189,7 @@ from django.contrib import messages
 from django.shortcuts import redirect
 
 User = get_user_model()
+
 
 def send_query(request):
 
@@ -380,6 +379,99 @@ def delete_message_completely(request, message_id):
     return redirect(request.META.get('HTTP_REFERER', '/'))
 
 @login_required
+def delete_message(request, message_id):
+    """Delete a single message."""
+    if request.method == 'POST':
+        try:
+            message = DOSMessage.objects.get(id=message_id)
+            if message.receiver == request.user or request.user.is_superuser:
+                message.delete()
+                messages.success(request, "Message deleted successfully.")
+            else:
+                messages.error(request, "Permission denied.")
+        except DOSMessage.DoesNotExist:
+            messages.error(request, "Message not found.")
+
+    return redirect(request.META.get('HTTP_REFERER', '/'))
+
+
+@login_required
+def mark_notification_read(request, notification_id):
+    """Mark a single notification as read."""
+    notification = get_object_or_404(Notification, id=notification_id, recipient=request.user)
+    notification.is_read = True
+    notification.save()
+    return redirect(request.META.get('HTTP_REFERER', 'dos_dashboard'))
+
+
+@login_required
+def mark_all_notifications_read(request):
+    """Mark all notifications as read."""
+    Notification.objects.filter(recipient=request.user, is_read=False).update(is_read=True)
+    messages.success(request, "All notifications have been marked as read.")
+    return redirect(request.META.get('HTTP_REFERER', 'dos_dashboard'))
+
+
+@login_required
+def send_school_notice(request):
+    """Send a notice to teachers, students, or both."""
+    school = getattr(request.user, 'school', None)
+    if school is None:
+        messages.error(request, "You are not assigned to a school.")
+        return redirect('landing_page')
+
+    if request.method == 'POST':
+        title = request.POST.get('title', '').strip()
+        message_text = request.POST.get('message', '').strip()
+        recipient_type = request.POST.get('recipient_type', 'all')
+        is_urgent = bool(request.POST.get('is_urgent'))
+
+        if not title or not message_text:
+            messages.error(request, "Title and message are required.")
+            return render(request, 'schools/send_notice.html', {'school': school})
+
+        SchoolNotice.objects.create(
+            school=school,
+            sender=request.user,
+            title=title,
+            message=message_text,
+            recipient_type=recipient_type,
+            is_urgent=is_urgent,
+        )
+
+        messages.success(request, "School notice sent successfully.")
+        return redirect('principal_dashboard')
+
+    return render(request, 'schools/send_notice.html', {'school': school})
+
+
+@login_required
+def edit_school_info(request):
+    """Edit the current school information."""
+    school = getattr(request.user, 'school', None)
+    if school is None:
+        messages.error(request, "You are not assigned to a school.")
+        return redirect('landing_page')
+
+    if request.method == 'POST':
+        school.name = request.POST.get('name', school.name)
+        school.motto = request.POST.get('motto', school.motto)
+        school.address = request.POST.get('address', school.address)
+        school.email = request.POST.get('email', school.email)
+        school.phone = request.POST.get('phone', school.phone)
+
+        logo = request.FILES.get('logo')
+        if logo:
+            school.logo = logo
+
+        school.save()
+        messages.success(request, "School information updated successfully.")
+        return redirect('principal_dashboard')
+
+    return render(request, 'schools/edit_school_info.html', {'school': school})
+
+
+@login_required
 def reset_notification_count(request):
     """Reset notification counts to zero"""
     if request.method == "POST":
@@ -431,12 +523,11 @@ def dos_dashboard(request):
     exams = Exam.objects.filter(school=school).order_by("-created_at")
 
     # =========================
-    # DOS MESSAGES (only pending/unread messages)
+    # DOS MESSAGES (both sent and received)
     # =========================
     dos_messages = DOSMessage.objects.filter(
         school=school,
-        parent__isnull=True,
-        status__in=["pending", "new"]
+        parent__isnull=True
     ).order_by("-created_at")
 
     # only unread replies to DOS
@@ -506,14 +597,6 @@ def principal_dashboard(request):
     
 from django.db.models import Count
 
-def normalize_title(text):
-    if not text:
-        return ""
-    return " ".join(
-        part.capitalize() for part in str(text).strip().split() if part
-    )
-
-
 @login_required
 def manage_classes(request):
     school = request.user.school
@@ -521,20 +604,19 @@ def manage_classes(request):
     classes = (
         Class.objects
         .filter(school=school)
-        .prefetch_related("streams", "classsubject_set__subject")
-        .order_by("level", "name")
+        .annotate(
+            student_count=Count("students"),
+            stream_count=Count("streams")
+        )
+        .prefetch_related("streams")
+        .order_by("level")
     )
-
-    teachers = Teacher.objects.filter(school=school).select_related('user')
-    subjects = Subject.objects.filter(school=school)
 
     return render(
         request,
         "dos/classes.html",
         {
-            "classes": classes,
-            "teachers": teachers,
-            "subjects": subjects,
+            "classes": classes
         }
     )
     
@@ -542,214 +624,42 @@ def manage_classes(request):
 @login_required
 def add_class(request):
     if request.method == "POST":
-        name = normalize_title(request.POST.get("name", ""))
-        level = request.POST.get("level", "").strip()
-        class_master_id = request.POST.get("class_master")
-        stream_name = normalize_title(request.POST.get("stream", ""))
-        streams_json = request.POST.get("streams", "[]")
-        
+        name = request.POST.get("name")
+        level = request.POST.get("level")
+        stream = request.POST.get("stream")  # <-- capture stream
+        # Save class and optional stream
         school = request.user.school
-
-        if not name or not level:
-            messages.error(request, "Class name and level are required.")
-            return redirect("manage_classes")
-
-        try:
-            level = int(level)
-        except ValueError:
-            messages.error(request, "Class level must be a valid number.")
-            return redirect("manage_classes")
-
-        if Class.objects.filter(school=school, name__iexact=name, level=level).exists():
-            messages.warning(request, f"A class named '{name}' at level {level} already exists.")
-            return redirect("manage_classes")
 
         new_class = Class.objects.create(
             name=name,
             level=level,
-            school=school,
-            class_master_id=class_master_id if class_master_id else None
+            school=school
         )
 
-        stream_names = []
-        if stream_name:
-            stream_names.append(stream_name)
-
-        try:
-            import json
-            parsed_streams = json.loads(streams_json)
-            if isinstance(parsed_streams, list):
-                for parsed_stream in parsed_streams:
-                    if isinstance(parsed_stream, str) and parsed_stream.strip():
-                        stream_names.append(normalize_title(parsed_stream))
-        except Exception:
-            parsed_streams = []
-
-        if stream_names:
-            for stream_name in stream_names:
-                from classes.models import Stream
-                normalized_stream = normalize_title(stream_name)
-                if not Stream.objects.filter(class_group=new_class, name__iexact=normalized_stream).exists():
-                    Stream.objects.create(
-                        class_group=new_class,
-                        name=normalized_stream
-                    )
-
-        messages.success(request, f"Class {name} created successfully with {len(stream_names)} stream(s)!" )
-        return redirect("manage_classes")
-    
-    teachers = Teacher.objects.filter(school=request.user.school).select_related('user')
-    return render(request, "dos/add_class.html", {"teachers": teachers})
-
-@login_required
-def assign_class_master(request):
-    school = request.user.school
-    if request.method == "POST":
-        class_id = request.POST.get("class_id")
-        stream_id = request.POST.get("stream_id")
-        teacher_id = request.POST.get("class_master")
-
-        school_class = get_object_or_404(Class, id=class_id, school=school)
-
-        # If a stream_id is provided, assign at stream level using ClassTeacherAssignment
-        if stream_id:
+        # create a Stream if provided
+        if stream:
             from classes.models import Stream
-            from teachers.models import ClassTeacherAssignment, Teacher as TeacherModel
+            Stream.objects.create(class_group=new_class, name=stream)
 
-            stream = get_object_or_404(Stream, id=stream_id, class_group=school_class)
-
-            if teacher_id:
-                teacher = get_object_or_404(Teacher, id=teacher_id, school=school)
-                ClassTeacherAssignment.objects.update_or_create(
-                    school=school,
-                    class_obj=school_class,
-                    stream=stream,
-                    defaults={"teacher": teacher}
-                )
-                messages.success(request, "Stream-level class master updated successfully.")
-            else:
-                # remove any existing assignment for this stream
-                ClassTeacherAssignment.objects.filter(
-                    school=school,
-                    class_obj=school_class,
-                    stream=stream
-                ).delete()
-                messages.success(request, "Stream-level class master removed.")
-
-        else:
-            # Fallback: whole-class assignment (backwards compatible)
-            if teacher_id:
-                teacher = get_object_or_404(Teacher, id=teacher_id, school=school)
-                school_class.class_master = teacher
-            else:
-                school_class.class_master = None
-
-            school_class.save()
-            messages.success(request, "Class master updated successfully.")
-
-    return redirect("manage_classes")
-
-@login_required
-def add_stream(request):
-    school = request.user.school
-    if request.method == "POST":
-        class_id = request.POST.get("class_id")
-        stream_name = request.POST.get("stream_name", "").strip()
-
-        school_class = get_object_or_404(Class, id=class_id, school=school)
-
-        if not stream_name:
-            messages.error(request, "Please enter a stream name.")
-            return redirect("manage_classes")
-
-        existing = Stream.objects.filter(class_group=school_class, name__iexact=stream_name).exists()
-        if existing:
-            messages.warning(request, "This stream already exists for the selected class.")
-        else:
-            Stream.objects.create(class_group=school_class, name=stream_name)
-            messages.success(request, f"Stream '{stream_name}' added successfully.")
-
-    return redirect("manage_classes")
-
-@login_required
-def add_class_subject(request):
-    school = request.user.school
-    if request.method == "POST":
-        class_id = request.POST.get("class_id")
-        subject_id = request.POST.get("subject_id")
-
-        school_class = get_object_or_404(Class, id=class_id, school=school)
-        subject = get_object_or_404(Subject, id=subject_id, school=school)
-
-        class_subject, created = ClassSubject.objects.get_or_create(
-            school=school,
-            class_name=school_class,
-            subject=subject
-        )
-        
-        # Auto-enroll existing students in this subject
-        if created:
-            from subjects.models import StudentSubject
-            from students.models import Student
-            
-            # Get all active students in this class
-            students = Student.objects.filter(
-                school=school,
-                current_class=school_class,
-                status='active'
-            )
-            
-            # Enroll each student in the subject (using bulk_create to avoid duplicates)
-            enrollments = [
-                StudentSubject(
-                    student=student,
-                    subject=subject,
-                    class_subject=class_subject
-                )
-                for student in students
-            ]
-            
-            # Avoid duplicate enrollments
-            StudentSubject.objects.bulk_create(
-                enrollments,
-                ignore_conflicts=True
-            )
-        
-        messages.success(request, f"Subject '{subject.name}' assigned to {school_class.name}.")
-
-    return redirect("manage_classes")
+        messages.success(request, f"Class {name} created successfully!")
+        return redirect("manage_classes")
+    return render(request, "dos/add_class.html")
 
 def edit_class(request, class_id):
-    school = request.user.school
-    c = get_object_or_404(Class, id=class_id, school=school)
-    teachers = Teacher.objects.filter(school=school).select_related('user')
+    c = get_object_or_404(Class, id=class_id)
+    teachers = Teacher.objects.all()
 
     if request.method == "POST":
-        name = normalize_title(request.POST.get("name", ""))
-        level = request.POST.get("level", "").strip()
-        class_master_id = request.POST.get("class_master")
-
-        if not name or not level:
-            messages.error(request, "Class name and level are required.")
-            return redirect("manage_classes")
-
-        try:
-            level = int(level)
-        except ValueError:
-            messages.error(request, "Class level must be a valid number.")
-            return redirect("manage_classes")
-
-        if Class.objects.filter(school=school, name__iexact=name, level=level).exclude(id=c.id).exists():
-            messages.warning(request, f"A class named '{name}' at level {level} already exists.")
-            return redirect("manage_classes")
-
-        c.name = name
-        c.level = level
-        c.class_master_id = class_master_id if class_master_id else None
+        c.name = request.POST.get("name")
+        c.level = request.POST.get("level")
+        c.stream = request.POST.get("stream")
+        teacher_id = request.POST.get("teacher")
+        c.teacher_id = teacher_id if teacher_id else None
         c.save()
         messages.success(request, "Class updated successfully!")
         return redirect("manage_classes")
 
+    # Pass class object + teachers to template
     return render(request, "dos/edit_class.html", {
         "class_obj": c,
         "teachers": teachers
@@ -786,93 +696,22 @@ def view_class_students(request, class_id):
     students = Student.objects.filter(
         school=school,
         current_class=school_class
-    ).select_related("stream")
-
-    # Group students by stream if available
-    students_by_stream = {}
-    students_no_stream = []
-    
-    for student in students:
-        if student.stream:
-            if student.stream.id not in students_by_stream:
-                students_by_stream[student.stream.id] = {
-                    'stream': student.stream,
-                    'students': []
-                }
-            students_by_stream[student.stream.id]['students'].append(student)
-        else:
-            students_no_stream.append(student)
+    )
 
     return render(request, "dos/class_list.html", {
         "school_class": school_class,
-        "students": students,
-        "students_by_stream": students_by_stream,
-        "students_no_stream": students_no_stream,
+        "students": students
     })
-
-@login_required
-def class_details_json(request, class_id):
-    """Return streams and assigned subjects for a class as JSON."""
-    school = request.user.school
-    school_class = get_object_or_404(Class, id=class_id, school=school)
-
-    from teachers.models import ClassTeacherAssignment
-
-    streams = list(Stream.objects.filter(class_group=school_class).values('id', 'name'))
-    assigned_subjects = list(ClassSubject.objects.filter(class_name=school_class).select_related('subject')
-                             .values('id', 'subject__id', 'subject__name'))
-
-    class_master_name = None
-    if school_class.class_master:
-        class_master_name = (
-            school_class.class_master.name
-            or school_class.class_master.user.get_full_name()
-            or school_class.class_master.user.email
-        )
-
-    stream_master_assignments = []
-    for assignment in ClassTeacherAssignment.objects.filter(
-        school=school,
-        class_obj=school_class
-    ).select_related('stream', 'teacher'):
-        teacher_name = (
-            assignment.teacher.name
-            or assignment.teacher.user.get_full_name()
-            or assignment.teacher.user.email
-        )
-        stream_master_assignments.append({
-            'stream_id': assignment.stream_id,
-            'stream_name': assignment.stream.name,
-            'teacher_id': assignment.teacher_id,
-            'teacher_name': teacher_name,
-        })
-
-    data = {
-        'class_id': school_class.id,
-        'name': school_class.name,
-        'level': school_class.level,
-        'class_master_id': school_class.class_master_id,
-        'class_master_name': class_master_name,
-        'streams': streams,
-        'assigned_subjects': assigned_subjects,
-        'stream_master_assignments': stream_master_assignments,
-    }
-
-    return JsonResponse(data)
     
 @login_required 
 @login_required
 def manage_students(request):
     school = request.user.school
 
-    students = Student.objects.filter(school=school).select_related('current_class', 'stream')
-    classes = Class.objects.filter(school=school)
-    streams = Stream.objects.filter(class_group__school=school)
+    students = Student.objects.filter(school=school)
 
     return render(request, "dos/manage_students.html", {
-        "students": students,
-        "classes": classes,
-        "streams": streams,
+        "students": students
     })
 @login_required
 def add_student(request):
@@ -891,10 +730,6 @@ def add_student(request):
             id=class_id,
             school=school
         )
-        stream_id = request.POST.get('stream_id')
-        stream_obj = None
-        if stream_id:
-            stream_obj = get_object_or_404(Stream, id=stream_id, class_group__school=school)
 
         # =========================
         # EMAIL LOGIN SYSTEM ONLY
@@ -925,8 +760,7 @@ def add_student(request):
             name=name,
             admission_number=admission_number,
             gender=gender,
-            current_class=school_class,
-            stream=stream_obj
+            current_class=school_class
         )
 
         messages.success(
@@ -954,24 +788,13 @@ def edit_student(request, student_id):
             id=request.POST.get("class_id"),
             school=school
         )
-        # optional stream
-        stream_id = request.POST.get("stream_id")
-        if stream_id:
-            student.stream = get_object_or_404(Stream, id=stream_id, class_group__school=school)
-        else:
-            student.stream = None
         student.save()
 
         messages.success(request, "Student updated successfully.")
         return redirect("manage_students")
 
-    classes = Class.objects.filter(school=school)
-    streams = Stream.objects.filter(class_group__school=school)
-
     return render(request, "dos/edit_student.html", {
-        "student": student,
-        "classes": classes,
-        "streams": streams,
+        "student": student
     })
 def delete_student(request, student_id):
     student = get_object_or_404(Student, id=student_id)
@@ -1019,79 +842,31 @@ def student_dashboard(request):
     school = student.school
 
     # =========================
-    # CLASS & STREAM DATA
+    # CLASS DATA
     # =========================
     current_class = student.current_class
-    student_stream = student.stream
-    
-    # Build display label with stream if present
-    if current_class and student_stream:
-        class_display = f"{current_class.name} — {student_stream.name}"
-    else:
-        class_display = current_class.name if current_class else "No Class"
 
     # =========================
-    # REGISTERED SUBJECTS (from StudentSubject)
+    # SUBJECTS (FROM CLASS OR SCHOOL)
     # =========================
-    from subjects.models import StudentSubject
-    from django.db.models import Prefetch
-    
-    student_subjects_qs = StudentSubject.objects.filter(
-        student=student
-    ).select_related("subject")
-    
-    subjects = [ss.subject for ss in student_subjects_qs]
+    subjects = Subject.objects.filter(
+        school=school
+    )
 
     # =========================
-    # ASSIGNMENTS (filtered by class/stream & registered subjects)
+    # ASSIGNMENTS
     # =========================
-    subject_ids = [s.id for s in subjects]
-    
-    # Filter assignments by class and optionally by stream
-    assignment_filters = {
-        "school": school,
-        "class_assigned": current_class,
-        "subject_id__in": subject_ids
-    }
-    
-    # If student has a stream, also filter by stream assignments
-    # (assignments can be class-wide or stream-specific)
-    if student_stream:
-        from django.db.models import Q
-        assignments = Assignment.objects.filter(
-            Q(school=school, class_assigned=current_class, subject_id__in=subject_ids),
-        ).select_related("subject", "teacher").order_by("-created_at")
-    else:
-        assignments = Assignment.objects.filter(
-            **assignment_filters
-        ).select_related("subject", "teacher").order_by("-created_at")
+    assignments = Assignment.objects.filter(
+        school=school,
+        class_assigned=current_class
+    ).order_by("-created_at")
 
     # =========================
-    # SUBMISSIONS (with marks reflected in real-time)
+    # SUBMISSIONS
     # =========================
     submissions = Submission.objects.filter(
         student=student
-    ).select_related("assignment")
-
-    # Enhance assignments with submission status
-    submission_map = {sub.assignment_id: sub for sub in submissions}
-    assignments_with_status = []
-    for assignment in assignments:
-        submission = submission_map.get(assignment.id)
-        assignments_with_status.append({
-            'assignment': assignment,
-            'submission': submission,
-            'is_submitted': submission is not None,
-            'is_graded': submission and submission.status == "graded",
-            'score': submission.score if submission else None,
-            'feedback': submission.feedback if submission else None,
-        })
-
-    # Mark if submission has been graded
-    marked_assignments = []
-    for item in assignments_with_status:
-        if item['is_graded']:
-            marked_assignments.append(item)
+    )
 
     # =========================
     # CONTEXT
@@ -1099,11 +874,9 @@ def student_dashboard(request):
     return render(request, "students/dashboard.html", {
         "student": student,
         "class": current_class,
-        "stream": student_stream,
-        "class_display": class_display,
         "subjects": subjects,
-        "assignments_with_status": assignments_with_status,
-        "marked_assignments": marked_assignments,
+        "assignments": assignments,
+        "submissions": submissions,
     })
 @login_required
 def add_dorm(request):
@@ -1716,9 +1489,11 @@ def school_deactivated(request, school_id):
     ):
         return redirect("landing_page")
     
+    pending_renewals = school.license_renewals.filter(status='pending').select_related('requested_by')
     context = {
         'school': school,
-        'has_pending_renewal': school.license_renewals.filter(status='pending').exists()
+        'has_pending_renewal': pending_renewals.exists(),
+        'pending_renewals': pending_renewals,
     }
     return render(request, "schools/school_deactivated.html", context)
 
@@ -1731,7 +1506,8 @@ def request_license_renewal(request, school_id):
     
     # Check permission
     if not (request.user.is_superuser or 
-            (hasattr(request.user, 'dos_profile') and request.user.dos_profile.school_id == school_id)):
+            (hasattr(request.user, 'dos_profile') and request.user.dos_profile.school_id == school_id) or
+            (hasattr(request.user, 'principal') and request.user.principal.school_id == school_id)):
         return redirect("landing_page")
     
     if request.method == "POST":
@@ -2185,11 +1961,10 @@ def marksheet_preview(request):
         # =====================================
         # BUILD MARKSHEET ROWS
         # =====================================
-        from collections import defaultdict
-
         for student in students:
 
-            subject_scores = []
+            subject_results = []
+
             total_marks = 0
             total_subjects = 0
 
@@ -2202,25 +1977,37 @@ def marksheet_preview(request):
                 ).first()
 
                 if mark:
+
                     marks_value = mark.marks
+                    grade_value = mark.grade
+
                     total_marks += mark.marks
                     total_subjects += 1
+
                 else:
+
                     marks_value = "-"
+                    grade_value = "-"
 
-                subject_scores.append(marks_value)
+                subject_results.append({
+                    "subject": subject,
+                    "marks": marks_value,
+                    "grade": grade_value,
+                })
 
-            average = round(total_marks / total_subjects, 2) if total_subjects else 0
-            final_grade, _ = get_grade_and_points(school, average)
+            # =====================================
+            # AVERAGE
+            # =====================================
+            average = 0
+
+            if total_subjects > 0:
+                average = round(total_marks / total_subjects, 2)
 
             report_rows.append({
                 "student": student,
-                "subject_scores": subject_scores,
+                "subjects": subject_results,
                 "total": total_marks,
                 "average": average,
-                "grade": final_grade,
-                "stream_name": student.stream.name if student.stream else "N/A",
-                "stream_id": student.stream_id,
             })
 
         # =====================================
@@ -2232,22 +2019,13 @@ def marksheet_preview(request):
         )
 
         # =====================================
-        # STREAM RANKING
-        # =====================================
-        stream_groups = defaultdict(list)
-        for row in report_rows:
-            stream_groups[row["stream_id"]].append(row)
-
-        for rows in stream_groups.values():
-            rows.sort(key=lambda x: x["total"], reverse=True)
-            for stream_rank, row in enumerate(rows, start=1):
-                row["stream_rank"] = stream_rank
-
-        # =====================================
         # POSITIONS
         # =====================================
-        for position, row in enumerate(report_rows, start=1):
+        position = 1
+
+        for row in report_rows:
             row["position"] = position
+            position += 1
 
     # =====================================
     # COUNTS
@@ -2299,7 +2077,6 @@ from datetime import date
 
 from schools.models import School, Class, Subject, Term
 from students.models import Student
-from subjects.models import ClassSubject
 from schools.models import GradingPolicy
 
 
@@ -2445,20 +2222,18 @@ def export_marksheet_pdf(request):
     header = [
         "ADM NO",
         "NAME",
-        "GENDER",
-        "STREAM"
+        "GENDER"
     ]
 
     for subject in subjects:
-        header.append(subject.short_name.upper())
+        header.append(subject.name.upper())
 
     header += [
         "TOTAL",
         "AVG",
         "GRADE",
         "POINTS",
-        "RANK",
-        "STREAM RANK"
+        "RANK"
     ]
 
     table_data.append(header)
@@ -2466,17 +2241,14 @@ def export_marksheet_pdf(request):
     # =====================================================
     # BUILD STUDENT RESULTS
     # =====================================================
-    student_rows = []
     ranking_data = []
-    stream_totals = {}
 
     for student in students:
 
         row = [
             student.admission_number,
             student.name,
-            student.gender,
-            student.stream.name if student.stream else "N/A"
+            student.gender
         ]
 
         total_marks = 0
@@ -2510,13 +2282,20 @@ def export_marksheet_pdf(request):
             else:
                 row.append("-")
 
-        stream_key = student.stream_id or 0
-        stream_totals.setdefault(stream_key, []).append((student.id, total_marks))
+        # =================================================
+        # TOTALS
+        # =================================================
+        average = 0
 
-        average = total_marks / subject_count if subject_count > 0 else 0
-        final_grade, _ = get_grade_and_points(school, average)
+        if subject_count > 0:
+            average = total_marks / subject_count
 
-        student_rows.append({
+        final_grade, avg_points = get_grade_and_points(
+            school,
+            average
+        )
+
+        ranking_data.append({
             "student": student,
             "row": row,
             "total": total_marks,
@@ -2524,17 +2303,6 @@ def export_marksheet_pdf(request):
             "grade": final_grade,
             "points": total_subject_points,
         })
-
-    stream_ranks = {}
-    for stream_key, totals in stream_totals.items():
-        for stream_rank, (student_id, _) in enumerate(
-            sorted(totals, key=lambda x: x[1], reverse=True),
-            start=1
-        ):
-            stream_ranks[student_id] = stream_rank
-
-    for item in student_rows:
-        ranking_data.append(item)
 
     # =====================================================
     # RANKING
@@ -2556,8 +2324,7 @@ def export_marksheet_pdf(request):
             round(item["average"], 1),
             item["grade"],
             int(item["points"]),
-            current_rank,
-            stream_ranks.get(item["student"].id, "-")
+            current_rank
         ]
 
         table_data.append(row)
@@ -2898,18 +2665,6 @@ def marksheet_center(request):
             reverse=True
         )
 
-        from collections import defaultdict
-        stream_groups = defaultdict(list)
-
-        for student in ranked_students:
-            student.stream_name = student.stream.name if student.stream else "N/A"
-            stream_groups[student.stream_id].append(student)
-
-        for stream_students in stream_groups.values():
-            stream_students.sort(key=lambda x: x.total_marks, reverse=True)
-            for stream_rank, student in enumerate(stream_students, start=1):
-                student.stream_rank = stream_rank
-
         rank = 1
 
         for student in ranked_students:
@@ -2927,7 +2682,6 @@ def marksheet_center(request):
         "terms": terms,
         "exams": exams,
         "subjects": subjects,
-        "subject_headers": subjects,
 
         "students": students,
 
@@ -3085,156 +2839,6 @@ def marks_hub(request):
 
         students = processed_students
 
-
-# ==========================================
-# DELETE/CLEAR MESSAGES (SUPERUSER)
-# ==========================================
-@login_required
-@superuser_required
-def delete_message(request, message_id):
-    """Delete a single message"""
-    msg = get_object_or_404(DOSMessage, id=message_id, receiver=request.user)
-    msg.delete()
-    messages.success(request, "Message deleted successfully!")
-    return redirect("superuser_dashboard")
-
-
-@login_required
-@superuser_required
-def clear_all_messages(request):
-    """Clear all messages for superuser"""
-    DOSMessage.objects.filter(receiver=request.user).delete()
-    messages.success(request, "✓ All messages cleared successfully!")
-    return redirect("superuser_dashboard")
-
-
-# ==========================================
-# MARK NOTIFICATION AS READ
-# ==========================================
-@login_required
-def mark_notification_read(request, notification_id):
-    """Mark a notification as read"""
-    notification = get_object_or_404(Notification, id=notification_id, recipient=request.user)
-    notification.is_read = True
-    notification.save()
-    return redirect(request.META.get('HTTP_REFERER', 'dashboard'))
-
-
-@login_required
-def mark_all_notifications_read(request):
-    """Mark all notifications as read"""
-    Notification.objects.filter(recipient=request.user, is_read=False).update(is_read=True)
-    messages.success(request, "All notifications marked as read")
-    return redirect(request.META.get('HTTP_REFERER', 'dashboard'))
-
-
-# ==========================================
-# SEND SCHOOL NOTICE (ADMIN/PRINCIPAL)
-# ==========================================
-@login_required
-def send_school_notice(request):
-    """Allow principal/admin to send notices to teachers/students"""
-    school = request.user.school
-    
-    if not hasattr(request.user, 'principal') and request.user.role != 'admin':
-        messages.error(request, "Only admin or principal can send notices")
-        return redirect('dashboard')
-    
-    if request.method == "POST":
-        title = request.POST.get("title")
-        message = request.POST.get("message")
-        recipient_type = request.POST.get("recipient_type", "all")
-        is_urgent = request.POST.get("is_urgent") == "on"
-        
-        if not title or not message:
-            messages.error(request, "Title and message are required")
-            return redirect("send_school_notice")
-        
-        # Import here to avoid circular imports
-        from schools.models import SchoolNotice
-        
-        # Create notice
-        notice = SchoolNotice.objects.create(
-            school=school,
-            sender=request.user,
-            title=title,
-            message=message,
-            recipient_type=recipient_type,
-            is_urgent=is_urgent
-        )
-        
-        # Send notifications to recipients
-        if recipient_type in ['teachers', 'all']:
-            # Send to all teachers
-            teachers = User.objects.filter(school=school, role='teacher')
-            for teacher in teachers:
-                Notification.objects.create(
-                    school=school,
-                    sender=request.user,
-                    recipient=teacher,
-                    title=f"{'🚨 URGENT: ' if is_urgent else ''}Notice - {title}",
-                    message=message
-                )
-        
-        if recipient_type in ['students', 'all']:
-            # Send to all students
-            students = User.objects.filter(school=school, role='student')
-            for student in students:
-                Notification.objects.create(
-                    school=school,
-                    sender=request.user,
-                    recipient=student,
-                    title=f"{'🚨 URGENT: ' if is_urgent else ''}Notice - {title}",
-                    message=message
-                )
-        
-        messages.success(request, f"Notice sent to {recipient_type}")
-        return redirect("send_school_notice")
-    
-    return render(
-        request,
-        "schools/send_notice.html",
-        {"school": school}
-    )
-
-
-# ==========================================
-# EDIT SCHOOL INFO (ADMIN/PRINCIPAL)
-# ==========================================
-@login_required
-def edit_school_info(request):
-    """Allow principal/admin to edit school information"""
-    school = request.user.school
-    
-    if not hasattr(request.user, 'principal') and request.user.role != 'admin':
-        messages.error(request, "Only admin or principal can edit school info")
-        return redirect('dashboard')
-    
-    if request.method == "POST":
-        school.name = request.POST.get("name", school.name)
-        school.address = request.POST.get("address", school.address)
-        school.email = request.POST.get("email", school.email)
-        school.phone = request.POST.get("phone", school.phone)
-        school.motto = request.POST.get("motto", school.motto)
-        
-        # Handle logo upload
-        if 'logo' in request.FILES:
-            school.logo = request.FILES['logo']
-        
-        try:
-            school.save()
-            messages.success(request, "School information updated successfully ✓")
-            return redirect("edit_school_info")
-        except Exception as e:
-            messages.error(request, f"Error saving school info: {str(e)}")
-            return redirect("edit_school_info")
-    
-    return render(
-        request,
-        "schools/edit_school_info.html",
-        {"school": school}
-    )
-
     # =====================================================
     # RENDER
     # =====================================================
@@ -3251,8 +2855,12 @@ def edit_school_info(request):
         "selected_class": selected_class,
         "selected_term": selected_term,
         "selected_exam": selected_exam,
+    })
 
-    })    
+# =====================================================
+# IMPORT API VIEWS
+# =====================================================
+from .views_class_api_patch import class_details_json  
 # =========================================================
 # MANAGE GRADING POLICIES
 # =========================================================
@@ -3478,7 +3086,6 @@ def export_class_report(request, class_id, term_id, exam_id):
     # RANKING
     # =========================
     totals = {}
-    stream_totals = {}
 
     for student in students:
         total = 0
@@ -3492,19 +3099,9 @@ def export_class_report(request, class_id, term_id, exam_id):
                 total += float(m.marks)
 
         totals[student.id] = total
-        stream_key = student.stream_id or 0
-        stream_totals.setdefault(stream_key, []).append((student.id, total))
 
     ranking = sorted(totals.items(), key=lambda x: x[1], reverse=True)
     ranks = {sid: i + 1 for i, (sid, _) in enumerate(ranking)}
-
-    stream_ranks = {}
-    for stream_key, totals_list in stream_totals.items():
-        for stream_rank, (student_id, _) in enumerate(
-            sorted(totals_list, key=lambda x: x[1], reverse=True),
-            start=1
-        ):
-            stream_ranks[student_id] = stream_rank
 
     # =========================
     # REPORT PER STUDENT
@@ -3544,8 +3141,6 @@ def export_class_report(request, class_id, term_id, exam_id):
         info = f"""
         <b>Name:</b> {student.name} &nbsp;&nbsp;
         <b>Adm:</b> {student.admission_number} &nbsp;&nbsp;
-        <b>Stream:</b> {student.stream.name if student.stream else 'N/A'} &nbsp;&nbsp;
-        <b>Stream Rank:</b> {stream_ranks.get(student.id, '-')} &nbsp;&nbsp;
         <b>Rank:</b> {ranks.get(student.id,'-')}/{len(students)}
         """
 
@@ -3553,7 +3148,7 @@ def export_class_report(request, class_id, term_id, exam_id):
         elements.append(Spacer(1, 10))
 
         # ================= MARKS TABLE =================
-        table_data = [["Subject", "Teacher", "Marks", "Grade", "Points", "Remarks"]]
+        table_data = [["Subject", "Marks", "Grade", "Points", "Remarks"]]
 
         total_marks = 0
         total_points = 0
@@ -3566,12 +3161,6 @@ def export_class_report(request, class_id, term_id, exam_id):
                 term=term_obj
             ).first()
 
-            class_subject = ClassSubject.objects.filter(
-                class_name=class_obj,
-                subject=subject
-            ).select_related("teacher").first()
-            teacher_name = class_subject.teacher.name if class_subject and class_subject.teacher else "N/A"
-
             if mark:
                 m = int(round(mark.marks))
                 grade, points, remarks = get_grade_points_and_remarks(school, m)
@@ -3580,24 +3169,19 @@ def export_class_report(request, class_id, term_id, exam_id):
                 total_points += points
 
                 table_data.append([
-                    Paragraph(subject.short_name, styles["ReportInfo"]),
-                    Paragraph(teacher_name, styles["ReportInfo"]),
+                    Paragraph(subject.name, styles["ReportInfo"]),
                     m,
                     grade,
                     points,
                     Paragraph(remarks, styles["ReportSmall"])
                 ])
             else:
-                table_data.append([
-                    Paragraph(subject.short_name, styles["ReportInfo"]),
-                    Paragraph(teacher_name, styles["ReportInfo"]),
-                    "-", "-", "-", "-"
-                ])
+                table_data.append([Paragraph(subject.name, styles["ReportInfo"]), "-", "-", "-", "-"])
 
         # ================= TABLE STYLE =================
         table = Table(
             table_data,
-            colWidths=[140, 120, 50, 50, 45, 145]
+            colWidths=[180, 50, 50, 50, 185]
         )
 
         table.setStyle(TableStyle([
@@ -3636,26 +3220,29 @@ def export_class_report(request, class_id, term_id, exam_id):
         # ================= SIGNATURES, COMMENTS, QR & PROGRESS GRAPH =================
         # Teacher / Principal area on the left, QR bottom-left; progress graph on the right
 
-        class_teacher_name = class_obj.class_master.name if class_obj.class_master else "Class Teacher"
-        class_teacher_phone = getattr(class_obj.class_master, "phone", "") if class_obj.class_master else ""
-        principal = school.principals.first()
-        principal_name = principal.name if principal else "Principal"
-        principal_phone = principal.phone if principal else ""
+        # Teacher info (use placeholders if not available)
+        class_teacher_name = getattr(class_obj, "teacher_name", None) or "Class Teacher"
+        class_teacher_phone = getattr(class_obj, "teacher_phone", None) or ""
 
         teacher_block = []
         teacher_block.append(Paragraph(f"<b>Class Teacher:</b> {class_teacher_name}", styles["ReportInfo"]))
         if class_teacher_phone:
             teacher_block.append(Paragraph(f"<b>Phone:</b> {class_teacher_phone}", styles["ReportInfo"]))
         teacher_block.append(Spacer(1, 8))
-        teacher_block.append(Paragraph(f"<b>Exam Comments:</b> {final_remarks or 'No comments set for this exam.'}", styles["ReportSmall"]))
-        teacher_block.append(Spacer(1, 12))
         teacher_block.append(Paragraph("Sign: ____________________________", styles["ReportInfo"]))
-        teacher_block.append(Spacer(1, 12))
-        teacher_block.append(Paragraph(f"<b>Principal:</b> {principal_name}", styles["ReportInfo"]))
-        if principal_phone:
-            teacher_block.append(Paragraph(f"<b>Phone:</b> {principal_phone}", styles["ReportInfo"]))
+        teacher_block.append(Paragraph(f"<b>Teacher Comment:</b> {final_remarks}", styles["ReportSmall"]))
+        teacher_block.append(Spacer(1, 6))
+        teacher_block.append(Spacer(1, 8))
+
+        # Principal placeholder
+        teacher_block.append(Paragraph("<b>Principal:</b>", styles["ReportInfo"]))
         teacher_block.append(Spacer(1, 8))
         teacher_block.append(Paragraph("Sign: ____________________________", styles["ReportInfo"]))
+
+        # Teacher comments
+        teacher_block.append(Spacer(1, 6))
+        teacher_block.append(Paragraph(f"<b>Teacher Comment:</b> {final_remarks}", styles["ReportSmall"]))
+        teacher_block.append(Spacer(1, 6))
 
         # QR code for student (bottom-left)
         try:
