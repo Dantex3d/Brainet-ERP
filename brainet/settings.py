@@ -1,21 +1,35 @@
 from pathlib import Path
+import os
+import dj_database_url
+
+# =========================================================
+# BASE DIRECTORY
+# =========================================================
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-
 
 # =========================================================
 # SECURITY
 # =========================================================
 
-SECRET_KEY = 'django-insecure-l6vov(6_ef1_xt(t7pt&clvlotk1al)jg2q$3h)a7fbbvb-g+2'
-DEBUG = True
-ALLOWED_HOSTS = ["*"]
+SECRET_KEY = os.environ.get(
+    "SECRET_KEY",
+    "django-insecure-development-key"
+)
+
+DEBUG = os.environ.get("DEBUG", "False") == "True"
+
+ALLOWED_HOSTS = os.environ.get(
+    "ALLOWED_HOSTS",
+    ".onrender.com,localhost,127.0.0.1"
+).split(",")
 
 # =========================================================
-# APPS
+# APPLICATIONS
 # =========================================================
 
 INSTALLED_APPS = [
+    # Django Apps
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -23,7 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    # your apps
+    # Your Apps
     'users',
     'schools',
     'teachers',
@@ -35,37 +49,59 @@ INSTALLED_APPS = [
     'subjects',
 ]
 
-
 # =========================================================
 # CUSTOM USER MODEL
 # =========================================================
 
-# settings.py
 AUTH_USER_MODEL = 'users.CustomUser'
 
-# settings.py
+# =========================================================
+# URLS / WSGI
+# =========================================================
 
-ROOT_URLCONF = 'brainet.urls'        # <-- must point to your project’s urls.py
+ROOT_URLCONF = 'brainet.urls'
 WSGI_APPLICATION = 'brainet.wsgi.application'
 
-
 # =========================================================
-# AUTHENTICATION BACKENDS (IMPORTANT FIX)
+# AUTHENTICATION
 # =========================================================
 
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
 ]
 
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = '/teachers/dashboard/'
 
 # =========================================================
-# TEMPLATES (FIXED PATH)
+# MIDDLEWARE
+# =========================================================
+
+MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+
+    "schools.middleware.SchoolActivationMiddleware",
+
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+# =========================================================
+# TEMPLATES
 # =========================================================
 
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'brainet' / 'templates'],  # FIXED (IMPORTANT)
+        'DIRS': [
+            BASE_DIR / 'brainet' / 'templates',
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -77,57 +113,83 @@ TEMPLATES = [
     },
 ]
 
-
 # =========================================================
 # DATABASE
 # =========================================================
 
+import os
+import dj_database_url
+
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'postgres',
-        'USER': 'postgres',
-        'PASSWORD': 'Dantex1234',
-        'HOST': 'localhost',
-        'PORT': '5432',
-    }
+    "default": dj_database_url.config(
+        default=os.getenv("DATABASE_URL")
+    )
 }
 
-
 # =========================================================
-# AUTH SETTINGS
-# =========================================================
-
-LOGIN_URL = 'login'
-LOGIN_REDIRECT_URL = 'dashboard'
-LOGIN_REDIRECT_URL = '/teachers/dashboard/'
-
-
-# =========================================================
-# STATIC
+# PASSWORD VALIDATION
 # =========================================================
 
-STATIC_URL = 'static/'
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
+]
+
+# =========================================================
+# INTERNATIONALIZATION
+# =========================================================
+
+LANGUAGE_CODE = 'en-us'
+
+TIME_ZONE = 'Africa/Nairobi'
+
+USE_I18N = True
+USE_TZ = True
+
+# =========================================================
+# STATIC FILES
+# =========================================================
+
+STATIC_URL = '/static/'
+
 STATICFILES_DIRS = [
-    BASE_DIR / "static",
+    BASE_DIR / 'static',
 ]
 
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+STATICFILES_STORAGE = (
+    'whitenoise.storage.CompressedManifestStaticFilesStorage'
+)
 
 # =========================================================
-# MIDDLEWARE (OK AS IS)
+# MEDIA FILES
 # =========================================================
-
-MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    "schools.middleware.SchoolActivationMiddleware",
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
-]
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+# =========================================================
+# DEFAULT PRIMARY KEY FIELD
+# =========================================================
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# =========================================================
+# SECURITY FOR PRODUCTION
+# =========================================================
+
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
