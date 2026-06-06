@@ -119,14 +119,18 @@ TEMPLATES = [
 # =========================================================
 
 DATABASE_URL = os.getenv("DATABASE_URL")
-if not DATABASE_URL:
-    raise ImproperlyConfigured(
-        "DATABASE_URL environment variable is required for PostgreSQL. "
-        "Set it to your PostgreSQL connection URL."
-    )
 
-DATABASES = {"default": dj_database_url.parse("postgresql://dantex3d:GlXhIaoNfrDTI4GMnXX4sGqHq1LTvxBF@dpg-d8hh2leq1p3s73db22d0-a.oregon-postgres.render.com/brainet_db")
-}
+if DATABASE_URL:
+    DATABASES = {
+        "default": dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+    }
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 # =========================================================
 # PASSWORD VALIDATION
