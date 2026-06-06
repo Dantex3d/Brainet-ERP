@@ -51,7 +51,7 @@ class School(models.Model):
     logo = models.ImageField(upload_to="school_logos/", null=True, blank=True)
 
     subscription_balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=False)
     
     # License management
     license_status = models.CharField(max_length=20, choices=LICENSE_STATUS, default='active')

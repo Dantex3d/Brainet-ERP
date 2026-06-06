@@ -149,6 +149,12 @@ def superuser_dashboard(request):
     ).count()
 
     # ----------------------------
+    # ADMIN NOTIFICATIONS
+    # ----------------------------
+    notifications = Notification.objects.filter(recipient=request.user).order_by("-created_at")
+    unread_notifications = notifications.filter(is_read=False).count()
+
+    # ----------------------------
     # CONTEXT
     # ----------------------------
     # include pending license renewals so superusers can see reactivation requests
@@ -170,6 +176,8 @@ def superuser_dashboard(request):
         "queries": queries,
 
         "unread_queries": unread_queries,
+        "notifications": notifications,
+        "unread_notifications": unread_notifications,
         "pending_renewals": pending_renewals,
         "pending_renewals_count": pending_renewals.count(),
     }
@@ -1611,6 +1619,7 @@ def add_school(request):
             email=email,
             subscription_balance=subscription_balance,
             logo=logo,
+            is_active=False,
         )
 
         messages.success(request, "School added successfully.")
@@ -1647,12 +1656,32 @@ def register_school(request):
                 "email": email,
             })
 
-        School.objects.create(
+        school = School.objects.create(
             name=name,
             address=address,
             phone=phone,
             email=email,
+            is_active=False,
         )
+
+        try:
+            superusers = User.objects.filter(is_superuser=True)
+            sender = superusers.first() if superusers.exists() else None
+            title = "New school registration request"
+            message_text = (
+                f"A new school registration request has been submitted for '{school.name}'. "
+                f"Contact: {phone}, {email}."
+            )
+            for su in superusers:
+                Notification.objects.create(
+                    school=school,
+                    sender=sender or su,
+                    recipient=su,
+                    title=title,
+                    message=message_text,
+                )
+        except Exception:
+            pass
 
         messages.success(
             request,
