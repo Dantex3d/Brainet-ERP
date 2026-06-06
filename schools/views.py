@@ -1594,7 +1594,7 @@ def approve_license_renewal(request, renewal_id):
     context = {'renewal': renewal}
     return render(request, "schools/approve_renewal.html", context)
 
-@login_required
+@superuser_required
 def add_school(request):
     if request.method == "POST":
         name = request.POST.get("name")
@@ -1614,8 +1614,57 @@ def add_school(request):
         )
 
         messages.success(request, "School added successfully.")
+        messages.warning(
+            request,
+            "New school accounts expire within 48 hours if not activated. Contact admin to activate."
+        )
 
     return redirect("superuser_dashboard")
+
+
+def register_school(request):
+    if request.method == "POST":
+        name = request.POST.get("name")
+        address = request.POST.get("address")
+        phone = request.POST.get("phone")
+        email = request.POST.get("email")
+
+        if not name or not address or not phone or not email:
+            messages.error(request, "Please fill in all required fields.")
+            return render(request, "schools/register_school.html", {
+                "name": name,
+                "address": address,
+                "phone": phone,
+                "email": email,
+            })
+
+        if School.objects.filter(email=email).exists():
+            messages.error(request, "A school with this email already exists.")
+            return render(request, "schools/register_school.html", {
+                "name": name,
+                "address": address,
+                "phone": phone,
+                "email": email,
+            })
+
+        School.objects.create(
+            name=name,
+            address=address,
+            phone=phone,
+            email=email,
+        )
+
+        messages.success(
+            request,
+            "Thank you. Your school registration request has been submitted. An admin will activate it within 48 hours."
+        )
+        return redirect("register_school_success")
+
+    return render(request, "schools/register_school.html")
+
+
+def register_school_success(request):
+    return render(request, "schools/register_school_success.html")
 
 def manage_schools(request):
     schools = School.objects.all()

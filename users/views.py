@@ -3,6 +3,7 @@ from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView
 from django.urls import reverse_lazy
+from .forms import CustomAuthenticationForm
 
 
 # =========================================================
@@ -11,6 +12,7 @@ from django.urls import reverse_lazy
 
 class CustomLoginView(LoginView):
     template_name = 'users/login.html'
+    authentication_form = CustomAuthenticationForm
     redirect_authenticated_user = True
 
     def get_success_url(self):

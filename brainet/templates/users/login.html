@@ -223,7 +223,7 @@
             ⬅ Home
         </a>
 
-        <a href="#" class="contact-btn">
+        <a href="{% url 'contact_admin' %}" class="contact-btn">
             Contact
         </a>
     </div>
@@ -254,7 +254,7 @@
             {% csrf_token %}
 
             <div class="form-group">
-                <label>Username</label>
+                <label>{{ form.username.label }}</label>
                 {{ form.username }}
             </div>
 

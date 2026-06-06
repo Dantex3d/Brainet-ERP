@@ -227,6 +227,9 @@
                     </div>
                 </div>
                 <div class="card-body">
+                    <div class="alert alert-warning rounded-3 mb-4">
+                        ⚠ New school accounts expire within 48 hours if they are not activated. Contact admin to activate the account.
+                    </div>
                     <form method="post" action="{% url 'add_school' %}" enctype="multipart/form-data">
                         {% csrf_token %}
                         <div class="row">

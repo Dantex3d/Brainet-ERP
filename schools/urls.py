@@ -21,6 +21,8 @@ urlpatterns = [
     # SCHOOL MANAGEMENT
     # =====================================================
     path("schools/add/", views.add_school, name="add_school"),
+    path("schools/register/", views.register_school, name="register_school"),
+    path("schools/register/success/", views.register_school_success, name="register_school_success"),
     path("schools/<int:school_id>/view/", views.view_school, name="view_school"),
     path("schools/<int:school_id>/edit/", views.edit_school, name="edit_school"),
     path("schools/<int:school_id>/activate/", views.activate_school, name="activate_school"),
