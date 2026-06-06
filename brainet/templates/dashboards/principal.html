@@ -38,6 +38,12 @@
                 <button onclick="location.reload()" class="btn btn-outline-primary shadow-sm rounded-3" title="Refresh Dashboard">
                     🔄 Refresh
                 </button>
+                <a href="{% url 'edit_school_info' %}" class="btn btn-outline-secondary shadow-sm rounded-3" title="Edit School Info">
+                    ⚙️ Edit School
+                </a>
+                <a href="{% url 'send_school_notice' %}" class="btn btn-outline-success shadow-sm rounded-3" title="New Announcement">
+                    📢 New Announcement
+                </a>
                 <a href="{% url 'logout' %}" class="btn btn-danger shadow-sm rounded-3" title="Logout">
                     🚪 Logout
                 </a>
@@ -248,7 +254,10 @@
             <!-- ANNOUNCEMENTS -->
             <div class="card border-0 shadow-lg rounded-4 mb-4">
                 <div class="card-header bg-danger text-white rounded-top-4">
-                    <h5 class="mb-0">📢 Announcements</h5>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">📢 Announcements</h5>
+                        <a href="{% url 'send_school_notice' %}" class="btn btn-sm btn-light text-danger rounded-3">➕ Compose</a>
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="alert alert-primary alert-sm rounded-3 py-2 px-3 mb-2">
