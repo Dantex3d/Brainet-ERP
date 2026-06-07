@@ -48,15 +48,6 @@
                         🔄 Refresh
                     </button>
 
-                    <a href="{% url 'manage_subjects' %}"
-                       class="btn btn-outline-dark rounded-3">
-                        📘 Subjects
-                    </a>
-
-                    <a href="{% url 'manage_terms' %}"
-                       class="btn btn-outline-primary rounded-3">
-                        📅 Terms
-                    </a>
 
                     <a href="{% url 'request_voucher' %}"
                        class="btn btn-outline-success rounded-3">
@@ -231,12 +222,14 @@
                     👨‍🎓 Students
                 </a>
 
-                <a style="flex:0 0 auto;" href="{% url 'manage_teachers' %}" class="btn btn-outline-success btn-sm rounded-3">
-                    🧑‍🏫 Teachers
-                </a>
+              
 
                 <a style="flex:0 0 auto;" href="{% url 'manage_classes' %}" class="btn btn-outline-warning btn-sm rounded-3">
                     🏫 Classes
+                </a>
+
+                <a style="flex:0 0 auto;" href="{% url 'class_list_selector' %}" class="btn btn-outline-info btn-sm rounded-3">
+                    📋 Class Lists
                 </a>
 
                 <a style="flex:0 0 auto;" href="{% url 'manage_subjects' %}" class="btn btn-outline-dark btn-sm rounded-3">

@@ -29,6 +29,13 @@
 
             </a>
 
+            <a href="{% url 'class_list_preview' school_class.pk %}"
+               class="btn btn-warning shadow-sm">
+
+                Preview with Marks
+
+            </a>
+
             <a href="{% url 'print_class_list' school_class.pk %}"
                target="_blank"
                class="btn btn-dark shadow-sm">

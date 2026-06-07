@@ -14,9 +14,13 @@ from django.db import transaction
 from django.urls import reverse
 from .models import DOSMessage, DOSQuery, Notification, School, DirectorOfStudies, Dormitory, Term, Class, Subject, GradingPolicy, StudentMark, StudentPromotion, SchoolNotice
 from django.db import IntegrityError
+from collections import defaultdict
 from students.models import Student
 from schools.models import School, Dormitory, DirectorOfStudies, Term
-from schools.models import Class, Subject,VoucherRequest
+from schools.models import Class, Subject, VoucherRequest
+from classes.models import Stream
+from teachers.models import ClassTeacherAssignment, Teacher, TeacherSubjectAssignment
+from subjects.models import ClassSubject
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
 from reportlab.platypus import Image as RLImage
 from reportlab.lib.pagesizes import A4
@@ -602,6 +606,28 @@ def principal_dashboard(request):
         "dorm_count": dorm_count,
         "subject_performance": subject_performance,
     })
+
+@login_required
+def class_list_selector(request):
+    """Select class and stream to export/preview class list"""
+    school = request.user.school
+    
+    classes = Class.objects.filter(school=school).order_by("level", "name")
+    
+    streams = []
+    selected_class = None
+    
+    if request.GET.get("class_id"):
+        selected_class_id = request.GET.get("class_id")
+        selected_class = get_object_or_404(Class, id=selected_class_id, school=school)
+        streams = Stream.objects.filter(class_group=selected_class).order_by("name")
+    
+    return render(request, "dos/class_list_selector.html", {
+        "school": school,
+        "classes": classes,
+        "streams": streams,
+        "selected_class": selected_class,
+    })
     
 from django.db.models import Count
 
@@ -620,13 +646,126 @@ def manage_classes(request):
         .order_by("level")
     )
 
+    teachers = Teacher.objects.filter(school=school)
+    subjects = Subject.objects.filter(school=school)
+
     return render(
         request,
         "dos/classes.html",
         {
-            "classes": classes
+            "classes": classes,
+            "teachers": teachers,
+            "subjects": subjects,
         }
     )
+
+
+@login_required
+def assign_class_master(request):
+    """Assign a teacher as class master to a class or stream"""
+    if request.method == "POST":
+        school = request.user.school
+        class_id = request.POST.get("class_id")
+        stream_id = request.POST.get("stream_id")
+        teacher_id = request.POST.get("class_master")
+
+        class_obj = get_object_or_404(Class, id=class_id, school=school)
+
+        if stream_id:
+            # Assign to specific stream
+            stream = get_object_or_404(Stream, id=stream_id, class_group=class_obj)
+            # Update ClassTeacherAssignment for this stream
+            if teacher_id:
+                teacher = get_object_or_404(Teacher, id=teacher_id, school=school)
+                ClassTeacherAssignment.objects.update_or_create(
+                    class_obj=class_obj,
+                    stream=stream,
+                    defaults={"teacher": teacher}
+                )
+                messages.success(request, f"Stream master assigned successfully.")
+            else:
+                ClassTeacherAssignment.objects.filter(
+                    class_obj=class_obj,
+                    stream=stream
+                ).delete()
+                messages.success(request, "Stream master removed.")
+        else:
+            # Assign to entire class
+            if teacher_id:
+                teacher = get_object_or_404(Teacher, id=teacher_id, school=school)
+                class_obj.class_master = teacher
+                class_obj.save()
+                messages.success(request, f"Class master assigned successfully.")
+            else:
+                class_obj.class_master = None
+                class_obj.save()
+                messages.success(request, "Class master removed.")
+
+    return redirect("manage_classes")
+
+
+@login_required
+def add_class_subject(request):
+    """Add subjects to a class"""
+    if request.method == "POST":
+        school = request.user.school
+        class_id = request.POST.get("class_id")
+        subject_ids = request.POST.getlist("subject_id")
+
+        class_obj = get_object_or_404(Class, id=class_id, school=school)
+
+        # Get all currently assigned subjects
+        current_subjects = set(
+            ClassSubject.objects.filter(class_name=class_obj).values_list("subject_id", flat=True)
+        )
+
+        new_subject_ids = set(int(sid) for sid in subject_ids if sid)
+
+        # Remove subjects not in the new list
+        to_remove = current_subjects - new_subject_ids
+        if to_remove:
+            ClassSubject.objects.filter(class_name=class_obj, subject_id__in=to_remove).delete()
+
+        # Add new subjects
+        for subject_id in new_subject_ids - current_subjects:
+            subject = get_object_or_404(Subject, id=subject_id, school=school)
+            ClassSubject.objects.get_or_create(
+                school=school,
+                class_name=class_obj,
+                subject=subject
+            )
+
+        messages.success(request, "Subjects assigned successfully.")
+
+    return redirect("manage_classes")
+
+
+@login_required
+def add_stream(request):
+    """Add a stream/division to a class"""
+    if request.method == "POST":
+        school = request.user.school
+        class_id = request.POST.get("class_id")
+        stream_name = request.POST.get("stream_name", "").strip()
+
+        class_obj = get_object_or_404(Class, id=class_id, school=school)
+
+        if stream_name:
+            # Check if stream already exists
+            existing = Stream.objects.filter(
+                class_group=class_obj,
+                name=stream_name
+            ).first()
+
+            if existing:
+                messages.warning(request, f"Stream '{stream_name}' already exists for this class.")
+            else:
+                Stream.objects.create(class_group=class_obj, name=stream_name)
+                messages.success(request, f"Stream '{stream_name}' added successfully.")
+        else:
+            messages.error(request, "Stream name cannot be empty.")
+
+    return redirect("manage_classes")
     
     
 @login_required
@@ -974,26 +1113,48 @@ from reportlab.lib.styles import getSampleStyleSheet
 import datetime
 
 @login_required
+@login_required
 def download_class_list_pdf(request, class_id):
 
     # =========================
-    # GET CLASS
+    # GET CLASS & STREAM
     # =========================
     class_obj = Class.objects.get(id=class_id)
+    stream_id = request.GET.get("stream_id")
+    term_id = request.GET.get("term")
+    
+    school = class_obj.school
+    
+    selected_stream = None
+    if stream_id:
+        selected_stream = get_object_or_404(Stream, id=stream_id, class_group=class_obj)
 
     # =========================
     # GET STUDENTS
     # =========================
-    students = Student.objects.filter(
-        current_class=class_obj
-    ).order_by("name")
+    student_query = Student.objects.filter(
+        current_class=class_obj,
+        school=school
+    )
+    
+    if selected_stream:
+        student_query = student_query.filter(stream=selected_stream)
+    
+    students = student_query.order_by("name")
 
     # =========================
-    # FILE NAME
+    # FILE NAME WITH CLASS & STREAM
     # =========================
     year = datetime.datetime.now().year
-
-    filename = f"{class_obj.name}_{year}.pdf"
+    
+    if selected_stream and term_id:
+        filename = f"ClassList_{class_obj.name}_{selected_stream.name}_{term_id}_{year}.pdf"
+    elif selected_stream:
+        filename = f"ClassList_{class_obj.name}_{selected_stream.name}_{year}.pdf"
+    elif term_id:
+        filename = f"ClassList_{class_obj.name}_{term_id}_{year}.pdf"
+    else:
+        filename = f"ClassList_{class_obj.name}_{year}.pdf"
 
     folder_path = os.path.join(
         settings.MEDIA_ROOT,
@@ -1009,7 +1170,7 @@ def download_class_list_pdf(request, class_id):
     # =========================
     doc = SimpleDocTemplate(
         file_path,
-        pagesize=A4,
+        pagesize=A4 if not term_id else landscape(A4),
         rightMargin=30,
         leftMargin=30,
         topMargin=30,
@@ -1042,6 +1203,15 @@ def download_class_list_pdf(request, class_id):
         row.append(logo)
 
     # SCHOOL DETAILS
+    stream_display = f" - {selected_stream.name}" if selected_stream else ""
+    
+    if term_id:
+        term_obj = Term.objects.filter(id=term_id).first()
+        term_name = term_obj.name if term_obj else ""
+        title_text = f"CLASS LIST WITH ACADEMIC DETAILS: {class_obj.name}{stream_display} - {term_name}"
+    else:
+        title_text = f"CLASS LIST: {class_obj.name}{stream_display}"
+
     school_text = Paragraph(
         f"""
         <font size="18">
@@ -1050,7 +1220,7 @@ def download_class_list_pdf(request, class_id):
         <br/><br/>
 
         <font size="14">
-        <u><b>CLASS LIST: {class_obj.name}</b></u>
+        <u><b>{title_text}</b></u>
         </font>
 
         <br/><br/>
@@ -1072,28 +1242,88 @@ def download_class_list_pdf(request, class_id):
     elements.append(Spacer(1, 20))
 
     # =========================
-    # STUDENT TABLE
+    # STUDENT TABLE WITH OR WITHOUT MARKS
     # =========================
-    data = [[
-        "#",
-        "Student Name",
-        "Admission No",
-        "Gender"
-    ]]
+    if term_id:
+        # Include academic details
+        subjects = Subject.objects.filter(school=school).order_by("name")
+        marks_qs = StudentMark.objects.filter(
+            student__in=students,
+            term_id=term_id
+        ).select_related("subject")
+        
+        mark_map = {
+            (mark.student_id, mark.subject_id): mark
+            for mark in marks_qs
+        }
+        
+        # Build header
+        data = [["#", "Student Name", "Admission No", "Gender"]]
+        for subject in subjects:
+            data[0].append(subject.short_name)
+        data[0].extend(["Total", "Avg", "Grade", "Points"])
+        
+        # Build rows
+        for i, student in enumerate(students, start=1):
+            row = [str(i), student.name, student.admission_number, student.gender]
+            
+            total_marks = 0
+            total_subjects = 0
+            total_points = 0
+            
+            for subject in subjects:
+                mark = mark_map.get((student.id, subject.id))
+                if mark:
+                    marks_value = int(round(mark.marks))
+                    row.append(str(marks_value))
+                    total_marks += marks_value
+                    total_subjects += 1
+                    if mark.points:
+                        total_points += mark.points
+                else:
+                    row.append("-")
+            
+            average = round(total_marks / total_subjects, 1) if total_subjects > 0 else 0
+            
+            # Get grade
+            grade_obj = GradingPolicy.objects.filter(
+                school=school,
+                min_score__lte=average,
+                max_score__gte=average
+            ).first()
+            
+            grade_letter = grade_obj.short_form if grade_obj else "-"
+            
+            row.extend([str(total_marks), str(average), grade_letter, str(total_points)])
+            data.append(row)
+        
+        # Calculate column widths
+        col_count = len(data[0])
+        subject_cols = len(subjects)
+        col_widths = [40, 150, 100, 60] + [45] * subject_cols + [50, 50, 45, 45]
+        
+        table = Table(data, colWidths=col_widths)
+    else:
+        # Basic table without marks
+        data = [[
+            "#",
+            "Student Name",
+            "Admission No",
+            "Gender"
+        ]]
 
-    for i, student in enumerate(students, start=1):
+        for i, student in enumerate(students, start=1):
+            data.append([
+                str(i),
+                student.name,
+                student.admission_number,
+                student.gender
+            ])
 
-        data.append([
-            str(i),
-            student.name,
-            student.admission_number,
-            student.gender
-        ])
-
-    table = Table(
-        data,
-        colWidths=[40, 250, 120, 80]
-    )
+        table = Table(
+            data,
+            colWidths=[40, 250, 120, 80]
+        )
 
     table.setStyle(TableStyle([
 
@@ -1106,13 +1336,14 @@ def download_class_list_pdf(request, class_id):
 
         # FONT
         ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, 0), 8 if term_id else 10),
 
         # PADDING
         ("BOTTOMPADDING", (0, 0), (-1, 0), 10),
         ("TOPPADDING", (0, 0), (-1, 0), 10),
 
         # ALIGNMENT
-        ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+        ("ALIGN", (0, 0), (-1, -1), "CENTER" if term_id else "LEFT"),
 
         # BODY BACKGROUND
         ("BACKGROUND", (0, 1), (-1, -1), colors.whitesmoke),
@@ -1211,6 +1442,98 @@ def class_lists(request, class_id):
     return render(request, "dos/class_list.html", {
         "school_class": school_class,
         "students": students
+    })
+
+@login_required
+def class_list_preview(request, class_id):
+    """Preview class list with academic details (marks, grades, points)"""
+    school = request.user.school
+    term_id = request.GET.get("term")
+    
+    school_class = get_object_or_404(Class, id=class_id, school=school)
+    
+    students = Student.objects.filter(
+        school=school,
+        current_class=school_class,
+        status="active"
+    ).select_related("stream").order_by("name")
+    
+    subjects = Subject.objects.filter(school=school).order_by("name")
+    
+    preview_rows = []
+    
+    if term_id:
+        # Get all marks for this class and term
+        marks_qs = StudentMark.objects.filter(
+            student__in=students,
+            term_id=term_id
+        ).select_related("subject")
+        
+        mark_map = {
+            (mark.student_id, mark.subject_id): mark
+            for mark in marks_qs
+        }
+        
+        for student in students:
+            subject_scores = []
+            total_marks = 0
+            total_subjects = 0
+            total_points = 0
+            
+            for subject in subjects:
+                mark = mark_map.get((student.id, subject.id))
+                
+                if mark is not None:
+                    marks_value = int(round(mark.marks))
+                    total_marks += marks_value
+                    total_subjects += 1
+                    if mark.points:
+                        total_points += mark.points
+                else:
+                    marks_value = None
+                
+                subject_scores.append(marks_value)
+            
+            average = round(total_marks / total_subjects, 2) if total_subjects > 0 else 0
+            
+            # Get grade
+            grade_obj = GradingPolicy.objects.filter(
+                school=school,
+                min_score__lte=average,
+                max_score__gte=average
+            ).first()
+            
+            preview_rows.append({
+                "student": student,
+                "stream_name": student.stream.name if student.stream else "",
+                "subject_scores": subject_scores,
+                "total": total_marks,
+                "average": average,
+                "grade": grade_obj.short_form if grade_obj else "-",
+                "points": total_points,
+            })
+        
+        # Sort by total descending
+        preview_rows.sort(key=lambda x: x["total"], reverse=True)
+        
+        # Add rank
+        for idx, row in enumerate(preview_rows, start=1):
+            row["rank"] = idx
+    
+    # Get terms for dropdown
+    terms = Term.objects.filter(school=school).order_by("-id")
+    selected_term = None
+    if term_id:
+        selected_term = Term.objects.filter(id=term_id).first()
+    
+    return render(request, "dos/class_list_preview.html", {
+        "school_class": school_class,
+        "students": students,
+        "subjects": subjects,
+        "preview_rows": preview_rows,
+        "terms": terms,
+        "selected_term": selected_term,
+        "term_id": term_id,
     })
     
 def edit_school(request, school_id):
@@ -2013,21 +2336,42 @@ def marksheet_preview(request):
 
     class_id = request.GET.get("class")
     term_id = request.GET.get("term")
+    stream_id = request.GET.get("stream")
 
     students = []
     subjects = []
     report_rows = []
+    selected_stream = None
+    streams = []
+    display_title = ""
+
+    if class_id:
+        # Get all streams for this class
+        streams = Stream.objects.filter(class_group_id=class_id).order_by("name")
+        
+        if stream_id:
+            selected_stream = get_object_or_404(Stream, id=stream_id, class_group_id=class_id)
+            class_obj = get_object_or_404(Class, id=class_id)
+            display_title = f"{class_obj.name} {selected_stream.name} - Marksheet"
+        else:
+            class_obj = get_object_or_404(Class, id=class_id)
+            display_title = f"{class_obj.name} - Marksheet"
 
     if class_id and term_id:
 
         # =====================================
-        # ALL STUDENTS IN CLASS
+        # ALL STUDENTS IN CLASS / STREAM
         # =====================================
-        students = Student.objects.filter(
+        student_query = Student.objects.filter(
             school=school,
             current_class_id=class_id,
             status="active"
-        ).order_by("name")
+        )
+
+        if selected_stream:
+            student_query = student_query.filter(stream=selected_stream)
+
+        students = student_query.select_related("stream").order_by("name")
 
         # =====================================
         # ALL SUBJECTS
@@ -2036,56 +2380,55 @@ def marksheet_preview(request):
             school=school
         ).order_by("name")
 
-        # =====================================
-        # BUILD MARKSHEET ROWS
-        # =====================================
+        marks_qs = StudentMark.objects.filter(
+            student__in=students,
+            term_id=term_id
+        ).select_related("subject")
+
+        mark_map = {
+            (mark.student_id, mark.subject_id): mark
+            for mark in marks_qs
+        }
+
         for student in students:
 
-            subject_results = []
-
+            subject_scores = []
             total_marks = 0
             total_subjects = 0
+            total_points = 0
 
             for subject in subjects:
 
-                mark = StudentMark.objects.filter(
-                    student=student,
-                    subject=subject,
-                    term_id=term_id
-                ).first()
+                mark = mark_map.get((student.id, subject.id))
 
-                if mark:
-
-                    marks_value = mark.marks
-                    grade_value = mark.grade
-
-                    total_marks += mark.marks
+                if mark is not None:
+                    marks_value = int(round(mark.marks))
+                    total_marks += marks_value
                     total_subjects += 1
-
+                    # Add points from each subject
+                    if mark.points:
+                        total_points += mark.points
                 else:
+                    marks_value = None
 
-                    marks_value = "-"
-                    grade_value = "-"
+                subject_scores.append(marks_value)
 
-                subject_results.append({
-                    "subject": subject,
-                    "marks": marks_value,
-                    "grade": grade_value,
-                })
+            average = round(total_marks / total_subjects, 2) if total_subjects > 0 else 0
 
-            # =====================================
-            # AVERAGE
-            # =====================================
-            average = 0
-
-            if total_subjects > 0:
-                average = round(total_marks / total_subjects, 2)
+            grade_obj = GradingPolicy.objects.filter(
+                school=school,
+                min_score__lte=average,
+                max_score__gte=average
+            ).first()
 
             report_rows.append({
                 "student": student,
-                "subjects": subject_results,
+                "stream_name": student.stream.name if student.stream else "",
+                "subject_scores": subject_scores,
                 "total": total_marks,
                 "average": average,
+                "grade": grade_obj.short_form if grade_obj else "-",
+                "points": total_points,
             })
 
         # =====================================
@@ -2099,11 +2442,21 @@ def marksheet_preview(request):
         # =====================================
         # POSITIONS
         # =====================================
-        position = 1
+        for idx, row in enumerate(report_rows, start=1):
+            row["position"] = idx
+
+        # =====================================
+        # STREAM RANKING
+        # =====================================
+        streams_by_rank = defaultdict(list)
 
         for row in report_rows:
-            row["position"] = position
-            position += 1
+            streams_by_rank[row["stream_name"]].append(row)
+
+        for stream_rows in streams_by_rank.values():
+            stream_rows.sort(key=lambda x: x["total"], reverse=True)
+            for idx, row in enumerate(stream_rows, start=1):
+                row["stream_rank"] = idx
 
     # =====================================
     # COUNTS
@@ -2130,6 +2483,10 @@ def marksheet_preview(request):
             "girls": girls,
             "class_id": class_id,
             "term_id": term_id,
+            "stream_id": stream_id,
+            "selected_stream": selected_stream,
+            "streams": streams,
+            "display_title": display_title,
         }
     )
 
@@ -2185,6 +2542,7 @@ def export_marksheet_pdf(request):
 
     class_id = request.GET.get("class")
     term_id = request.GET.get("term")
+    stream_id = request.GET.get("stream")
 
     school = request.user.school
 
@@ -2200,22 +2558,53 @@ def export_marksheet_pdf(request):
         school=school
     )
 
+    selected_stream = None
+    if stream_id:
+        selected_stream = get_object_or_404(Stream, id=stream_id, class_group=class_obj)
+
     subjects = Subject.objects.filter(
         school=school
     )
 
-    students = Student.objects.filter(
+    student_query = Student.objects.filter(
         school=school,
         current_class_id=class_id
     )
 
+    if selected_stream:
+        student_query = student_query.filter(stream=selected_stream)
+
+    students = student_query.select_related("stream").order_by("name")
+
     marks = StudentMark.objects.filter(
-        student__current_class_id=class_id,
+        student__in=students,
         term_id=term_id
     ).select_related(
         "student",
         "subject"
     )
+
+    class_teacher_name = "Class Teacher"
+    class_teacher_phone = ""
+    class_teacher_assignment = None
+
+    if selected_stream:
+        class_teacher_assignment = ClassTeacherAssignment.objects.filter(
+            class_obj=class_obj,
+            stream=selected_stream
+        ).select_related("teacher").first()
+    else:
+        class_teacher_assignment = ClassTeacherAssignment.objects.filter(
+            class_obj=class_obj
+        ).select_related("teacher").first()
+
+    if class_teacher_assignment and class_teacher_assignment.teacher:
+        class_teacher_name = class_teacher_assignment.teacher.name
+        class_teacher_phone = class_teacher_assignment.teacher.phone or ""
+
+    principal = school.principals.first()
+    principal_name = principal.name if principal else "Principal"
+    principal_phone = principal.phone if principal else ""
 
     # =====================================================
     # RESPONSE
@@ -2223,7 +2612,7 @@ def export_marksheet_pdf(request):
     response = HttpResponse(content_type="application/pdf")
 
     response["Content-Disposition"] = (
-        'attachment; filename="marksheet.pdf"'
+        f'attachment; filename="marksheet_{class_obj.name}.pdf"'
     )
 
     doc = SimpleDocTemplate(
@@ -2285,12 +2674,29 @@ def export_marksheet_pdf(request):
     # =====================================================
     # CLASS INFO BELOW HEADER
     # =====================================================
+    class_label = class_obj.name
+    if selected_stream:
+        class_label = f"{class_obj.name} - {selected_stream.name}"
+    else:
+        class_label = f"{class_obj.name} (All Streams)"
+
     class_info = Paragraph(
-        f"<b>MARKSHEET:</b> {class_obj.name} | <b>TERM:</b> {term_obj.name} | <b>YEAR:</b> {date.today().year}",
+        f"<b>MARKSHEET:</b> {class_label} | <b>TERM:</b> {term_obj.name} | <b>YEAR:</b> {date.today().year}",
         styles["Normal"]
     )
     elements.append(class_info)
-    elements.append(Spacer(1, 15))
+    elements.append(Spacer(1, 10))
+
+    details_text = f"<b>Class Teacher:</b> {class_teacher_name}"
+    if class_teacher_phone:
+        details_text += f" | <b>Phone:</b> {class_teacher_phone}"
+    details_text += f"<br/><b>Principal:</b> {principal_name}"
+    if principal_phone:
+        details_text += f" | <b>Phone:</b> {principal_phone}"
+
+    class_details = Paragraph(details_text, styles["Normal"])
+    elements.append(class_details)
+    elements.append(Spacer(1, 12))
 
     # =====================================================
     # TABLE HEADER
@@ -2645,8 +3051,27 @@ def marksheet_center(request):
     selected_class = request.GET.get("class")
     selected_term = request.GET.get("term")
     selected_exam = request.GET.get("exam")
+    selected_stream = request.GET.get("stream")
 
     students = []
+    streams = []
+    selected_stream_obj = None
+    display_title = ""
+
+    # =====================================================
+    # GET STREAMS FOR SELECTED CLASS
+    # =====================================================
+    if selected_class:
+        streams = Stream.objects.filter(
+            class_group_id=selected_class
+        ).order_by("name")
+        
+        if selected_stream:
+            selected_stream_obj = get_object_or_404(
+                Stream,
+                id=selected_stream,
+                class_group_id=selected_class
+            )
 
     # =====================================================
     # LOAD STUDENTS + RESULTS
@@ -2659,6 +3084,15 @@ def marksheet_center(request):
         ).prefetch_related(
             "studentmark_set"
         )
+        
+        # Filter by stream if selected
+        if selected_stream_obj:
+            students = students.filter(stream=selected_stream_obj)
+            class_obj = get_object_or_404(Class, id=selected_class)
+            display_title = f"{class_obj.name} {selected_stream_obj.name} - Marksheet"
+        else:
+            class_obj = get_object_or_404(Class, id=selected_class)
+            display_title = f"{class_obj.name} - Marksheet"
 
         # ===============================================
         # PROCESS RESULTS
@@ -2760,12 +3194,16 @@ def marksheet_center(request):
         "terms": terms,
         "exams": exams,
         "subjects": subjects,
+        "streams": streams,
 
         "students": students,
 
         "selected_class": selected_class,
         "selected_term": selected_term,
         "selected_exam": selected_exam,
+        "selected_stream": selected_stream,
+        "selected_stream_obj": selected_stream_obj,
+        "display_title": display_title,
 
     })
     
@@ -3133,25 +3571,73 @@ def export_class_report(request, class_id, term_id, exam_id):
     term_obj = get_object_or_404(Term, id=term_id, school=school)
     exam_obj = get_object_or_404(Exam, id=exam_id, school=school)
 
-    students = Student.objects.filter(
+    stream_id = request.GET.get("stream_id")
+    selected_stream = None
+    if stream_id:
+        selected_stream = get_object_or_404(Stream, id=stream_id, class_group=class_obj)
+
+    student_query = Student.objects.filter(
         school=school,
         current_class_id=class_id
-    ).order_by("name")
+    )
+    if selected_stream:
+        student_query = student_query.filter(stream=selected_stream)
+
+    students = student_query.order_by("name")
 
     subjects = Subject.objects.filter(
         school=school
     ).order_by("name")
 
+    # Get class teacher and principal info
+    class_teacher_name = "Class Teacher"
+    class_teacher_phone = ""
+    class_teacher_assignment = None
+
+    if selected_stream:
+        class_teacher_assignment = ClassTeacherAssignment.objects.filter(
+            class_obj=class_obj,
+            stream=selected_stream
+        ).select_related("teacher").first()
+    else:
+        class_teacher_assignment = ClassTeacherAssignment.objects.filter(
+            class_obj=class_obj
+        ).select_related("teacher").first()
+
+    if class_teacher_assignment and class_teacher_assignment.teacher:
+        class_teacher_name = class_teacher_assignment.teacher.name
+        class_teacher_phone = class_teacher_assignment.teacher.phone or ""
+
+    principal = school.principals.first()
+    principal_name = principal.name if principal else "Principal"
+    principal_phone = principal.phone if principal else ""
+
+    # Get previous exam for subject positioning
+    previous_exam = Exam.objects.filter(
+        school=school,
+        term=term_obj
+    ).exclude(id=exam_id).order_by('-created_at').first()
+
+    # Extract year from term name if possible
+    year = "2024"
+    try:
+        year = term_obj.name.split()[-1] if term_obj.name else "2024"
+    except:
+        pass
+
     response = HttpResponse(content_type="application/pdf")
-    response["Content-Disposition"] = f'attachment; filename="report_{class_obj.name}.pdf"'
+    
+    # Enhanced filename: Grade{grade}_Report_forms_{term}_{year}
+    filename = f"Grade_Report_forms_{term_obj.name}_{year}.pdf"
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
 
     doc = SimpleDocTemplate(
         response,
         pagesize=A4,
-        leftMargin=25,
-        rightMargin=25,
-        topMargin=25,
-        bottomMargin=25
+        leftMargin=20,
+        rightMargin=20,
+        topMargin=20,
+        bottomMargin=20
     )
 
     styles = getSampleStyleSheet()
@@ -3161,7 +3647,7 @@ def export_class_report(request, class_id, term_id, exam_id):
     elements = []
 
     # =========================
-    # RANKING
+    # RANKING & POSITIONING
     # =========================
     totals = {}
 
@@ -3181,6 +3667,39 @@ def export_class_report(request, class_id, term_id, exam_id):
     ranking = sorted(totals.items(), key=lambda x: x[1], reverse=True)
     ranks = {sid: i + 1 for i, (sid, _) in enumerate(ranking)}
 
+    # Calculate subject positions for each student
+    subject_positions = {}
+    for student in students:
+        subject_positions[student.id] = {}
+        for subject in subjects:
+            # Current exam position
+            current_mark = StudentMark.objects.filter(
+                student=student,
+                subject=subject,
+                term=term_obj
+            ).first()
+            
+            if current_mark and previous_exam:
+                # Previous exam mark for comparison
+                prev_mark = StudentMark.objects.filter(
+                    student=student,
+                    subject=subject,
+                    exam=previous_exam
+                ).first()
+                
+                if prev_mark:
+                    diff = float(current_mark.marks) - float(prev_mark.marks)
+                    if diff > 0:
+                        subject_positions[student.id][subject.id] = "up"  # ⬆️
+                    elif diff < 0:
+                        subject_positions[student.id][subject.id] = "down"  # ⬇️
+                    else:
+                        subject_positions[student.id][subject.id] = "same"  # ➡️
+                else:
+                    subject_positions[student.id][subject.id] = "new"  # ✨
+            else:
+                subject_positions[student.id][subject.id] = None
+
     # =========================
     # REPORT PER STUDENT
     # =========================
@@ -3190,21 +3709,24 @@ def export_class_report(request, class_id, term_id, exam_id):
         logo = ""
         if school.logo:
             try:
-                logo = RLImage(school.logo.path, 1*inch, 1*inch)
+                logo = RLImage(school.logo.path, 0.8*inch, 0.8*inch)
             except:
                 logo = ""
+
+        stream_display = f" | Stream: {student.stream.name}" if student.stream else ""
+        dorm_display = f" | Dorm: {student.dormitory.name}" if student.dormitory else ""
 
         header_text = f"""
         <b>{school.name}</b><br/>
         {school.address or ""}<br/>
         {school.phone or ""} | {school.email or ""}<br/><br/>
-        <b>ACADEMIC REPORT</b><br/>
-        Class: {class_obj.name} | Term: {term_obj.name} | Exam: {exam_obj.name}
+        <b>ACADEMIC REPORT FORM</b><br/>
+        Class: {class_obj.name}{stream_display} | Term: {term_obj.name} | Exam: {exam_obj.name}
         """
 
         header = Table(
             [[logo, Paragraph(header_text, styles["Normal"])]],
-            colWidths=[80, 430]
+            colWidths=[70, 440]
         )
 
         header.setStyle(TableStyle([
@@ -3213,20 +3735,21 @@ def export_class_report(request, class_id, term_id, exam_id):
         ]))
 
         elements.append(header)
-        elements.append(Spacer(1, 10))
+        elements.append(Spacer(1, 8))
 
         # ================= STUDENT INFO =================
+        overall_pos = ranks.get(student.id, '-')
         info = f"""
-        <b>Name:</b> {student.name} &nbsp;&nbsp;
-        <b>Adm:</b> {student.admission_number} &nbsp;&nbsp;
-        <b>Rank:</b> {ranks.get(student.id,'-')}/{len(students)}
+        <b>Student Name:</b> {student.name} &nbsp;&nbsp;
+        <b>Adm No:</b> {student.admission_number} &nbsp;&nbsp;
+        <b>Position:</b> {overall_pos}/{len(students)}{dorm_display}
         """
 
         elements.append(Paragraph(info, styles["ReportInfo"]))
-        elements.append(Spacer(1, 10))
+        elements.append(Spacer(1, 8))
 
-        # ================= MARKS TABLE =================
-        table_data = [["Subject", "Marks", "Grade", "Points", "Remarks"]]
+        # ================= MARKS TABLE WITH TEACHER & POSITIONING =================
+        table_data = [["Subject", "Marks", "Grade", "Points", "Teacher", "Pos", "Comments"]]
 
         total_marks = 0
         total_points = 0
@@ -3239,6 +3762,29 @@ def export_class_report(request, class_id, term_id, exam_id):
                 term=term_obj
             ).first()
 
+            # Get subject teacher
+            teacher_name = "—"
+            subject_teacher = TeacherSubjectAssignment.objects.filter(
+                class_obj=class_obj,
+                subject=subject,
+                stream=student.stream if student.stream else None
+            ).select_related("teacher").first()
+            
+            if subject_teacher:
+                teacher_name = subject_teacher.teacher.name[:15]  # Abbreviate for space
+
+            # Subject positioning indicator
+            pos_indicator = ""
+            pos_key = subject_positions.get(student.id, {}).get(subject.id)
+            if pos_key == "up":
+                pos_indicator = "⬆️"
+            elif pos_key == "down":
+                pos_indicator = "⬇️"
+            elif pos_key == "same":
+                pos_indicator = "➡️"
+            elif pos_key == "new":
+                pos_indicator = "✨"
+
             if mark:
                 m = int(round(mark.marks))
                 grade, points, remarks = get_grade_points_and_remarks(school, m)
@@ -3247,19 +3793,27 @@ def export_class_report(request, class_id, term_id, exam_id):
                 total_points += points
 
                 table_data.append([
-                    Paragraph(subject.name, styles["ReportInfo"]),
+                    Paragraph(subject.name, styles["ReportSmall"]),
                     m,
                     grade,
                     points,
+                    Paragraph(teacher_name, styles["ReportSmall"]),
+                    pos_indicator,
                     Paragraph(remarks, styles["ReportSmall"])
                 ])
             else:
-                table_data.append([Paragraph(subject.name, styles["ReportInfo"]), "-", "-", "-", "-"])
+                table_data.append([
+                    Paragraph(subject.name, styles["ReportSmall"]),
+                    "-", "-", "-",
+                    Paragraph(teacher_name, styles["ReportSmall"]),
+                    pos_indicator,
+                    "-"
+                ])
 
         # ================= TABLE STYLE =================
         table = Table(
             table_data,
-            colWidths=[180, 50, 50, 50, 185]
+            colWidths=[130, 45, 40, 40, 80, 30, 90]
         )
 
         table.setStyle(TableStyle([
@@ -3268,108 +3822,92 @@ def export_class_report(request, class_id, term_id, exam_id):
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0d6efd")),
             ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
             ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, -1), 8),
+            ("FONTSIZE", (0, 0), (-1, -1), 7),
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ("ALIGN", (1, 1), (-2, -1), "CENTER"),
-            ("ALIGN", (4, 1), (4, -1), "LEFT"),
-            ("LEFTPADDING", (0, 0), (-1, -1), 4),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+            ("ALIGN", (1, 1), (4, -1), "CENTER"),
+            ("ALIGN", (5, 1), (5, -1), "CENTER"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 3),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 3),
         ]))
 
         elements.append(table)
-        elements.append(Spacer(1, 12))
+        elements.append(Spacer(1, 10))
 
-        # ================= TOTALS ANALYSIS (TEXT) =================
+        # ================= TOTALS ANALYSIS =================
         avg = total_marks / len(subjects) if subjects else 0
         avg_display = int(round(avg))
         final_grade, _, final_remarks = get_grade_points_and_remarks(school, avg_display)
 
-        # Use simple paragraphs (no table) for totals and summary
         totals_text = (
-            f"<b>Total Marks:</b> {int(total_marks)} &nbsp;&nbsp; "
-            f"<b>Average:</b> {avg_display} &nbsp;&nbsp; "
-            f"<b>Points:</b> {int(total_points)} &nbsp;&nbsp; "
+            f"<b>Total Marks:</b> {int(total_marks)} | "
+            f"<b>Average:</b> {avg_display} | "
+            f"<b>Total Points:</b> {int(total_points)} | "
             f"<b>Grade:</b> {final_grade}"
         )
 
         elements.append(Paragraph(totals_text, styles["ReportHeader"]))
-        elements.append(Spacer(1, 10))
+        elements.append(Spacer(1, 8))
 
-        # ================= SIGNATURES, COMMENTS, QR & PROGRESS GRAPH =================
-        # Teacher / Principal area on the left, QR bottom-left; progress graph on the right
-
-        # Teacher info (use placeholders if not available)
-        class_teacher_name = getattr(class_obj, "teacher_name", None) or "Class Teacher"
-        class_teacher_phone = getattr(class_obj, "teacher_phone", None) or ""
-
+        # ================= SIGNATURES & COMMENTS SECTION =================
         teacher_block = []
-        teacher_block.append(Paragraph(f"<b>Class Teacher:</b> {class_teacher_name}", styles["ReportInfo"]))
+        teacher_block.append(Paragraph(f"<b>Class Teacher: {class_teacher_name}</b>", styles["ReportInfo"]))
         if class_teacher_phone:
-            teacher_block.append(Paragraph(f"<b>Phone:</b> {class_teacher_phone}", styles["ReportInfo"]))
-        teacher_block.append(Spacer(1, 8))
-        teacher_block.append(Paragraph("Sign: ____________________________", styles["ReportInfo"]))
-        teacher_block.append(Paragraph(f"<b>Teacher Comment:</b> {final_remarks}", styles["ReportSmall"]))
-        teacher_block.append(Spacer(1, 6))
-        teacher_block.append(Spacer(1, 8))
-
-        # Principal placeholder
-        teacher_block.append(Paragraph("<b>Principal:</b>", styles["ReportInfo"]))
-        teacher_block.append(Spacer(1, 8))
-        teacher_block.append(Paragraph("Sign: ____________________________", styles["ReportInfo"]))
-
-        # Teacher comments
-        teacher_block.append(Spacer(1, 6))
-        teacher_block.append(Paragraph(f"<b>Teacher Comment:</b> {final_remarks}", styles["ReportSmall"]))
+            teacher_block.append(Paragraph(f"Phone: {class_teacher_phone}", styles["ReportSmall"]))
+        teacher_block.append(Paragraph("Signature: ________________________", styles["ReportSmall"]))
+        teacher_block.append(Spacer(1, 4))
+        
+        teacher_block.append(Paragraph(f"<b>Principal: {principal_name}</b>", styles["ReportInfo"]))
+        if principal_phone:
+            teacher_block.append(Paragraph(f"Phone: {principal_phone}", styles["ReportSmall"]))
+        teacher_block.append(Paragraph("Signature: ________________________", styles["ReportSmall"]))
         teacher_block.append(Spacer(1, 6))
 
-        # QR code for student (bottom-left)
+        # QR code for student
         try:
             qr_img = generate_qr_image(f"{school.name} - {student.admission_number}")
         except Exception:
             qr_img = None
 
-        # Progress graph: plot marks per subject for this student in current exam
+        # Progress graph
         try:
             scores = []
             for subject in subjects:
                 m = StudentMark.objects.filter(student=student, subject=subject, term=term_obj).first()
                 scores.append(int(round(m.marks))) if m else scores.append(0)
 
-            # generate base64 png from helper
             b64 = generate_progress_chart(scores)
             import base64
             from io import BytesIO
             img_bytes = base64.b64decode(b64)
             buf = BytesIO(img_bytes)
-            progress_img = RLImage(buf, width=220, height=110)
+            progress_img = RLImage(buf, width=200, height=100)
         except Exception:
             progress_img = None
 
-        # Build left and right columns
+        # Build side-by-side layout
         left_flowables = teacher_block
         if qr_img:
-            left_flowables.append(Spacer(1, 6))
+            left_flowables.append(Spacer(1, 4))
             left_flowables.append(qr_img)
 
         right_flowables = []
         if progress_img:
             right_flowables.append(progress_img)
         else:
-            right_flowables.append(Paragraph("Progress graph unavailable", styles["ReportSmall"]))
+            right_flowables.append(Paragraph("Progress chart unavailable", styles["ReportSmall"]))
 
-        # Place side-by-side
-        columns_table = Table([[left_flowables, right_flowables]], colWidths=[280, 250])
+        columns_table = Table([[left_flowables, right_flowables]], colWidths=[270, 230])
         columns_table.setStyle(TableStyle([
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
             ("GRID", (0, 0), (-1, -1), 0.0, colors.white),
         ]))
 
         elements.append(columns_table)
-        elements.append(Spacer(1, 12))
+        elements.append(Spacer(1, 8))
 
         # ================= FOOTER =================
         elements.append(Paragraph(
-            "Powered by Brainet Analytics",
+            "Powered by Brainet Analytics | Grade Report Forms",
             styles["Normal"]
         ))
 
@@ -3612,4 +4150,3 @@ def promotion_history(request):
         'status_choices': StudentPromotion.PROMOTION_STATUS,
     }
     return render(request, "schools/promotion_history.html", context)
-

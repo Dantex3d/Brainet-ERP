@@ -23,7 +23,8 @@ from reportlab.lib.styles import getSampleStyleSheet
 
 from exams.models import Exam
 from students.models import Student
-from schools.models import Class, Dormitory, Subject
+from schools.models import Class, Dormitory, Subject, Term
+from classes.models import Stream
 
 
 # =========================================================
@@ -661,15 +662,24 @@ def exams_class_report(request):
     class_id = request.GET.get("class_id")
     term_id = request.GET.get("term_id")
     exam_id = request.GET.get("exam_id")
+    stream_id = request.GET.get("stream_id")
 
     error_message = None
     selected_class = None
     selected_term = None
     selected_exam = None
+    selected_stream = None
+    streams = []
+
+    if class_id:
+        selected_class = get_object_or_404(Class, id=class_id, school=school)
+        streams = Stream.objects.filter(class_group=selected_class).order_by("name")
+
+        if stream_id:
+            selected_stream = get_object_or_404(Stream, id=stream_id, class_group=selected_class)
 
     if class_id and term_id and exam_id:
         try:
-            selected_class = get_object_or_404(Class, id=class_id, school=school)
             selected_term = get_object_or_404(Term, id=term_id, school=school)
             selected_exam = get_object_or_404(Exam, id=exam_id, school=school)
         except Exception as e:
@@ -679,12 +689,15 @@ def exams_class_report(request):
         "classes": classes,
         "terms": terms,
         "exams": exams,
+        "streams": streams,
         "class_id": class_id,
         "term_id": term_id,
         "exam_id": exam_id,
+        "stream_id": stream_id,
         "selected_class": selected_class,
         "selected_term": selected_term,
         "selected_exam": selected_exam,
+        "selected_stream": selected_stream,
         "error_message": error_message,
     })
 

@@ -70,18 +70,24 @@ urlpatterns = [
     # CLASSES
     # =====================================================
     path("classes/", views.manage_classes, name="manage_classes"),
+    path("classes/list-selector/", views.class_list_selector, name="class_list_selector"),
     path("classes/add/", views.add_class, name="add_class"),
     path("classes/<int:class_id>/edit/", views.edit_class, name="edit_class"),
     path("classes/<int:class_id>/delete/", views.delete_class, name="delete_class"),
     path("classes/<int:class_id>/students/", views.view_class_students, name="view_class_students"),
     path("classes/<int:class_id>/details/", views.class_details_json, name="class_details_json"),
-
+    path("classes/<int:class_id>/preview/", views.class_list_preview, name="class_list_preview"),
     path("classes/<int:class_id>/print/", views.print_class_list, name="print_class_list"),
     path("classes/<int:class_id>/pdf/", views.download_class_list_pdf, name="download_class_list_pdf"),
-
+    path("classes/<int:class_id>/promote/", views.promote_class_view, name="promote_class"),
+    
     # =====================================================
-    # TEACHER SUBJECT ASSIGNMENT
+    # CLASS MANAGEMENT OPERATIONS
     # =====================================================
+    path("classes/assign-master/", views.assign_class_master, name="assign_class_master"),
+    path("classes/add-subject/", views.add_class_subject, name="add_class_subject"),
+    path("classes/add-stream/", views.add_stream, name="add_stream"),
+    
     # =====================================================
     # DORMITORIES
     # =====================================================

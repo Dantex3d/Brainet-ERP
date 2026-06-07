@@ -14,7 +14,7 @@
 
                 <div>
                     <h2 class="fw-bold text-primary mb-1">
-                        📄 Marksheet Preview
+                        📄 {% if display_title %}{{ display_title }}{% else %}Marksheet Preview{% endif %}
                     </h2>
 
                     <p class="text-muted mb-0">
@@ -29,7 +29,7 @@
                         🔄 Refresh
                     </button>
 
-                    <a href="{% url 'export_marksheet_pdf' %}?class={{ class_id }}&term={{ term_id }}"
+                    <a href="{% url 'export_marksheet_pdf' %}?class={{ class_id }}&term={{ term_id }}{% if stream_id %}&stream={{ stream_id }}{% endif %}"
                        class="btn btn-danger rounded-3">
 
                         📥 Export PDF
@@ -77,6 +77,37 @@
         </div>
 
     </div>
+
+    <!-- STREAM SELECTOR (if class has multiple streams) -->
+    {% if streams|length > 0 %}
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+
+        <div class="card-body">
+
+            <label class="fw-semibold mb-2">
+                📊 Filter by Stream / Division
+            </label>
+
+            <div class="d-flex flex-wrap gap-2">
+
+                <a href="{% url 'marksheet_preview' %}?class={{ class_id }}&term={{ term_id }}"
+                   class="btn {% if not stream_id %}btn-primary{% else %}btn-outline-primary{% endif %} rounded-3">
+                    All Streams
+                </a>
+
+                {% for s in streams %}
+                <a href="{% url 'marksheet_preview' %}?class={{ class_id }}&term={{ term_id }}&stream={{ s.id }}"
+                   class="btn {% if stream_id == s.id|stringformat:'s' %}btn-primary{% else %}btn-outline-primary{% endif %} rounded-3">
+                    {{ s.name }}
+                </a>
+                {% endfor %}
+
+            </div>
+
+        </div>
+
+    </div>
+    {% endif %}
 
     <!-- STATS -->
     <div class="row g-4 mb-4">
@@ -169,7 +200,7 @@
         <div class="card-header bg-primary text-white rounded-top-4 d-flex justify-content-between align-items-center">
 
             <h5 class="mb-0">
-                📚 Student Performance Table
+                📚 {% if display_title %}{{ display_title }}{% else %}Student Performance Table{% endif %}
             </h5>
 
             <span class="badge bg-light text-dark">
@@ -228,6 +259,10 @@
                             </th>
 
                             <th rowspan="2" class="text-center">
+                                Points
+                            </th>
+
+                            <th rowspan="2" class="text-center">
                                 Stream Rank
                             </th>
 
@@ -266,7 +301,7 @@
 
                                 <td class="text-center">
 
-                                    {% if score %}
+                                    {% if score is not None %}
                                         <span class="badge bg-primary">
                                             {{ score }}
                                         </span>
@@ -294,6 +329,10 @@
                                     {{ row.grade }}
                                 </span>
 
+                            </td>
+
+                            <td class="text-center fw-bold text-warning">
+                                {{ row.points }}
                             </td>
 
                             <td class="text-center">

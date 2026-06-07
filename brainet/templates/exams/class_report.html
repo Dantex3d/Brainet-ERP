@@ -36,6 +36,17 @@
         </select>
       </div>
       <div class="col-md-4">
+        <label for="stream_id" class="form-label">Stream</label>
+        <select id="stream_id" name="stream_id" class="form-select">
+          <option value="">-- All Streams --</option>
+          {% for stream in streams %}
+            <option value="{{ stream.id }}" {% if stream_id == stream.id|stringformat:"s" %}selected{% endif %}>
+              {{ stream.name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-4">
         <label for="exam_id" class="form-label">Exam</label>
         <select id="exam_id" name="exam_id" class="form-select" required>
           <option value="">-- Select Exam --</option>
@@ -55,7 +66,7 @@
 
   {% if class_id and term_id and exam_id %}
     <div class="mt-4">
-      <a href="{% url 'export_class_report' class_id term_id exam_id %}" 
+      <a href="{% url 'export_class_report' class_id term_id exam_id %}?{% if stream_id %}stream_id={{ stream_id }}&{% endif %}" 
          class="btn btn-success" target="_blank">
         📥 Open Generated Report
       </a>

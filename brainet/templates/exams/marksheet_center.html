@@ -155,6 +155,40 @@
 
                     </div>
 
+                    <!-- STREAM (appears if class is selected) -->
+                    {% if selected_class %}
+                    <div class="col-md-4">
+
+                        <label class="fw-semibold mb-1">
+                            Stream / Division
+                        </label>
+
+                        <select name="stream"
+                                class="form-select"
+                                onchange="this.form.submit()">
+
+                            <option value="">
+                                All Streams
+                            </option>
+
+                            {% for s in streams %}
+
+                                <option value="{{ s.id }}"
+                                    {% if selected_stream == s.id|stringformat:"s" %}
+                                        selected
+                                    {% endif %}>
+
+                                    {{ s.name }}
+
+                                </option>
+
+                            {% endfor %}
+
+                        </select>
+
+                    </div>
+                    {% endif %}
+
                 </div>
 
             </form>
@@ -189,7 +223,7 @@
             <!-- EXPORT MARKSHEET PDF -->
             <div class="col-lg-3 col-md-6">
 
-                <a href="{% url 'export_marksheet_pdf' %}?class={{ selected_class }}&term={{ selected_term }}&exam={{ selected_exam }}"
+                <a href="{% url 'export_marksheet_pdf' %}?class={{ selected_class }}&term={{ selected_term }}&exam={{ selected_exam }}{% if selected_stream %}&stream={{ selected_stream }}{% endif %}"
                    class="btn btn-danger w-100 py-3">
 
                     📄 Export Marksheet PDF
@@ -240,7 +274,11 @@
             <div>
 
                 <h5 class="mb-0">
-                    📑 Results Preview
+                    {% if display_title %}
+                        📑 {{ display_title }}
+                    {% else %}
+                        📑 Results Preview
+                    {% endif %}
                 </h5>
 
             </div>
