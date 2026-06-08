@@ -870,7 +870,6 @@ def manage_students(request):
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib import messages
 from classes.models import Class, Stream
-from schools.models import Dorm
 from students.models import Student
 from django.contrib.auth import get_user_model
 
