@@ -855,8 +855,9 @@ def manage_students(request):
     school = request.user.school
 
     students = Student.objects.filter(school=school)
-    classes = Class.objects.filter(school=school)   # 👈 change this
-    streams = Stream.objects.filter(school=school)  # if exists
+
+    classes = Class.objects.filter(school=school)   # ✅ correct now
+    streams = Stream.objects.all()  # OR filter properly below
 
     return render(request, "dos/manage_students.html", {
         "students": students,
