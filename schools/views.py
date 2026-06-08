@@ -851,13 +851,12 @@ def view_class_students(request, class_id):
     })
     
 @login_required 
-
 def manage_students(request):
     school = request.user.school
 
     students = Student.objects.filter(school=school)
-    classes = ClassGroup.objects.filter(school=school)
-    streams = Stream.objects.filter(class_group__school=school)
+    classes = Class.objects.filter(school=school)   # 👈 change this
+    streams = Stream.objects.filter(school=school)  # if exists
 
     return render(request, "dos/manage_students.html", {
         "students": students,
