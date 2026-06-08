@@ -866,10 +866,23 @@ def manage_students(request):
         "streams": streams,
         "dorms" :  dorms,
     })
+
+from django.shortcuts import get_object_or_404, redirect, render
+from django.contrib import messages
+from classes.models import Class, Stream
+from schools.models import Dorm
+from students.models import Student
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 @login_required
 def add_student(request):
 
     school = request.user.school
+
+    classes = Class.objects.filter(school=school)
+    streams = Stream.objects.filter(class_group__school=school)
+    dorms = Dorm.objects.filter(school=school)
 
     if request.method == "POST":
 
@@ -877,30 +890,39 @@ def add_student(request):
         admission_number = request.POST.get("admission_number")
         gender = request.POST.get("gender")
         class_id = request.POST.get("class_id")
-
-        school_class = get_object_or_404(
-            Class,
-            id=class_id,
-            school=school
-        )
-        dorm_id = request. POST .get("dorm_id")
-        school_dorm get_object_or_404(
-            dorm,
-            id=class_id,
-            school=school)
+        stream_id = request.POST.get("stream_id")
+        dorm_id = request.POST.get("dorm_id")
 
         # =========================
-        # EMAIL LOGIN SYSTEM ONLY
+        # CLASS
+        # =========================
+        school_class = get_object_or_404(Class, id=class_id, school=school)
+
+        # =========================
+        # STREAM (OPTIONAL)
+        # =========================
+        stream = None
+        if stream_id:
+            stream = get_object_or_404(Stream, id=stream_id, class_group=school_class)
+
+        # =========================
+        # DORM (OPTIONAL)
+        # =========================
+        dorm = None
+        if dorm_id:
+            dorm = get_object_or_404(Dorm, id=dorm_id, school=school)
+
+        # =========================
+        # EMAIL LOGIN SYSTEM
         # =========================
         email = f"{admission_number}@{school.name.lower().replace(' ', '')}.school"
 
-        # prevent duplicates
         if User.objects.filter(email=email).exists():
             messages.error(request, "Student already exists")
             return redirect("add_student")
 
         # =========================
-        # CREATE USER (NO USERNAME!)
+        # CREATE USER
         # =========================
         user = User.objects.create_user(
             email=email,
@@ -918,7 +940,9 @@ def add_student(request):
             name=name,
             admission_number=admission_number,
             gender=gender,
-            current_class=school_class
+            current_class=school_class,
+            stream=stream,   # ✅ NEW
+            dorm=dorm        # ✅ NEW
         )
 
         messages.success(
@@ -928,7 +952,13 @@ def add_student(request):
 
         return redirect("manage_students")
 
+    return render(request, "students/add_student.html", {
+        "classes": classes,
+        "streams": streams,
+        "dorms": dorms
+
 def edit_student(request, student_id):
+
     school = request.user.school
 
     student = get_object_or_404(
@@ -938,27 +968,62 @@ def edit_student(request, student_id):
     )
 
     if request.method == "POST":
+
         student.name = request.POST.get("name")
         student.admission_number = request.POST.get("admission_number")
         student.gender = request.POST.get("gender")
+
+        # ======================
+        # CLASS
+        # ======================
+        class_id = request.POST.get("class_id")
         student.current_class = get_object_or_404(
             Class,
-            id=request.POST.get("class_id"),
+            id=class_id,
             school=school
         )
-                )
-        dorm_id = request. POST .get("dorm_id")
-        school_dorm get_object_or_404(
-            dorm,
-            id=class_id,
-            school=school)
+
+        # ======================
+        # STREAM (OPTIONAL)
+        # ======================
+        stream_id = request.POST.get("stream_id")
+        if stream_id:
+            student.stream = get_object_or_404(
+                Stream,
+                id=stream_id,
+                class_group=student.current_class
+            )
+        else:
+            student.stream = None
+
+        # ======================
+        # DORM (OPTIONAL)
+        # ======================
+        dorm_id = request.POST.get("dorm_id")
+        if dorm_id:
+            student.dorm = get_object_or_404(
+                Dorm,
+                id=dorm_id,
+                school=school
+            )
+        else:
+            student.dorm = None
+
         student.save()
 
         messages.success(request, "Student updated successfully.")
         return redirect("manage_students")
 
+    # for form dropdowns
+    classes = Class.objects.filter(school=school)
+    streams = Stream.objects.filter(class_group__school=school)
+    dorms = Dorm.objects.filter(school=school)
+
     return render(request, "dos/edit_student.html", {
-        "student": student
+        "student": student,
+        "classes": classes,
+        "streams": streams,
+        "dorms": dorms
     })
 def delete_student(request, student_id):
     student = get_object_or_404(Student, id=student_id)
