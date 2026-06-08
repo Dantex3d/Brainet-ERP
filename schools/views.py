@@ -851,14 +851,18 @@ def view_class_students(request, class_id):
     })
     
 @login_required 
-@login_required
+
 def manage_students(request):
     school = request.user.school
 
     students = Student.objects.filter(school=school)
+    classes = ClassGroup.objects.filter(school=school)
+    streams = Stream.objects.filter(class_group__school=school)
 
     return render(request, "dos/manage_students.html", {
-        "students": students
+        "students": students,
+        "classes": classes,
+        "streams": streams,
     })
 @login_required
 def add_student(request):
