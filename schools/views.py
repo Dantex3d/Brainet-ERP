@@ -859,7 +859,7 @@ def manage_students(request):
     classes = Class.objects.filter(school=school)   # ✅ correct now
     streams = Stream.objects.all()  # OR filter properly below
 
-    dorms = streams.object.fikter(school=school)
+    dorm = Dormitory.object.fikter(school=school)
     return render(request, "dos/manage_students.html", {
         "students": students,
         "classes": classes,
@@ -881,7 +881,7 @@ def add_student(request):
 
     classes = Class.objects.filter(school=school)
     streams = Stream.objects.filter(class_group__school=school)
-    dorms = Dorm.objects.filter(school=school)
+    dorm = Dormitory.objects.filter(school=school)
 
     if request.method == "POST":
 
