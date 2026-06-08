@@ -859,10 +859,12 @@ def manage_students(request):
     classes = Class.objects.filter(school=school)   # ✅ correct now
     streams = Stream.objects.all()  # OR filter properly below
 
+    dorms = streams.object.fikter(school=school)
     return render(request, "dos/manage_students.html", {
         "students": students,
         "classes": classes,
         "streams": streams,
+        "dorms" :  dorms,
     })
 @login_required
 def add_student(request):
@@ -881,6 +883,11 @@ def add_student(request):
             id=class_id,
             school=school
         )
+        dorm_id = request. POST .get("dorm_id")
+        school_dorm get_object_or_404(
+            dorm,
+            id=class_id,
+            school=school)
 
         # =========================
         # EMAIL LOGIN SYSTEM ONLY
@@ -939,6 +946,12 @@ def edit_student(request, student_id):
             id=request.POST.get("class_id"),
             school=school
         )
+                )
+        dorm_id = request. POST .get("dorm_id")
+        school_dorm get_object_or_404(
+            dorm,
+            id=class_id,
+            school=school)
         student.save()
 
         messages.success(request, "Student updated successfully.")
