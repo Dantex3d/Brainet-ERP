@@ -1437,7 +1437,7 @@ def class_lists(request, class_id):
     students = Student.objects.filter(
         school=school,
         current_class=school_class
-    )
+    ) 
 
     return render(request, "dos/class_list.html", {
         "school_class": school_class,
@@ -1544,6 +1544,8 @@ def edit_school(request, school_id):
         school.address = request.POST.get("address")
         school.phone = request.POST.get("phone")
         school.email = request.POST.get("email")
+        school.logo  = request.FILES.get("logo") or school.logo
+        
         school.save()
 
         messages.success(request, "School details updated successfully.")
