@@ -955,7 +955,8 @@ def add_student(request):
     return render(request, "students/add_student.html", {
         "classes": classes,
         "streams": streams,
-        "dorms": dorms
+        "dorms": dorms,
+    })
 
 def edit_student(request, student_id):
 
