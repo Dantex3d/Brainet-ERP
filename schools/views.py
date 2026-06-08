@@ -859,12 +859,12 @@ def manage_students(request):
     classes = Class.objects.filter(school=school)   # ✅ correct now
     streams = Stream.objects.all()  # OR filter properly below
 
-    dorm = Dormitory.objects.filter(school=school)
+    dormitory = Dormitory.objects.filter(school=school)
     return render(request, "dos/manage_students.html", {
         "students": students,
         "classes": classes,
         "streams": streams,
-        "dorms" :  dorms,
+        "dormitory": dormitory,
     })
 
 from django.shortcuts import get_object_or_404, redirect, render
@@ -881,7 +881,7 @@ def add_student(request):
 
     classes = Class.objects.filter(school=school)
     streams = Stream.objects.filter(class_group__school=school)
-    dorm = Dormitory.objects.filter(school=school)
+    dormitory = Dormitory.objects.filter(school=school)
 
     if request.method == "POST":
 
@@ -909,7 +909,7 @@ def add_student(request):
         # =========================
         dorm = None
         if dorm_id:
-            dorm = get_object_or_404(Dorm, id=dorm_id, school=school)
+            dorm = get_object_or_404(Dormitory, id=dorm_id, school=school)
 
         # =========================
         # EMAIL LOGIN SYSTEM
@@ -951,14 +951,14 @@ def add_student(request):
 
         return redirect("manage_students")
 
-    return render(request, "students/add_student.html", {
+    return render(request, "dos/add_student.html", {
         "classes": classes,
         "streams": streams,
-        "dorms": dorms,
+        "dormitory": dormitory,
     })
 
+@login_required
 def edit_student(request, student_id):
-
     school = request.user.school
 
     student = get_object_or_404(
@@ -968,7 +968,6 @@ def edit_student(request, student_id):
     )
 
     if request.method == "POST":
-
         student.name = request.POST.get("name")
         student.admission_number = request.POST.get("admission_number")
         student.gender = request.POST.get("gender")
@@ -997,34 +996,34 @@ def edit_student(request, student_id):
             student.stream = None
 
         # ======================
-        # DORM (OPTIONAL)
+        # DORMITORY (OPTIONAL)
         # ======================
-        dorm_id = request.POST.get("dorm_id")
+        dorm_id = request.POST.get("dormitory_id")
         if dorm_id:
-            student.dorm = get_object_or_404(
-                Dorm,
+            student.dormitory = get_object_or_404(
+                Dormitory,
                 id=dorm_id,
                 school=school
             )
         else:
-            student.dorm = None
+            student.dormitory = None
 
         student.save()
-
         messages.success(request, "Student updated successfully.")
         return redirect("manage_students")
 
     # for form dropdowns
     classes = Class.objects.filter(school=school)
     streams = Stream.objects.filter(class_group__school=school)
-    dorms = Dorm.objects.filter(school=school)
+    dorms = Dormitory.objects.filter(school=school)
 
     return render(request, "dos/edit_student.html", {
         "student": student,
         "classes": classes,
         "streams": streams,
-        "dorms": dorms
+        "dorms": dorms,
     })
+
 def delete_student(request, student_id):
     student = get_object_or_404(Student, id=student_id)
 
@@ -1114,6 +1113,8 @@ def add_dorm(request):
     if request.method == "POST":
         Dormitory.objects.create(
             name=request.POST.get("name"),
+            capacity=request.POST.get("capacity"),
+            supervisor=request.POST.get("supervisor"),
             school=school
         )
 

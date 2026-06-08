@@ -1,25 +1,46 @@
 {% extends 'dashboards/base.html' %}
+{% load static %}
 
 {% block content %}
 <div class="container-fluid py-4">
 
-    <!-- Title + Add Student Link -->
+    <!-- HEADER -->
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 class="fw-bold text-primary">
-            Students Management
-        </h3>
-        <a href="{% url 'add_student' %}" class="btn btn-success">
-            ➕ Add New Student
-        </a>
+        <div>
+            <h2 class="fw-bold text-info mb-1">
+                Dormitory: {{ dorm.name }}
+            </h2>
+            <p class="text-muted mb-0">
+                Capacity: {{ dorm.capacity|default:"N/A" }} |
+                Supervisor: {{ dorm.supervisor|default:"N/A" }}
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'manage_dorms' %}" class="btn btn-outline-dark shadow-sm">
+                ← Back to Dorms
+            </a>
+            <a href="{% url 'edit_dorm' dorm.id %}" class="btn btn-warning shadow-sm">
+                ✏ Edit Dorm
+            </a>
+        </div>
     </div>
 
-
     <!-- STUDENTS TABLE -->
-    <div class="card shadow rounded-4">
+    <div class="card border-0 shadow-lg rounded-4">
+        <div class="card-header bg-dark text-white rounded-top-4">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Students in {{ dorm.name }}</h5>
+                <span class="badge bg-info text-dark px-3 py-2">
+                    {{ students.count }} Students
+                </span>
+            </div>
+        </div>
+
         <div class="card-body table-responsive">
             <table class="table table-hover align-middle">
-                <thead class="table-dark">
+                <thead class="table-light">
                     <tr>
+                        <th>#</th>
                         <th>Name</th>
                         <th>Admission No</th>
                         <th>Class</th>
@@ -30,12 +51,13 @@
                 <tbody>
                     {% for s in students %}
                     <tr>
+                        <td>{{ forloop.counter }}</td>
                         <td>{{ s.name }}</td>
                         <td>{{ s.admission_number }}</td>
                         <td>
                             {% if s.current_class %}
                                 {{ s.current_class.name }} ({{ s.current_class.level }})
-                                {% if s.stream %} / {{ s.stream.name }}{% endif %}
+                                {% if s.stream %}/ {{ s.stream.name }}{% endif %}
                             {% else %}-{% endif %}
                         </td>
                         <td>{{ s.gender }}</td>
@@ -55,7 +77,9 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="5" class="text-center text-muted">No students added yet.</td>
+                        <td colspan="6" class="text-center text-muted py-4">
+                            No students assigned to this dormitory yet.
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -64,21 +88,4 @@
     </div>
 
 </div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-const classSelect = document.querySelector('select[name="class_id"]');
-const quickStream = document.getElementById('quickStreamSelect');
-if(classSelect && quickStream){
-    classSelect.addEventListener('change', function(){
-        const classId = this.value;
-        Array.from(quickStream.options).forEach(function(opt){
-            if(!opt.dataset.class) return;
-            opt.style.display = (!classId || opt.dataset.class === classId) ? '' : 'none';
-        });
-        quickStream.value = '';
-    });
-}
-</script>
 {% endblock %}

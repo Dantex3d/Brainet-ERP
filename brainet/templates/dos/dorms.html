@@ -2,193 +2,105 @@
 {% load static %}
 
 {% block content %}
-
 <div class="container-fluid py-4">
 
     <!-- HEADER -->
     <div class="d-flex justify-content-between align-items-center mb-4">
-
         <div>
-
-            <h2 class="fw-bold text-warning">
-                Dormitories Management
-            </h2>
-
+            <h2 class="fw-bold text-warning">Dormitories Management</h2>
             <p class="text-muted mb-0">
                 Manage school dormitories, boarding houses and student accommodation.
             </p>
-
         </div>
-
-        <div>
-
-            <a href="{% url 'dashboard' %}"
-               class="btn btn-outline-dark shadow-sm">
-
-                Back Dashboard
-
+        <div class="d-flex gap-2">
+            <a href="{% url 'dashboard' %}" class="btn btn-outline-dark shadow-sm">
+                ← Back Dashboard
             </a>
-
+            <!-- Add Dorm Link -->
+            <a href="{% url 'add_dorm' %}" class="btn btn-warning shadow-sm">
+                ➕ Add Dorm
+            </a>
         </div>
-
     </div>
-
-
-    <!-- ADD DORM -->
-    <div class="card border-0 shadow-lg rounded-4 mb-4">
-
-        <div class="card-header bg-warning text-dark rounded-top-4">
-
-            <h5 class="mb-0">
-                Add New Dormitory
-            </h5>
-
-        </div>
-
-        <div class="card-body">
-
-            <form method="post"
-                  action="{% url 'add_dorm' %}">
-
-                {% csrf_token %}
-
-                <div class="row align-items-end">
-
-                    <div class="col-md-9 mb-3">
-
-                        <label class="form-label fw-bold">
-                            Dormitory Name
-                        </label>
-
-                        <input type="text"
-                               name="name"
-                               class="form-control"
-                               placeholder="Example: Mandela Dorm"
-                               required>
-
-                    </div>
-
-                    <div class="col-md-3 mb-3">
-
-                        <button type="submit"
-                                class="btn btn-warning w-100">
-
-                            Add Dorm
-
-                        </button>
-
-                    </div>
-
-                </div>
-
-            </form>
-
-        </div>
-
-    </div>
-
 
     <!-- DORMS TABLE -->
     <div class="card border-0 shadow-lg rounded-4">
-
         <div class="card-header bg-dark text-white rounded-top-4">
-
             <div class="d-flex justify-content-between align-items-center">
-
-                <h5 class="mb-0">
-                    Registered Dormitories
-                </h5>
-
+                <h5 class="mb-0">Registered Dormitories</h5>
                 <span class="badge bg-warning text-dark px-3 py-2">
-
                     {{ dorms.count }} Dorms
-
                 </span>
-
             </div>
-
         </div>
 
         <div class="card-body table-responsive">
-
             <table class="table table-hover align-middle">
-
                 <thead class="table-light">
-
                     <tr>
-
                         <th>#</th>
                         <th>Dormitory Name</th>
+                        <th>Capacity</th>
+                        <th>Supervisor</th>
                         <th>Date Created</th>
                         <th>Status</th>
-
+                        <th>Actions</th>
                     </tr>
-
                 </thead>
-
                 <tbody>
-
                     {% for dorm in dorms %}
-
                     <tr>
-
+                        <td>{{ forloop.counter }}</td>
+                        <td><strong>{{ dorm.name }}</strong></td>
                         <td>
-                            {{ forloop.counter }}
+                            {% if dorm.capacity %}
+                                {{ dorm.capacity }}
+                            {% else %}
+                                -
+                            {% endif %}
                         </td>
-
                         <td>
-
-                            <strong>
-                                {{ dorm.name }}
-                            </strong>
-
+                            {% if dorm.supervisor %}
+                                {{ dorm.supervisor }}
+                            {% else %}
+                                -
+                            {% endif %}
                         </td>
-
                         <td>
-
                             {% if dorm.created_at %}
                                 {{ dorm.created_at }}
                             {% else %}
                                 -
                             {% endif %}
-
                         </td>
-
                         <td>
-
-                            <span class="badge bg-success px-3 py-2">
-
-                                Active
-
-                            </span>
-
+                            <span class="badge bg-success px-3 py-2">Active</span>
                         </td>
-
+                        <td>
+                            <div class="d-flex gap-2 flex-wrap">
+                                <a href="{% url 'view_dorm_students' dorm.id %}" class="btn btn-sm btn-primary">View Students</a>
+                                <a href="{% url 'edit_dorm' dorm.id %}" class="btn btn-sm btn-warning">Edit</a>
+                                <form method="post" action="{% url 'delete_dorm' dorm.id %}">
+                                    {% csrf_token %}
+                                    <button class="btn btn-sm btn-danger"
+                                            onclick="return confirm('Delete this dormitory?')">
+                                        Delete
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
                     </tr>
-
                     {% empty %}
-
                     <tr>
-
-                        <td colspan="4"
-                            class="text-center text-muted py-4">
-
+                        <td colspan="7" class="text-center text-muted py-4">
                             No dormitories added yet.
-
                         </td>
-
                     </tr>
-
                     {% endfor %}
-
                 </tbody>
-
             </table>
-
         </div>
-
     </div>
 
 </div>
-
 {% endblock %}
