@@ -148,7 +148,7 @@ class Term(models.Model):
 class GradingPolicy(models.Model):
     school = models.ForeignKey(School, on_delete=models.CASCADE)
 
-    grade_letter = models.CharField(max_length=5)
+    grade_letter = models.CharField(max_length=100)
     short_form = models.CharField(max_length=5, blank=True, null=True)
 
     min_score = models.IntegerField()
