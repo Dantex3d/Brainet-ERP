@@ -1109,7 +1109,6 @@ def student_dashboard(request):
         "assignments": assignments,
         "submissions": submissions,
     })
-@login_required
 def add_dorm(request):
     school = request.user.school
 
@@ -1120,8 +1119,10 @@ def add_dorm(request):
             supervisor=request.POST.get("supervisor"),
             school=school
         )
+        messages.success(request, "Dormitory added successfully.")
+        return redirect("manage_dorms")  
+    return render(request, "dos/add_dorm.html")
 
-    return redirect("manage_dorms")
 @login_required
 def view_dorm_students(request, dorm_id):
     school = request.user.school
