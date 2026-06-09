@@ -12,6 +12,9 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth import authenticate, get_user_model, login
 from django.db import transaction
 from django.urls import reverse
+
+import students
+import subjects
 from .models import DOSMessage, DOSQuery, Notification, School, DirectorOfStudies, Dormitory, Term, Class, Subject, GradingPolicy, StudentMark, StudentPromotion, SchoolNotice
 from django.db import IntegrityError
 from collections import defaultdict
@@ -2669,9 +2672,6 @@ def export_marksheet_pdf(request):
         "subject"
     )
 
-    class_teacher_name = "Class Teacher"
-    class_teacher_phone = ""
-    class_teacher_assignment = None
 
     if selected_stream:
         class_teacher_assignment = ClassTeacherAssignment.objects.filter(
@@ -2682,14 +2682,6 @@ def export_marksheet_pdf(request):
         class_teacher_assignment = ClassTeacherAssignment.objects.filter(
             class_obj=class_obj
         ).select_related("teacher").first()
-
-    if class_teacher_assignment and class_teacher_assignment.teacher:
-        class_teacher_name = class_teacher_assignment.teacher.name
-        class_teacher_phone = class_teacher_assignment.teacher.phone or ""
-
-    principal = school.principals.first()
-    principal_name = principal.name if principal else "Principal"
-    principal_phone = principal.phone if principal else ""
 
     # =====================================================
     # RESPONSE
@@ -2771,8 +2763,6 @@ def export_marksheet_pdf(request):
     )
     elements.append(class_info)
     elements.append(Spacer(1, 10))
-    class_details = Paragraph(details_text, styles["Normal"])
-    elements.append(class_details)
     elements.append(Spacer(1, 12))
 
     # =====================================================
@@ -3744,38 +3734,30 @@ def export_class_report(request, class_id, term_id, exam_id):
     ranking = sorted(totals.items(), key=lambda x: x[1], reverse=True)
     ranks = {sid: i + 1 for i, (sid, _) in enumerate(ranking)}
 
-    # Calculate subject positions for each student
+# ======================
+# SUBJECT POSITIONS (current exam only)
+# ======================
     subject_positions = {}
+
     for student in students:
         subject_positions[student.id] = {}
         for subject in subjects:
-            # Current exam position
-            current_mark = StudentMark.objects.filter(
-                student=student,
-                subject=subject,
-                term=term_obj
-            ).first()
-            
-            if current_mark and previous_exam:
-                # Previous exam mark for comparison
-                prev_mark = StudentMark.objects.filter(
-                    student=student,
-                    subject=subject,
-                    exam=previous_exam
-                ).first()
-                
-                if prev_mark:
-                    diff = float(current_mark.marks) - float(prev_mark.marks)
-                    if diff > 0:
-                        subject_positions[student.id][subject.id] = "up"  # ⬆️
-                    elif diff < 0:
-                        subject_positions[student.id][subject.id] = "down"  # ⬇️
-                    else:
-                        subject_positions[student.id][subject.id] = "same"  # ➡️
-                else:
-                    subject_positions[student.id][subject.id] = "new"  # ✨
-            else:
-                subject_positions[student.id][subject.id] = None
+        # Get all marks for this subject in the current term
+         marks_qs = StudentMark.objects.filter(
+            subject=subject,
+            term=term_obj
+        ).order_by('-marks')
+
+        # Build ranking list
+         ranking = list(marks_qs)
+         student_mark = marks_qs.filter(student=student).first()
+
+         if student_mark:
+            # Find position in ranking
+            pos = next((i + 1 for i, m in enumerate(ranking) if m.student_id == student.id), None)
+            subject_positions[student.id][subject.id] = pos
+        else:
+            subject_positions[student.id][subject.id] = None
 
     # =========================
     # REPORT PER STUDENT
@@ -3851,17 +3833,9 @@ def export_class_report(request, class_id, term_id, exam_id):
                 teacher_name = subject_teacher.teacher.name[:15]  # Abbreviate for space
 
             # Subject positioning indicator
-            pos_indicator = ""
-            pos_key = subject_positions.get(student.id, {}).get(subject.id)
-            if pos_key == "up":
-                pos_indicator = "⬆️"
-            elif pos_key == "down":
-                pos_indicator = "⬇️"
-            elif pos_key == "same":
-                pos_indicator = "➡️"
-            elif pos_key == "new":
-                pos_indicator = "✨"
-
+            subject_position = (subject_positions.get(subject.id, {}).get(student.id, "-")
+            if subject_positions.get(subject.id) else "-"
+            )
             if mark:
                 m = int(round(mark.marks))
                 grade, points, remarks = get_grade_points_and_remarks(school, m)
@@ -3870,12 +3844,12 @@ def export_class_report(request, class_id, term_id, exam_id):
                 total_points += points
 
                 table_data.append([
-                    Paragraph(subject.name, styles["ReportSmall"]),
-                    m,
-                    grade,
+                Paragraph(subject.name, styles["ReportSmall"]),
+                m,
+                grade,
                     points,
                     Paragraph(teacher_name, styles["ReportSmall"]),
-                    pos_indicator,
+                    subject_position,
                     Paragraph(remarks, styles["ReportSmall"])
                 ])
             else:
@@ -3883,7 +3857,7 @@ def export_class_report(request, class_id, term_id, exam_id):
                     Paragraph(subject.name, styles["ReportSmall"]),
                     "-", "-", "-",
                     Paragraph(teacher_name, styles["ReportSmall"]),
-                    pos_indicator,
+                    subject_position,
                     "-"
                 ])
 
@@ -3930,12 +3904,16 @@ def export_class_report(request, class_id, term_id, exam_id):
         teacher_block.append(Paragraph(f"<b>Class Teacher: {class_teacher_name}</b>", styles["ReportInfo"]))
         if class_teacher_phone:
             teacher_block.append(Paragraph(f"Phone: {class_teacher_phone}", styles["ReportSmall"]))
+            remarks = final_remarks if final_remarks else "—"
+            teacher_block.append(Paragraph(f"Comments: {remarks}", styles["ReportSmall"]))
         teacher_block.append(Paragraph("Signature: ________________________", styles["ReportSmall"]))
         teacher_block.append(Spacer(1, 4))
         
         teacher_block.append(Paragraph(f"<b>Principal: {principal_name}</b>", styles["ReportInfo"]))
         if principal_phone:
             teacher_block.append(Paragraph(f"Phone: {principal_phone}", styles["ReportSmall"]))
+            remarks = final_remarks if final_remarks else "—"
+            teacher_block.append(Paragraph(f"Comments: {remarks}", styles["ReportSmall"]))
         teacher_block.append(Paragraph("Signature: ________________________", styles["ReportSmall"]))
         teacher_block.append(Spacer(1, 6))
 
