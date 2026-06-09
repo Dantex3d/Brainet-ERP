@@ -154,7 +154,7 @@ class GradingPolicy(models.Model):
     min_score = models.IntegerField()
     max_score = models.IntegerField()
 
-    points = models.DecimalField(max_digits=4, decimal_places=1, default=0)
+    points = models.IntegerField(default=0)
     remarks = models.CharField(max_length=100, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
