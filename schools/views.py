@@ -2763,7 +2763,7 @@ def export_marksheet_pdf(request):
     if selected_stream:
         class_label = f"{class_obj.name} - {selected_stream.name}"
     else:
-        class_label = f"{class_obj.name} (All Streams)"
+        class_label = f"{class_obj.name}"
 
     class_info = Paragraph(
         f"<b>MARKSHEET:</b> {class_label} | <b>TERM:</b> {term_obj.name} | <b>YEAR:</b> {date.today().year}",
@@ -2771,14 +2771,6 @@ def export_marksheet_pdf(request):
     )
     elements.append(class_info)
     elements.append(Spacer(1, 10))
-
-    details_text = f"<b>Class Teacher:</b> {class_teacher_name}"
-    if class_teacher_phone:
-        details_text += f" | <b>Phone:</b> {class_teacher_phone}"
-    details_text += f"<br/><b>Principal:</b> {principal_name}"
-    if principal_phone:
-        details_text += f" | <b>Phone:</b> {principal_phone}"
-
     class_details = Paragraph(details_text, styles["Normal"])
     elements.append(class_details)
     elements.append(Spacer(1, 12))
@@ -2795,7 +2787,7 @@ def export_marksheet_pdf(request):
     ]
 
     for subject in subjects:
-        header.append(subject.name.upper())
+        header.append(subject.short_name.upper())
 
     header += [
         "TOTAL",
