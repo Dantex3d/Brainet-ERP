@@ -59,13 +59,6 @@
 
                     <option value="">Select Stream (optional)</option>
 
-                    {% for s in streams %}
-                        <option value="{{ s.id }}"
-                                data-class="{{ s.class_group.id }}">
-                            {{ s.class_group.name }} - {{ s.name }}
-                        </option>
-                    {% endfor %}
-
                 </select>
 
                 <!-- DORM -->
@@ -97,24 +90,54 @@
 
 {% block extra_js %}
 <script>
-// Filter streams based on selected class
+// Dynamically load streams when class is selected (via AJAX)
 const classSelect = document.getElementById("classSelect");
 const streamSelect = document.getElementById("streamSelect");
 
 if (classSelect && streamSelect) {
-    classSelect.addEventListener("change", function () {
+    classSelect.addEventListener("change", async function () {
         const classId = this.value;
-
-        Array.from(streamSelect.options).forEach(opt => {
-            if (!opt.dataset.class) return;
-
-            opt.style.display =
-                !classId || opt.dataset.class === classId
-                ? ""
-                : "none";
-        });
-
-        streamSelect.value = "";
+        
+        // Clear previous streams
+        streamSelect.innerHTML = '<option value="">Select Stream (optional)</option>';
+        
+        if (!classId) {
+            return;
+        }
+        
+        try {
+            // Fetch streams for this class from API
+            const response = await fetch(`/schools/api/class-streams/?class_id=${classId}`);
+            const data = await response.json();
+            
+            if (data.success && data.streams.length > 0) {
+                // Add each stream as an option with animation
+                data.streams.forEach(stream => {
+                    const option = document.createElement('option');
+                    option.value = stream.id;
+                    option.textContent = stream.name;
+                    streamSelect.appendChild(option);
+                });
+                
+                // Show a subtle "pop" effect - light background flash
+                streamSelect.style.backgroundColor = '#e8f4f8';
+                setTimeout(() => {
+                    streamSelect.style.backgroundColor = 'white';
+                }, 300);
+            } else {
+                // No streams for this class
+                const option = document.createElement('option');
+                option.textContent = 'No streams available';
+                option.disabled = true;
+                streamSelect.appendChild(option);
+            }
+        } catch (error) {
+            console.error('Error loading streams:', error);
+            const option = document.createElement('option');
+            option.textContent = 'Error loading streams';
+            option.disabled = true;
+            streamSelect.appendChild(option);
+        }
     });
 }
 </script>

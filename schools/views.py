@@ -859,15 +859,14 @@ def manage_students(request):
 
     students = Student.objects.filter(school=school)
 
-    classes = Class.objects.filter(school=school)   # ✅ correct now
-    streams = Stream.objects.all()  # OR filter properly below
-
-    dormitory = Dormitory.objects.filter(school=school)
+    classes = Class.objects.filter(school=school)
+    streams = Stream.objects.filter(class_group__school=school)
+    dorms = Dormitory.objects.filter(school=school)
     return render(request, "dos/manage_students.html", {
         "students": students,
         "classes": classes,
         "streams": streams,
-        "dormitory": dormitory,
+        "dorms": dorms,
     })
 
 from django.shortcuts import get_object_or_404, redirect, render
@@ -878,12 +877,33 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 @login_required
+def get_class_streams(request):
+    """API endpoint: Return streams as JSON for a selected class"""
+    import json
+    from django.http import JsonResponse
+    
+    class_id = request.GET.get('class_id')
+    school = request.user.school
+    
+    if not class_id:
+        return JsonResponse({'streams': []})
+    
+    try:
+        class_obj = Class.objects.get(id=class_id, school=school)
+        streams = Stream.objects.filter(class_group=class_obj).values('id', 'name')
+        return JsonResponse({
+            'streams': list(streams),
+            'success': True
+        })
+    except Class.DoesNotExist:
+        return JsonResponse({'streams': [], 'success': False})
+
+@login_required
 def add_student(request):
 
     school = request.user.school
 
     classes = Class.objects.filter(school=school)
-    streams = Stream.objects.filter(class_group__school=school)
     dormitory = Dormitory.objects.filter(school=school)
 
     if request.method == "POST":
@@ -943,8 +963,8 @@ def add_student(request):
             admission_number=admission_number,
             gender=gender,
             current_class=school_class,
-            stream=stream,   # ✅ NEW
-            dorm=dorm        # ✅ NEW
+            stream=stream,
+            dormitory=dorm
         )
 
         messages.success(
@@ -956,8 +976,7 @@ def add_student(request):
 
     return render(request, "dos/add_student.html", {
         "classes": classes,
-        "streams": streams,
-        "dormitory": dormitory,
+        "dorms": dormitory,
     })
 
 @login_required

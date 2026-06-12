@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate, login, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView
 from django.urls import reverse_lazy
@@ -83,6 +83,81 @@ def custom_logout(request):
     from django.contrib.auth import logout
     logout(request)
     return redirect('home')
+
+@login_required
+def account_profile(request):
+    user = request.user
+    profile = None
+    profile_type = None
+    profile_name = None
+    profile_school = None
+    profile_email = user.email
+
+    if hasattr(user, 'teacher'):
+        profile = user.teacher
+        profile_type = 'Teacher'
+        profile_name = profile.name
+        profile_school = getattr(profile.school, 'name', None)
+    elif hasattr(user, 'dos_profile'):
+        profile = user.dos_profile
+        profile_type = 'Director of Studies'
+        profile_name = profile.name
+        profile_email = profile.email
+        profile_school = getattr(profile.school, 'name', None)
+    elif hasattr(user, 'principal'):
+        profile = user.principal
+        profile_type = 'Principal'
+        profile_name = profile.name
+        profile_email = profile.email
+        profile_school = getattr(profile.school, 'name', None)
+    elif hasattr(user, 'student_profile'):
+        profile = user.student_profile
+        profile_type = 'Student'
+        profile_name = profile.name
+        profile_school = getattr(profile.school, 'name', None)
+    else:
+        profile_type = 'User'
+        profile_school = getattr(user.school, 'name', None)
+
+    if request.method == 'POST':
+        email = request.POST.get('email', '').strip()
+        name = request.POST.get('name', '').strip()
+        password = request.POST.get('password', '').strip()
+        confirm_password = request.POST.get('confirm_password', '').strip()
+
+        if email and email != user.email:
+            if User.objects.filter(email=email).exclude(pk=user.pk).exists():
+                messages.error(request, 'Email address is already in use.')
+                return redirect('account_profile')
+            user.email = email
+            if profile and hasattr(profile, 'email'):
+                profile.email = email
+
+        if profile and name:
+            if hasattr(profile, 'name'):
+                profile.name = name
+
+        if password:
+            if password != confirm_password:
+                messages.error(request, 'Passwords do not match.')
+                return redirect('account_profile')
+            user.set_password(password)
+            update_session_auth_hash(request, user)
+
+        user.save()
+        if profile:
+            profile.save()
+
+        messages.success(request, 'Account details updated successfully.')
+        return redirect('account_profile')
+
+    return render(request, 'users/account_profile.html', {
+        'user': user,
+        'profile_type': profile_type,
+        'profile_name': profile_name,
+        'profile_school': profile_school,
+        'profile_email': profile_email,
+    })
 
 from django.contrib import messages
 from django.contrib.auth import get_user_model

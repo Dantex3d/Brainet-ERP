@@ -65,6 +65,9 @@ urlpatterns = [
     path("students/<int:student_id>/delete/", views.delete_student, name="delete_student"),
     path("students/download/", views.download_student_list, name="download_student_list"),
     path("students/<int:student_id>/report/", views.student_report, name="student_report"),
+    
+    # API ENDPOINTS
+    path("api/class-streams/", views.get_class_streams, name="get_class_streams"),
 
     # =====================================================
     # CLASSES

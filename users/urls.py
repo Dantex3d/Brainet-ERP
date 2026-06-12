@@ -23,6 +23,12 @@ urlpatterns = [
         views.dashboard,
         name='dashboard'
     ),
+
+    path(
+        'account/',
+        views.account_profile,
+        name='account_profile'
+    ),
     
     path('logout/', views.custom_logout, name='logout')
     
