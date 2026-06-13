@@ -552,27 +552,15 @@ function updateAssignedList() {
 }
 
 function submitSelectedSubjects() {
-    const classId = document.getElementById('classIdSubject').value;
-    const subjectIds = Object.keys(selectedSubjects);
+    const form = document.getElementById('subjectForm');
+    const selectedCheckboxes = Array.from(document.querySelectorAll('.subject-checkbox:checked'));
 
-    if (subjectIds.length === 0) {
+    if (selectedCheckboxes.length === 0) {
         alert('Please select at least one subject');
         return;
     }
 
-    subjectIds.forEach(subjectId => {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '{% url "add_class_subject" %}';
-        form.innerHTML = `
-            {% csrf_token %}
-            <input type="hidden" name="class_id" value="${classId}">
-            <input type="hidden" name="subject_id" value="${subjectId}">
-        `;
-        document.body.appendChild(form);
-        form.submit();
-        document.body.removeChild(form);
-    });
+    form.submit();
 }
 
 window.addEventListener('load', () => {
