@@ -607,6 +607,26 @@
 
             </div>
 
+            <!-- ANNOUNCEMENTS FOR STUDENTS -->
+            <div class="card border-0 shadow-sm rounded-4 mt-4">
+                <div class="card-header bg-primary text-white rounded-top-4">
+                    <h5 class="mb-0">📢 Announcements</h5>
+                </div>
+                <div class="card-body">
+                    {% if notices %}
+                        {% for note in notices|slice:":5" %}
+                            <div class="mb-3">
+                                <strong>{{ note.title }}</strong>
+                                <div class="small text-muted">{{ note.created_at }}</div>
+                                <div>{{ note.message|truncatechars:140 }}</div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-muted">No announcements</div>
+                    {% endif %}
+                </div>
+            </div>
+
         </div>
 
     </div>

@@ -42,23 +42,21 @@
                 {% csrf_token %}
                 <div class="row g-3">
 
-                    <!-- STUDENTS -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Detected Term</label>
+                        <input type="text" class="form-control" value="{{ detected_term }}" readonly>
+                    </div>
+
                     <div class="col-md-6">
                         <label class="form-label fw-bold">Number of Students</label>
-                        <input type="number" name="student_count" class="form-control" placeholder="e.g 120" required>
+                        <input type="text" class="form-control" value="{{ detected_student_count }}" readonly>
                     </div>
 
-                    <!-- TERM -->
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold">Term</label>
-                        <input type="text" name="term" class="form-control" placeholder="e.g Term 1 2026" required>
-                    </div>
-
-                    <!-- OPTIONAL NOTES -->
                     <div class="col-12">
                         <label class="form-label fw-bold">Notes (Optional)</label>
                         <textarea name="notes" rows="4" class="form-control" placeholder="Any additional information..."></textarea>
                     </div>
+
                 </div>
 
                 <!-- BUTTONS -->

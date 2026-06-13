@@ -262,15 +262,36 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <div class="alert alert-primary alert-sm rounded-3 py-2 px-3 mb-2">
-                        <strong>📅</strong> Midterm exams next week
-                    </div>
-                    <div class="alert alert-success alert-sm rounded-3 py-2 px-3 mb-2">
-                        <strong>✓</strong> Fee collection improved
-                    </div>
-                    <div class="alert alert-warning alert-sm rounded-3 py-2 px-3 mb-0">
-                        <strong>📌</strong> Staff meeting Friday 2 PM
-                    </div>
+                    {% if notices_sent %}
+                        {% for note in notices_sent %}
+                            <div class="alert alert-{{ 'danger' if note.is_urgent else 'primary' }} alert-sm rounded-3 py-2 px-3 mb-2">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <strong>{{ note.title }}</strong>
+                                        <div class="small text-muted">{{ note.created_at }}</div>
+                                        <div class="mt-1">{{ note.message|truncatechars:140 }}</div>
+                                        {% if note.follow_up %}
+                                            <div class="mt-2"><small class="text-success">Follow-up: {{ note.follow_up }}</small></div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="text-end">
+                                        <a href="{% url 'edit_notice' note.id %}" class="btn btn-sm btn-light mb-1">Edit</a>
+                                            <form method="post" action="{% url 'followup_notice' note.id %}" class="d-inline-block mb-1">
+                                                {% csrf_token %}
+                                                <input type="text" name="follow_up" class="form-control form-control-sm d-inline-block" placeholder="Add follow-up" style="width:160px; display:inline-block;" />
+                                                <button class="btn btn-sm btn-outline-success">Follow-up</button>
+                                            </form>
+                                        <form method="post" action="{% url 'delete_notice' note.id %}" style="display:inline">
+                                            {% csrf_token %}
+                                            <button class="btn btn-sm btn-outline-danger">Delete</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-muted">No announcements yet.</div>
+                    {% endif %}
                 </div>
             </div>
 

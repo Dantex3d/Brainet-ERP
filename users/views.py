@@ -1,8 +1,14 @@
-from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login, update_session_auth_hash
+from datetime import timedelta
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
+from django.contrib.auth import authenticate, login, update_session_auth_hash, get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView
-from django.urls import reverse_lazy
+from django.core.mail import send_mail
+from django.urls import reverse, reverse_lazy
+from django.conf import settings
+from django.utils import timezone
+from schools.models import School
 from .forms import CustomAuthenticationForm
 
 
@@ -159,11 +165,52 @@ def account_profile(request):
         'profile_email': profile_email,
     })
 
-from django.contrib import messages
-from django.contrib.auth import get_user_model
-from schools.models import School
-
 User = get_user_model()
+
+
+def send_verification_email(user, request=None):
+    if not settings.EMAIL_HOST_USER or not user.email:
+        return
+
+    token = user.generate_email_verification_token()
+    verify_link = None
+    if request:
+        verify_link = request.build_absolute_uri(reverse('verify_user_email', args=[token]))
+    else:
+        verify_link = reverse('verify_user_email', args=[token])
+
+    subject = 'Verify your Brainet account'
+    body = (
+        f"Hello {getattr(user, 'first_name', user.email)},\n\n"
+        f"Please verify your email address by clicking the link below:\n\n{verify_link}\n\n"
+        "This link expires in 1 hour. If it expires, request a new verification email.\n\n"
+        "If you did not request this, please ignore this message."
+    )
+
+    try:
+        send_mail(
+            subject=subject,
+            message=body,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            fail_silently=True,
+        )
+    except Exception:
+        pass
+
+
+def verify_user_email(request, token):
+    user = get_object_or_404(User, email_verification_token=token)
+
+    if not user.email_verification_sent_at or user.email_verification_sent_at + timedelta(hours=1) < timezone.now():
+        user.email_verification_token = None
+        user.save(update_fields=["email_verification_token"])
+        messages.error(request, 'Verification link has expired. Please request a new verification email.')
+        return redirect('home')
+
+    user.mark_email_verified()
+    messages.success(request, 'Your email has been verified successfully. Please log in.')
+    return redirect('home')
 
 
 def create_custom_user(request):

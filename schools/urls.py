@@ -26,6 +26,8 @@ urlpatterns = [
     path("schools/<int:school_id>/view/", views.view_school, name="view_school"),
     path("schools/<int:school_id>/edit/", views.edit_school, name="edit_school"),
     path("schools/<int:school_id>/activate/", views.activate_school, name="activate_school"),
+    path("schools/<int:school_id>/verify/", views.activate_school, name="verify_school"),
+    path("schools/verify/<str:token>/", views.verify_school_via_token, name="verify_school_via_token"),
     path("schools/<int:school_id>/deactivate/", views.deactivate_school, name="deactivate_school"),
     path("schools/<int:school_id>/delete/", views.delete_school, name="delete_school"),
 
@@ -179,6 +181,9 @@ urlpatterns = [
     # SCHOOL NOTICES & INFO
     # =====================================================
     path("notices/send/", views.send_school_notice, name="send_school_notice"),
+    path("notices/<int:notice_id>/edit/", views.edit_notice, name="edit_notice"),
+    path("notices/<int:notice_id>/followup/", views.followup_notice, name="followup_notice"),
+    path("notices/<int:notice_id>/delete/", views.delete_notice, name="delete_notice"),
     path("school/edit-info/", views.edit_school_info, name="edit_school_info"),
     
 ]

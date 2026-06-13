@@ -4,6 +4,8 @@ import email
 import re
 from urllib import request
 from django.utils import timezone
+from django.conf import settings
+from django.core.mail import send_mail
 
 from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
@@ -46,23 +48,103 @@ from teachers.models import Teacher
 def superuser_required(view_func):
     return user_passes_test(lambda u: u.is_superuser)(view_func)
 
+
+def send_user_verification_email(user, request=None, role_name=None):
+    if not settings.EMAIL_HOST_USER or not user.email:
+        return
+
+    token = user.generate_email_verification_token()
+    verify_link = request.build_absolute_uri(reverse('verify_user_email', args=[token])) if request else reverse('verify_user_email', args=[token])
+    subject = f"Verify your Brainet account"
+    if role_name:
+        subject = f"Verify your {role_name} account"
+
+    body = (
+        f"Hello {getattr(user, 'first_name', user.email)},\n\n"
+        f"Please verify your email address by clicking the link below:\n\n{verify_link}\n\n"
+        "Once verified you can use this email for password reset and secure access.\n\n"
+        "If you did not request this account, please contact support."
+    )
+
+    try:
+        send_mail(
+            subject=subject,
+            message=body,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            fail_silently=True,
+        )
+    except Exception:
+        pass
+
+
+def send_school_verification_email(school, request=None):
+    if not settings.EMAIL_HOST_USER or not school.email:
+        return
+
+    token = school.generate_verification_token()
+    verify_link = request.build_absolute_uri(reverse('verify_school_via_token', args=[token])) if request else reverse('verify_school_via_token', args=[token])
+    subject = "Verify your school registration on Brainet"
+    body = (
+        f"Hello {school.name},\n\n"
+        f"Please verify this school's email address by clicking the link below:\n\n{verify_link}\n\n"
+        "This link expires in 1 hour. After verification the school admin will be able to complete activation and password resets.\n\n"
+        "If you did not register this school, please ignore this message."
+    )
+
+    try:
+        send_mail(
+            subject=subject,
+            message=body,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[school.email],
+            fail_silently=True,
+        )
+    except Exception:
+        pass
+
+
 @login_required
 def request_voucher(request):
 
     school = request.user.school
 
+    # compute current term and student count for display
+    today = timezone.now().date()
+    current_term = Term.objects.filter(
+        school=school,
+        start_date__lte=today,
+        end_date__gte=today
+    ).first()
+
+    if not current_term:
+        current_term = Term.objects.filter(school=school).order_by("-start_date").first()
+
+    term_name = current_term.name if current_term else ""
+    student_count_display = Student.objects.filter(school=school).count()
+
     if request.method == "POST":
 
-        VoucherRequest.objects.create(
-
+        # Determine current term for the school (prefer active term)
+        today = timezone.now().date()
+        current_term = Term.objects.filter(
             school=school,
+            start_date__lte=today,
+            end_date__gte=today
+        ).first()
 
-            requested_by=request.user,
+        if not current_term:
+            current_term = Term.objects.filter(school=school).order_by("-start_date").first()
 
-            student_count=request.POST["student_count"],
+        term_name = current_term.name if current_term else ""
 
-            term_id=request.POST["term"],
+        # Count students automatically
+        student_count = Student.objects.filter(school=school).count()
 
+        VoucherRequest.objects.create(
+            school=school,
+            term=term_name,
+            student_count=student_count,
             status="pending"
         )
 
@@ -79,7 +161,9 @@ def request_voucher(request):
     )
 
     context = {
-        "terms": terms
+        "terms": terms,
+        "detected_term": term_name,
+        "detected_student_count": student_count_display,
     }
 
     return render(
@@ -87,6 +171,64 @@ def request_voucher(request):
         "dashboards/request_voucher.html",
         context
     )
+
+
+@login_required
+def edit_notice(request, notice_id):
+    notice = get_object_or_404(SchoolNotice, id=notice_id, school=request.user.school)
+
+    # Only sender, principal or superuser can edit
+    allowed = (request.user == notice.sender) or getattr(request.user, 'role', '') == 'principal' or request.user.is_superuser
+    if not allowed:
+        messages.error(request, "Permission denied.")
+        return redirect('principal_dashboard')
+
+    if request.method == 'POST':
+        notice.title = request.POST.get('title', notice.title)
+        notice.message = request.POST.get('message', notice.message)
+        notice.recipient_type = request.POST.get('recipient_type', notice.recipient_type)
+        notice.is_urgent = bool(request.POST.get('is_urgent'))
+        notice.save()
+        messages.success(request, "Announcement updated.")
+        return redirect('principal_dashboard')
+
+    return render(request, 'schools/edit_notice.html', {'notice': notice})
+
+
+@login_required
+def followup_notice(request, notice_id):
+    notice = get_object_or_404(SchoolNotice, id=notice_id, school=request.user.school)
+
+    # Allow principals, dos, or sender to follow up
+    allowed = getattr(request.user, 'role', '') in ['principal', 'dos'] or request.user == notice.sender or request.user.is_superuser
+    if not allowed:
+        messages.error(request, "Permission denied.")
+        return redirect('principal_dashboard')
+
+    if request.method == 'POST':
+        follow_text = request.POST.get('follow_up', '').strip()
+        if follow_text:
+            notice.follow_up = follow_text
+            notice.followed_by = request.user
+            notice.followed_at = timezone.now()
+            notice.save()
+            messages.success(request, "Follow-up saved.")
+        else:
+            messages.error(request, "Follow-up text cannot be empty.")
+
+    return redirect('principal_dashboard')
+
+
+@login_required
+def delete_notice(request, notice_id):
+    notice = get_object_or_404(SchoolNotice, id=notice_id, school=request.user.school)
+    allowed = request.user == notice.sender or getattr(request.user, 'role', '') == 'principal' or request.user.is_superuser
+    if request.method == 'POST' and allowed:
+        notice.delete()
+        messages.success(request, "Announcement deleted.")
+    else:
+        messages.error(request, "Permission denied or invalid request.")
+    return redirect('principal_dashboard')
 
 @login_required
 def approve_voucher(request, id):
@@ -167,6 +309,8 @@ def superuser_dashboard(request):
     # include pending license renewals so superusers can see reactivation requests
     from .models import LicenseRenewal
     pending_renewals = LicenseRenewal.objects.filter(status="pending").select_related("school", "requested_by").order_by("-requested_at")
+    principals = Principal.objects.select_related("school").all()
+    doss = DirectorOfStudies.objects.select_related("school").all()
 
     context = {
 
@@ -187,6 +331,8 @@ def superuser_dashboard(request):
         "unread_notifications": unread_notifications,
         "pending_renewals": pending_renewals,
         "pending_renewals_count": pending_renewals.count(),
+        "principals": principals,
+        "doss": doss,
     }
 
     return render(
@@ -235,6 +381,18 @@ def send_query(request):
             parent=None,
             status="pending"
         )
+
+        try:
+            if settings.EMAIL_HOST_USER and superuser.email:
+                send_mail(
+                    subject=f"DOS query: {subject}",
+                    message=f"{request.user.get_full_name() or request.user.email} sent a DOS query:\n\n{message_text}",
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[superuser.email],
+                    fail_silently=True,
+                )
+        except Exception:
+            pass
 
         messages.success(
             request,
@@ -575,6 +733,8 @@ def dos_dashboard(request):
         "pending_vouchers": pending_vouchers,
         "approved_vouchers": approved_vouchers,
         "rejected_vouchers": rejected_vouchers,
+        # Notices for staff
+        "notices": SchoolNotice.objects.filter(school=school).filter(recipient_type__in=['teachers','all']).order_by('-created_at'),
     }
 
     return render(request, "dashboards/dos.html", context)
@@ -608,6 +768,8 @@ def principal_dashboard(request):
         "teacher_count": teacher_count,
         "dorm_count": dorm_count,
         "subject_performance": subject_performance,
+        "notices_sent": SchoolNotice.objects.filter(school=school).order_by('-created_at'),
+        "notices": SchoolNotice.objects.filter(school=school).order_by('-created_at'),
     })
 
 @login_required
@@ -1127,6 +1289,7 @@ def student_dashboard(request):
         "subjects": subjects,
         "assignments": assignments,
         "submissions": submissions,
+        "notices": SchoolNotice.objects.filter(school=school).filter(recipient_type__in=['students','all']).order_by('-created_at'),
     })
 def add_dorm(request):
     school = request.user.school
@@ -1694,9 +1857,11 @@ def create_staff(request):
         user.first_name = name
         user.save()
 
+        send_user_verification_email(user, request=request, role_name=role.replace('_', ' ').title())
+
         messages.success(
             request,
-            f"{role.replace('_', ' ').title()} account created successfully."
+            f"{role.replace('_', ' ').title()} account created successfully. A verification email has been sent."
         )
 
         return redirect("superuser_dashboard")
@@ -1796,9 +1961,11 @@ def register_dos_by_superuser(request):
                 phone=phone
             )
 
+            send_user_verification_email(user, request=request, role_name='Director of Studies')
+
             messages.success(
                 request,
-                f"{name} registered successfully."
+                f"{name} registered successfully. A verification email has been sent."
             )
 
         except School.DoesNotExist:
@@ -1872,7 +2039,9 @@ def register_principal_by_superuser(request):
                 phone=phone
             )
 
-            messages.success(request, f"{name} registered successfully as Principal.")
+            send_user_verification_email(user, request=request, role_name='Principal')
+
+            messages.success(request, f"{name} registered successfully as Principal. A verification email has been sent.")
 
         except School.DoesNotExist:
             messages.error(request, "Selected school does not exist.")
@@ -1888,9 +2057,60 @@ def register_principal_by_superuser(request):
 def activate_school(request, school_id):
     school = get_object_or_404(School, id=school_id)
     school.is_active = True
+    school.is_verified = True
+    school.verified_at = timezone.now()
+    if hasattr(request.user, 'email'):
+        school.verified_by = request.user
     school.save()
-    messages.success(request, "School activated successfully.")
+
+    email_subject = f"School verified: {school.name}"
+    email_body = (
+        f"The school '{school.name}' has been verified and activated by {request.user.get_full_name() or request.user.email}.\n"
+        f"School email: {school.email}\n"
+        f"Phone: {school.phone}\n"
+    )
+
+    try:
+        if settings.EMAIL_HOST_USER and school.email:
+            send_mail(
+                subject=email_subject,
+                message=email_body,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[school.email],
+                fail_silently=True,
+            )
+        for su in User.objects.filter(is_superuser=True):
+            if su.email:
+                send_mail(
+                    subject=email_subject,
+                    message=email_body,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[su.email],
+                    fail_silently=True,
+                )
+    except Exception:
+        pass
+
+    messages.success(request, "School activated and verified successfully.")
     return redirect("view_school", school_id=school.id)
+
+
+def verify_school_via_token(request, token):
+    school = get_object_or_404(School, verification_token=token)
+
+    if not school.verification_sent_at or school.verification_sent_at + timedelta(hours=1) < timezone.now():
+        school.verification_token = None
+        school.save(update_fields=["verification_token"])
+        messages.error(request, "School verification link has expired. Please request a new school registration email.")
+        return redirect("register_school")
+
+    school.is_verified = True
+    school.verified_at = timezone.now()
+    school.verification_token = None
+    school.save(update_fields=["is_verified", "verified_at", "verification_token"])
+    messages.success(request, "School email verified successfully. A school administrator will complete activation soon.")
+    return redirect("register_school_success")
+
 def active_schools(request):
     schools = School.objects.filter(is_active=True)
     return render(request, "dos/active_schools.html", {
@@ -2095,6 +2315,8 @@ def register_school(request):
             is_active=False,
         )
 
+        send_school_verification_email(school, request=request)
+
         try:
             superusers = User.objects.filter(is_superuser=True)
             sender = superusers.first() if superusers.exists() else None
@@ -2111,6 +2333,17 @@ def register_school(request):
                     title=title,
                     message=message_text,
                 )
+                if settings.EMAIL_HOST_USER and su.email:
+                    try:
+                        send_mail(
+                            subject=title,
+                            message=message_text,
+                            from_email=settings.DEFAULT_FROM_EMAIL,
+                            recipient_list=[su.email],
+                            fail_silently=True,
+                        )
+                    except Exception:
+                        pass
         except Exception:
             pass
 

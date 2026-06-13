@@ -4,7 +4,7 @@ from django.shortcuts import get_object_or_404, render, redirect
 
 from assignments.models import Assignment, Submission
 from assignments.models import Submission
-from schools.models import Notification, Principal, Subject
+from schools.models import Notification, Principal, Subject, SchoolNotice
 from students.models import Student
 from users.models import CustomUser
 from .models import Teacher, ClassTeacherAssignment, TeacherSubjectAssignment
@@ -171,12 +171,24 @@ def teacher_dashboard(request):
         teacher=teacher
     ).select_related("subject", "class_obj", "stream")
 
-    subjects = []
-    seen = set()
+    subject_groups = {}
     for sa in subject_assignments:
-        if sa.subject_id not in seen:
-            seen.add(sa.subject_id)
-            subjects.append(sa.subject)
+        if sa.subject_id not in subject_groups:
+            subject_groups[sa.subject_id] = {
+                "subject": sa.subject,
+                "classes": []
+            }
+        label = sa.class_obj.name
+        if sa.stream:
+            label = f"{label} — {sa.stream.name}"
+        subject_groups[sa.subject_id]["classes"].append({
+            "class_obj": sa.class_obj,
+            "stream": sa.stream,
+            "label": label,
+        })
+
+    subjects = list(subject_groups.values())
+    subject_list = [group["subject"] for group in subjects]
 
     # =========================
     # STUDENTS (SAFE) - prefer context of a single assignment if present
@@ -232,17 +244,30 @@ def teacher_dashboard(request):
     ).count()
 
     # =========================
+    # SCHOOL NOTICES
+    # =========================
+    notices = SchoolNotice.objects.filter(school=school).filter(recipient_type__in=['teachers','all']).order_by('-created_at')
+
+    # =========================
     # CONTEXT
     # =========================
-    return render(request, "teachers/dashboard.html", {
+    template_name = "dashboards/subject_teacher.html" if getattr(request.user, "role", "") == "subject_teacher" else "teachers/dashboard.html"
+
+    return render(request, template_name, {
         "teacher": teacher,
         "assigned_classes": assigned_classes,
-        "subjects": subjects,
+        "subjects": subject_list,
+        "subject_groups": subjects,
         "students": students,
         "assignments": assignments,
         "submissions": submissions,
         "notifications": notifications,
         "unread_notifications": unread_notifications,
+        "notices": notices,
+        "subjects_count": len(subjects),
+        "students_count": students.count() if hasattr(students, 'count') else len(students),
+        "assignments_count": assignments.count(),
+        "pending_marks": submissions.filter(assignment__isnull=False).count() if hasattr(submissions, 'filter') else len(submissions),
     })    
 
 

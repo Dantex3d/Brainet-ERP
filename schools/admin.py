@@ -5,9 +5,9 @@ from .models import Dormitory, School, DirectorOfStudies,Term, Class
 from .views import edit_school, view_school
 @admin.register(School)
 class SchoolAdmin(admin.ModelAdmin):
-    list_display = ('name', 'address', 'phone', 'email', 'is_active')
+    list_display = ('name', 'address', 'phone', 'email', 'is_active', 'is_verified', 'verified_at')
     search_fields = ('name', 'phone', 'email')
-    list_filter = ('is_active',)
+    list_filter = ('is_active', 'is_verified',)
 
 @admin.register(DirectorOfStudies)
 class DOSAdmin(admin.ModelAdmin):

@@ -1,0 +1,22 @@
+{
+  "name": "brainet-desktop-app",
+  "version": "0.1.0",
+  "description": "Electron desktop wrapper for the Brainet ERP web system.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "package": "electron-packager . BrainetERP --platform=win32 --arch=x64 --out=dist --overwrite"
+  },
+  "keywords": [
+    "brainet",
+    "desktop",
+    "electron",
+    "erp"
+  ],
+  "author": "Brainet",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^26.0.0",
+    "electron-packager": "^17.1.0"
+  }
+}

@@ -52,7 +52,18 @@ class School(models.Model):
 
     subscription_balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     is_active = models.BooleanField(default=False)
-    
+    is_verified = models.BooleanField(default=False)
+    verified_at = models.DateTimeField(null=True, blank=True)
+    verified_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="verified_schools"
+    )
+    verification_token = models.CharField(max_length=64, blank=True, null=True, unique=True)
+    verification_sent_at = models.DateTimeField(null=True, blank=True)
+
     # License management
     license_status = models.CharField(max_length=20, choices=LICENSE_STATUS, default='active')
     license_expiry = models.DateField(null=True, blank=True)
@@ -60,6 +71,15 @@ class School(models.Model):
     deactivation_reason = models.TextField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def generate_verification_token(self):
+        import secrets
+
+        token = secrets.token_urlsafe(32)
+        self.verification_token = token
+        self.verification_sent_at = timezone.now()
+        self.save(update_fields=["verification_token", "verification_sent_at"])
+        return token
 
     def __str__(self):
         return self.name
@@ -453,6 +473,16 @@ class SchoolNotice(models.Model):
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    # Principal follow-up / moderation fields
+    follow_up = models.TextField(null=True, blank=True)
+    followed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='followed_notices'
+    )
+    followed_at = models.DateTimeField(null=True, blank=True)
     
     class Meta:
         ordering = ['-created_at']

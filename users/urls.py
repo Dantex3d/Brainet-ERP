@@ -29,8 +29,10 @@ urlpatterns = [
         views.account_profile,
         name='account_profile'
     ),
-    
+    path(
+        'verify-email/<str:token>/',
+        views.verify_user_email,
+        name='verify_user_email'
+    ),
     path('logout/', views.custom_logout, name='logout')
-    
-    
 ]

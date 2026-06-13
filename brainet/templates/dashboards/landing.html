@@ -808,13 +808,38 @@
 
         </p>
 
+        <div class="d-flex justify-content-center flex-wrap gap-3 mb-4">
+            <a href="{% url 'login' %}"
+               class="btn btn-success btn-lg shadow-lg">
+                <i class="bi bi-globe2 me-2"></i>
+                Open Web App
+            </a>
 
-                <a href="{% url 'register_school' %}"
-                   class="btn btn-outline-light btn-lg shadow-lg">
+            <a href="https://play.google.com/store/apps/details?id=com.brainet.erp"
+               target="_blank"
+               class="btn btn-primary btn-lg shadow-lg">
+                <i class="bi bi-phone me-2"></i>
+                Download Android App
+            </a>
+        </div>
 
-                    <i class="bi bi-building-add me-2"></i>
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="stat-card p-4 text-start">
+                    <h5 class="mb-2">Download the Brainet mobile experience</h5>
+                    <p class="mb-0">
+                        Use the web portal from any browser or get the Android app for on-the-go access to attendance, grades, assignments and reports.
+                    </p>
+                </div>
+            </div>
+        </div>
 
-                    Register  Your  School
+        <a href="{% url 'register_school' %}"
+           class="btn btn-outline-light btn-lg shadow-lg mt-4">
+
+            <i class="bi bi-building-add me-2"></i>
+
+            Register Your School
 
         </a>
 

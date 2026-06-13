@@ -401,6 +401,89 @@
                 </div>
             </div>
 
+            <!-- PRINCIPALS AND DOS LIST -->
+            <div class="row g-4 mb-4">
+                <div class="col-lg-6">
+                    <div class="card border-0 shadow-lg rounded-4 h-100">
+                        <div class="card-header bg-primary text-white rounded-top-4">
+                            <h5 class="mb-0">👨‍💼 Principals</h5>
+                        </div>
+                        <div class="card-body table-responsive">
+                            {% if principals.count > 0 %}
+                            <table class="table table-sm mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>School</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for principal in principals %}
+                                    <tr>
+                                        <td>{{ principal.name }}</td>
+                                        <td>{{ principal.email }}</td>
+                                        <td>{{ principal.school.name }}</td>
+                                        <td>
+                                            {% if principal.user.email_verified %}
+                                            <span class="badge bg-success">Verified</span>
+                                            {% else %}
+                                            <span class="badge bg-warning">Unverified</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            {% else %}
+                            <p class="text-muted text-center py-4">No principals registered yet.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="card border-0 shadow-lg rounded-4 h-100">
+                        <div class="card-header bg-info text-white rounded-top-4">
+                            <h5 class="mb-0">👩‍💻 Directors of Studies</h5>
+                        </div>
+                        <div class="card-body table-responsive">
+                            {% if doss.count > 0 %}
+                            <table class="table table-sm mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>School</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for dos in doss %}
+                                    <tr>
+                                        <td>{{ dos.name }}</td>
+                                        <td>{{ dos.email }}</td>
+                                        <td>{{ dos.school.name }}</td>
+                                        <td>
+                                            {% if dos.user.email_verified %}
+                                            <span class="badge bg-success">Verified</span>
+                                            {% else %}
+                                            <span class="badge bg-warning">Unverified</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            {% else %}
+                            <p class="text-muted text-center py-4">No DOS accounts registered yet.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- DOS & VOUCHERS GRID -->
             <div class="row g-4 mb-4">
 
