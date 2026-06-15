@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: brainet-erp
+    runtime: python
+    buildCommand: pip install -r requirements.txt && python manage.py migrate && python manage.py collectstatic --noinput
+    startCommand: gunicorn brainet.wsgi:application
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.10"
