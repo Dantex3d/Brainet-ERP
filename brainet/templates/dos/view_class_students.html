@@ -46,16 +46,18 @@
                 <div class="col-md-8">
                     <label class="form-label fw-bold">Stream</label>
                     <div class="btn-group w-100" role="group">
+                        {% if not teacher_restricted %}
                         <!-- ALL STUDENTS BUTTON -->
                         <a href="?stream_id=" 
                            class="btn btn-outline-primary {% if not selected_stream %}active{% endif %}">
                             📌 All Students
                         </a>
+                        {% endif %}
 
                         <!-- STREAM BUTTONS -->
                         {% for stream in streams %}
                         <a href="?stream_id={{ stream.id }}" 
-                           class="btn btn-outline-primary {% if selected_stream.id == stream.id %}active{% endif %}">
+                           class="btn btn-outline-primary {% if selected_stream and selected_stream.id == stream.id %}active{% endif %}">
                             {{ stream.name }}
                         </a>
                         {% endfor %}

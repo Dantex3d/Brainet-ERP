@@ -779,20 +779,42 @@ def class_list_selector(request):
     school = request.user.school
     
     classes = Class.objects.filter(school=school).order_by("level", "name")
+    teacher_restricted = False
+    teacher_assignments = None
+    assigned_class_ids = []
+    
+    teacher = Teacher.objects.filter(user=request.user, school=school).first()
+    if teacher:
+        teacher_assignments = ClassTeacherAssignment.objects.filter(
+            teacher=teacher
+        ).select_related("class_obj", "stream")
+        if teacher_assignments.exists():
+            teacher_restricted = True
+            assigned_class_ids = list(teacher_assignments.values_list("class_obj_id", flat=True))
+            classes = classes.filter(id__in=assigned_class_ids)
     
     streams = []
     selected_class = None
     
     if request.GET.get("class_id"):
         selected_class_id = request.GET.get("class_id")
-        selected_class = get_object_or_404(Class, id=selected_class_id, school=school)
+        selected_class_qs = Class.objects.filter(id=selected_class_id, school=school)
+        if teacher_restricted:
+            selected_class_qs = selected_class_qs.filter(id__in=assigned_class_ids)
+        selected_class = get_object_or_404(selected_class_qs)
         streams = Stream.objects.filter(class_group=selected_class).order_by("name")
+        if teacher_restricted and teacher_assignments is not None:
+            valid_stream_ids = list(
+                teacher_assignments.filter(class_obj=selected_class).values_list("stream_id", flat=True)
+            )
+            streams = streams.filter(id__in=valid_stream_ids)
     
     return render(request, "dos/class_list_selector.html", {
         "school": school,
         "classes": classes,
         "streams": streams,
         "selected_class": selected_class,
+        "teacher_restricted": teacher_restricted,
     })
     
 from django.db.models import Count
@@ -1020,6 +1042,18 @@ def view_class_students(request, class_id):
     
     if stream_id:
         selected_stream = get_object_or_404(Stream, id=stream_id, class_group=school_class)
+
+    # Restrict class teachers to their assigned stream(s) for this class
+    teacher_assignments = ClassTeacherAssignment.objects.filter(
+        teacher__user=request.user,
+        class_obj=school_class
+    ).select_related("stream")
+    teacher_restricted = teacher_assignments.exists()
+    if teacher_restricted:
+        valid_stream_ids = list(teacher_assignments.values_list("stream_id", flat=True))
+        streams = streams.filter(id__in=valid_stream_ids)
+        if not selected_stream or selected_stream.id not in valid_stream_ids:
+            selected_stream = Stream.objects.filter(id=valid_stream_ids[0]).first()
     
     # Get students based on selection
     student_query = Student.objects.filter(
@@ -1051,6 +1085,7 @@ def view_class_students(request, class_id):
         "total_students": total_students,
         "male_count": male_count,
         "female_count": female_count,
+        "teacher_restricted": teacher_restricted,
     })
     
 @login_required 
@@ -1537,6 +1572,16 @@ def download_class_list_pdf(request, class_id):
     selected_stream = None
     if stream_id:
         selected_stream = get_object_or_404(Stream, id=stream_id, class_group=class_obj)
+
+    # Restrict class teachers to their assigned stream for this class
+    class_teacher_assignments = ClassTeacherAssignment.objects.filter(
+        teacher__user=request.user,
+        class_obj=class_obj
+    ).select_related("stream")
+    if class_teacher_assignments.exists():
+        valid_stream_ids = list(class_teacher_assignments.values_list("stream_id", flat=True))
+        if not selected_stream or selected_stream.id not in valid_stream_ids:
+            selected_stream = Stream.objects.filter(id=valid_stream_ids[0]).first()
 
     # =========================
     # GET STUDENTS - STRICT FILTERING
