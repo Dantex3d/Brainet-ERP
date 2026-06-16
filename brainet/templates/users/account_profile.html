@@ -70,7 +70,7 @@
                     </div>
                 </div>
 
-                <div class="mt-4 d-flex gap-2">
+                <div class="mt-4 d-flex gap-2 align-items-center">
                     <button type="submit" class="btn btn-primary">
                         Save Changes
                     </button>
@@ -79,6 +79,23 @@
                     </a>
                 </div>
             </form>
+
+            {% if not user.email_verified %}
+            <div class="mt-4 p-3 border rounded-4 bg-warning bg-opacity-10">
+                <div class="d-flex flex-column gap-3">
+                    <div>
+                        <strong>Email not verified</strong>
+                        <p class="mb-0 text-muted">Please verify your email to secure your account and receive system alerts.</p>
+                    </div>
+                    <form method="post" action="{% url 'resend_verification_email' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline-warning">
+                            Resend Verification Email
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>

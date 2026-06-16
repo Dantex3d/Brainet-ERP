@@ -224,20 +224,22 @@
                         </p>
 
                         <div class="d-flex flex-wrap gap-2">
-                            <a href="{% url 'download_class_list_pdf' assignment.class_obj.id %}"
-                               class="btn btn-danger rounded-4 btn-sm">
+                            <a href="{% url 'view_class_students' assignment.class_obj.id %}{% if assignment.stream %}?stream_id={{ assignment.stream.id }}{% endif %}"
+                               class="btn btn-primary rounded-4 btn-sm">
 
-                                Download Class List PDF
+                                View & Export Class List
 
                             </a>
                         </div>
                     </div>
+
                     {% if not forloop.last %}
                     <hr class="my-2">
                     {% endif %}
                     {% endfor %}
 
                 </div>
+
 
             </div>
 

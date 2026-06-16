@@ -428,6 +428,16 @@ def teacher_online_class_detail(request, online_class_id):
     ).select_related("student").order_by("-status", "joined_at")
 
     if request.method == "POST":
+        if "board_save" in request.POST:
+            board_notes = request.POST.get("board_notes", "").strip()
+            board_attachment = request.FILES.get("board_attachment")
+            online_class.board_notes = board_notes
+            if board_attachment:
+                online_class.board_attachment = board_attachment
+            online_class.save()
+            messages.success(request, "Class board updated successfully.")
+            return redirect("teacher_online_class_detail", online_class_id=online_class.id)
+
         action = request.POST.get("action")
         participant_id = request.POST.get("participant_id")
 

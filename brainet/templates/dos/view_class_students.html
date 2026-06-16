@@ -1,0 +1,232 @@
+{% extends 'dashboards/base.html' %}
+{% load static %}
+
+{% block content %}
+
+<div class="container-fluid py-4">
+
+    <!-- PAGE HEADER -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div>
+                <h1 class="fw-bold text-primary mb-1">
+                    👨‍🎓 View Class Students
+                </h1>
+                <p class="text-muted mb-0">
+                    {{ school.name }} — Select stream and view students
+                </p>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="d-flex justify-content-end gap-2">
+                <a href="{% url 'class_list_selector' %}" class="btn btn-outline-secondary shadow-sm rounded-3">
+                    ← Back
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- CLASS & STREAM SELECTOR CARD -->
+    <div class="card border-0 shadow-lg rounded-4 mb-4">
+        <div class="card-header bg-primary text-white rounded-top-4">
+            <h5 class="mb-0">🔍 Select Stream (Optional)</h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <!-- CLASS NAME (DISPLAY ONLY) -->
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Class</label>
+                    <div class="alert alert-info bg-light-info border-info py-3 rounded-3">
+                        <h6 class="mb-0">📚 {{ school_class.name }}</h6>
+                    </div>
+                </div>
+
+                <!-- STREAM SELECTOR -->
+                <div class="col-md-8">
+                    <label class="form-label fw-bold">Stream</label>
+                    <div class="btn-group w-100" role="group">
+                        <!-- ALL STUDENTS BUTTON -->
+                        <a href="?stream_id=" 
+                           class="btn btn-outline-primary {% if not selected_stream %}active{% endif %}">
+                            📌 All Students
+                        </a>
+
+                        <!-- STREAM BUTTONS -->
+                        {% for stream in streams %}
+                        <a href="?stream_id={{ stream.id }}" 
+                           class="btn btn-outline-primary {% if selected_stream.id == stream.id %}active{% endif %}">
+                            {{ stream.name }}
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- STATISTICS CARDS -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-lg rounded-4 bg-primary text-white">
+                <div class="card-body text-center">
+                    <h6 class="text-uppercase text-white-75 mb-2">Total Students</h6>
+                    <h2 class="fw-bold mb-0">{{ total_students }}</h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-lg rounded-4 bg-success text-white">
+                <div class="card-body text-center">
+                    <h6 class="text-uppercase text-white-75 mb-2">Male</h6>
+                    <h2 class="fw-bold mb-0">{{ male_count }}</h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-lg rounded-4 bg-danger text-white">
+                <div class="card-body text-center">
+                    <h6 class="text-uppercase text-white-75 mb-2">Female</h6>
+                    <h2 class="fw-bold mb-0">{{ female_count }}</h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-lg rounded-4 bg-info text-white">
+                <div class="card-body text-center">
+                    <h6 class="text-uppercase text-white-75 mb-2">Class</h6>
+                    <h5 class="fw-bold mb-0">{{ school_class.name }}</h5>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- EXPORT BUTTON ROW -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-lg rounded-4 bg-light">
+                <div class="card-body">
+                    <div class="row g-3 align-items-center">
+                        <div class="col-auto">
+                            <h6 class="mb-0 text-muted">📥 Export Options</h6>
+                        </div>
+                        <div class="col">
+                            <hr class="my-0">
+                        </div>
+                        <div class="col-auto d-flex gap-2">
+                            <!-- EXPORT BASIC PDF -->
+                            <a href="{% url 'download_class_list_pdf' school_class.id %}{% if selected_stream %}?stream_id={{ selected_stream.id }}{% endif %}" 
+                               class="btn btn-success shadow-sm rounded-3">
+                                <i class="bi bi-file-pdf"></i> Export PDF
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- STUDENTS TABLE -->
+    <div class="card border-0 shadow-lg rounded-4">
+        <div class="card-header bg-primary text-white rounded-top-4">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">👥 Students in {{ display_title }}</h5>
+                <span class="badge bg-light text-primary">{{ total_students }} students</span>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            {% if students %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">#</th>
+                            <th>Student Name</th>
+                            <th>Admission No</th>
+                            <th>Gender</th>
+                            <th>Dormitory</th>
+                            <th>Contact</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for student in students %}
+                        <tr>
+                            <td class="ps-4">
+                                <span class="badge bg-secondary">{{ forloop.counter }}</span>
+                            </td>
+                            <td>
+                                <strong>{{ student.name }}</strong>
+                            </td>
+                            <td>
+                                <code>{{ student.admission_number }}</code>
+                            </td>
+                            <td>
+                                {% if student.gender|lower == "male" %}
+                                    <span class="badge bg-info">♂ Male</span>
+                                {% else %}
+                                    <span class="badge bg-danger">♀ Female</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if student.dormitory %}
+                                    <small>{{ student.dormitory.name }}</small>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if student.phone %}
+                                    <small>{{ student.phone }}</small>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <a href="{% url 'view_student' student.id %}" class="btn btn-sm btn-outline-primary rounded-2" title="View Details">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-warning m-4" role="alert">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-exclamation-triangle me-2" style="font-size: 1.5rem;"></i>
+                    <div>
+                        <h6 class="mb-1">No Students Found</h6>
+                        <p class="mb-0">There are no students in {{ display_title }}.</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+<style>
+    .bg-light-info {
+        background-color: rgba(13, 202, 240, 0.1) !important;
+    }
+    
+    .btn-group .btn {
+        border-color: #0d6efd !important;
+        color: #0d6efd !important;
+    }
+    
+    .btn-group .btn.active {
+        background-color: #0d6efd !important;
+        color: white !important;
+    }
+    
+    .table tbody tr:hover {
+        background-color: rgba(13, 110, 253, 0.05);
+    }
+</style>
+
+{% endblock %}

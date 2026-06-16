@@ -146,6 +146,12 @@ class OnlineClass(models.Model):
     duration_minutes = models.PositiveIntegerField(null=True, blank=True)
 
     meeting_link = models.URLField(blank=True, null=True)
+    board_notes = models.TextField(blank=True, default="")
+    board_attachment = models.FileField(
+        upload_to="online_class_boards/",
+        blank=True,
+        null=True
+    )
     tools = models.CharField(max_length=250, blank=True, default="Screen Share, Chat, Whiteboard")
     status = models.CharField(
         max_length=20,
@@ -162,6 +168,13 @@ class OnlineClass(models.Model):
     def __str__(self):
         return f"{self.topic} — {self.class_obj.name}"
 
+    def save(self, *args, **kwargs):
+        if not self.meeting_link:
+            import secrets
+            room = secrets.token_urlsafe(10)
+            self.meeting_link = f"https://meet.jit.si/BrainetClass-{room}"
+        super().save(*args, **kwargs)
+
     @property
     def current_status(self):
         from django.utils import timezone
@@ -177,6 +190,19 @@ class OnlineClass(models.Model):
     @property
     def tool_list(self):
         return [tool.strip() for tool in self.tools.split(",") if tool.strip()]
+
+    @property
+    def board_attachment_type(self):
+        if not self.board_attachment:
+            return None
+        name = self.board_attachment.name.lower()
+        if name.endswith((".png", ".jpg", ".jpeg", ".gif")):
+            return "image"
+        if name.endswith((".mp4", ".webm", ".ogg")):
+            return "video"
+        if name.endswith(".pdf"):
+            return "pdf"
+        return "file"
 
 
 class OnlineClassParticipant(models.Model):

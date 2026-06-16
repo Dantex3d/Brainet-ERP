@@ -99,6 +99,18 @@
         </div>
         <div class="card-body">
             <div class="row g-3">
+                <!-- VIEW STUDENTS -->
+                <div class="col-md-6">
+                    <div class="d-grid">
+                        <a href="{% url 'view_class_students' selected_class.id %}{% if request.GET.stream_id %}?stream_id={{ request.GET.stream_id }}{% endif %}" 
+                           class="btn btn-primary py-3 rounded-3">
+                            <span style="font-size: 1.5rem;">👥</span>
+                            <br>View Students
+                            <br><small>See detailed list with export options</small>
+                        </a>
+                    </div>
+                </div>
+
                 <!-- PREVIEW -->
                 <div class="col-md-6">
                     <div class="d-grid">
@@ -123,17 +135,6 @@
                     </div>
                 </div>
 
-                <!-- EXPORT WITH MARKS -->
-                <div class="col-md-6">
-                    <div class="d-grid">
-                        <button class="btn btn-outline-success py-3 rounded-3" data-bs-toggle="modal" data-bs-target="#selectTermModal">
-                            <span style="font-size: 1.5rem;">📊</span>
-                            <br>With Marks & Grades
-                            <br><small>Include academic data</small>
-                        </button>
-                    </div>
-                </div>
-
                 <!-- PRINT -->
                 <div class="col-md-6">
                     <div class="d-grid">
@@ -150,37 +151,6 @@
         </div>
     </div>
 
-    <!-- SELECT TERM MODAL -->
-    <div class="modal fade" id="selectTermModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg rounded-4">
-                <div class="modal-header bg-success text-white rounded-top-4">
-                    <h5 class="modal-title">📅 Select Term for Marks</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="text-muted mb-3">Which term's marks would you like to include in the class list?</p>
-                    <div class="list-group">
-                        {% for term in school.terms.all %}
-                        <a href="{% url 'download_class_list_pdf' selected_class.id %}?term={{ term.id }}{% if request.GET.stream_id %}&stream_id={{ request.GET.stream_id }}{% endif %}" 
-                           class="list-group-item list-group-item-action py-3 rounded-3 mb-2">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="mb-0">{{ term.name }}</h6>
-                                </div>
-                                <span class="badge bg-success">Export →</span>
-                            </div>
-                        </a>
-                        {% empty %}
-                        <div class="alert alert-warning">
-                            No terms found. Please create terms first.
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
     {% endif %}
 

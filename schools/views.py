@@ -997,23 +997,60 @@ def delete_class(request, class_id):
     return redirect("manage_classes")
 
 @login_required
+@login_required
 def view_class_students(request, class_id):
+    """
+    View students in a class with optional stream selection.
+    Allows DOS/class teacher to select and view students, then export to PDF.
+    """
     school = request.user.school
-
+    
     school_class = get_object_or_404(
         Class,
         id=class_id,
         school=school
     )
-
-    students = Student.objects.filter(
+    
+    # Get all streams for this class
+    streams = Stream.objects.filter(class_group=school_class).order_by("name")
+    
+    # Get selected stream if provided
+    stream_id = request.GET.get("stream_id")
+    selected_stream = None
+    
+    if stream_id:
+        selected_stream = get_object_or_404(Stream, id=stream_id, class_group=school_class)
+    
+    # Get students based on selection
+    student_query = Student.objects.filter(
         school=school,
         current_class=school_class
     )
-
-    return render(request, "dos/class_list.html", {
+    
+    # Filter by stream if selected
+    if selected_stream:
+        students = student_query.filter(stream=selected_stream).order_by("name")
+        display_title = f"{school_class.name} - {selected_stream.name}"
+    else:
+        # If no stream selected, show all unstreamed students
+        students = student_query.filter(stream__isnull=True).order_by("name")
+        display_title = f"{school_class.name}"
+    
+    # Count statistics
+    total_students = students.count()
+    male_count = students.filter(gender__iexact="Male").count()
+    female_count = students.filter(gender__iexact="Female").count()
+    
+    return render(request, "dos/view_class_students.html", {
+        "school": school,
         "school_class": school_class,
-        "students": students
+        "streams": streams,
+        "selected_stream": selected_stream,
+        "students": students,
+        "display_title": display_title,
+        "total_students": total_students,
+        "male_count": male_count,
+        "female_count": female_count,
     })
     
 @login_required 
@@ -1477,16 +1514,21 @@ from reportlab.platypus import PageBreak, SimpleDocTemplate, Table, TableStyle, 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.units import cm
 import datetime
+import os
 
 @login_required
-@login_required
 def download_class_list_pdf(request, class_id):
+    """
+    Export class list to PDF with proper stream filtering and professional styling.
+    Ensures students are only included if they belong to the selected class/stream.
+    """
 
     # =========================
     # GET CLASS & STREAM
     # =========================
-    class_obj = Class.objects.get(id=class_id)
+    class_obj = get_object_or_404(Class, id=class_id)
     stream_id = request.GET.get("stream_id")
     term_id = request.GET.get("term")
     
@@ -1497,31 +1539,56 @@ def download_class_list_pdf(request, class_id):
         selected_stream = get_object_or_404(Stream, id=stream_id, class_group=class_obj)
 
     # =========================
-    # GET STUDENTS
+    # GET STUDENTS - STRICT FILTERING
     # =========================
     student_query = Student.objects.filter(
         current_class=class_obj,
         school=school
     )
     
+    # If stream is selected, ONLY include students from that stream
     if selected_stream:
         student_query = student_query.filter(stream=selected_stream)
+    else:
+        # If no stream selected, exclude students who have a stream assigned
+        # (only include unstreamed students)
+        student_query = student_query.filter(stream__isnull=True)
     
     students = student_query.order_by("name")
 
     # =========================
-    # FILE NAME WITH CLASS & STREAM
+    # BUILD FILE NAME WITH CLASS & STREAM (BETTER FORMAT)
     # =========================
-    year = datetime.datetime.now().year
+    now = datetime.datetime.now()
+    year = now.year
+    date_str = now.strftime("%Y%m%d")
     
+    # Format filename as: Grade10-East_ClassList_Term2_2026.pdf or Grade10_ClassList_General_2026.pdf
     if selected_stream and term_id:
-        filename = f"ClassList_{class_obj.name}_{selected_stream.name}_{term_id}_{year}.pdf"
+        term_obj = Term.objects.filter(id=term_id).first()
+        term_name = term_obj.name if term_obj else f"Term{term_id}"
+        # Replace spaces with underscores and clean up name
+        class_name_clean = class_obj.name.replace(" ", "")
+        stream_name_clean = selected_stream.name.replace(" ", "")
+        term_name_clean = term_name.replace(" ", "")
+        filename = f"{class_name_clean}-{stream_name_clean}_ClassList_{term_name_clean}_{year}.pdf"
+        display_title = f"{class_obj.name} {selected_stream.name}"
     elif selected_stream:
-        filename = f"ClassList_{class_obj.name}_{selected_stream.name}_{year}.pdf"
+        class_name_clean = class_obj.name.replace(" ", "")
+        stream_name_clean = selected_stream.name.replace(" ", "")
+        filename = f"{class_name_clean}-{stream_name_clean}_ClassList_{year}.pdf"
+        display_title = f"{class_obj.name} {selected_stream.name}"
     elif term_id:
-        filename = f"ClassList_{class_obj.name}_{term_id}_{year}.pdf"
+        term_obj = Term.objects.filter(id=term_id).first()
+        term_name = term_obj.name if term_obj else f"Term{term_id}"
+        class_name_clean = class_obj.name.replace(" ", "")
+        term_name_clean = term_name.replace(" ", "")
+        filename = f"{class_name_clean}_ClassList_{term_name_clean}_{year}.pdf"
+        display_title = f"{class_obj.name}"
     else:
-        filename = f"ClassList_{class_obj.name}_{year}.pdf"
+        class_name_clean = class_obj.name.replace(" ", "")
+        filename = f"{class_name_clean}_ClassList_General_{year}.pdf"
+        display_title = f"{class_obj.name}"
 
     folder_path = os.path.join(
         settings.MEDIA_ROOT,
@@ -1529,90 +1596,97 @@ def download_class_list_pdf(request, class_id):
     )
 
     os.makedirs(folder_path, exist_ok=True)
-
     file_path = os.path.join(folder_path, filename)
 
     # =========================
-    # PDF DOCUMENT
+    # CREATE PDF DOCUMENT
     # =========================
+    pagesize = landscape(A4) if term_id else A4
+    
     doc = SimpleDocTemplate(
         file_path,
-        pagesize=A4 if not term_id else landscape(A4),
-        rightMargin=30,
-        leftMargin=30,
-        topMargin=30,
-        bottomMargin=30
+        pagesize=pagesize,
+        rightMargin=25,
+        leftMargin=25,
+        topMargin=35,
+        bottomMargin=30,
+        title=display_title
     )
 
     styles = getSampleStyleSheet()
-
     elements = []
 
     # =========================
-    # SCHOOL HEADER + LOGO
+    # HEADER WITH LOGO & SCHOOL INFO
     # =========================
-    logo_path = None
+    header_data = []
+    logo_image = None
 
-    if class_obj.school.logo:
-        logo_path = class_obj.school.logo.path
+    # Add logo if available
+    if school.logo and os.path.exists(school.logo.path):
+        try:
+            logo_image = Image(
+                school.logo.path,
+                width=2.5 * cm,
+                height=2.5 * cm
+            )
+        except Exception:
+            pass
 
-    row = []
+    # Build header content with school name underlined
+    stream_info = f"<b>Stream:</b> {selected_stream.name}" if selected_stream else ""
+    
+    header_text = f"""
+    <font size='18'><b>{school.name.upper()}</b></font><br/>
+    <hr width="100%" noshade="1" thickness="2"/><br/>
+    <font size='13'><b>OFFICIAL CLASS LIST</b></font><br/>
+    <font size='11'>Class: <b>{class_obj.name}</b>&nbsp;&nbsp;&nbsp;{stream_info}</font><br/>
+    <font size='10'>Academic Year: {year}</font><br/>
+    <font size='9'>Generated: {now.strftime("%d %B %Y at %H:%M")}</font>
+    """
 
-    # SCHOOL LOGO
-    if logo_path and os.path.exists(logo_path):
-
-        logo = Image(
-            logo_path,
-            width=70,
-            height=70
+    header_paragraph = Paragraph(header_text, styles["Normal"])
+    
+    if logo_image:
+        header_table = Table(
+            [[logo_image, header_paragraph]],
+            colWidths=[2.5 * cm, None]
+        )
+    else:
+        header_table = Table(
+            [[header_paragraph]],
+            colWidths=[None]
         )
 
-        row.append(logo)
-
-    # SCHOOL DETAILS
-    stream_display = f" - {selected_stream.name}" if selected_stream else ""
-    
-    if term_id:
-        term_obj = Term.objects.filter(id=term_id).first()
-        term_name = term_obj.name if term_obj else ""
-        title_text = f"CLASS LIST WITH ACADEMIC DETAILS: {class_obj.name}{stream_display} - {term_name}"
-    else:
-        title_text = f"CLASS LIST: {class_obj.name}{stream_display}"
-
-    school_text = Paragraph(
-        f"""
-        <font size="18">
-        <b>{class_obj.school.name}</b>
-        </font>
-        <br/><br/>
-
-        <font size="14">
-        <u><b>{title_text}</b></u>
-        </font>
-
-        <br/><br/>
-
-        Academic Year: {year}
-        """,
-        styles["Title"]
-    )
-
-    row.append(school_text)
-
-    header_table = Table(
-        [row],
-        colWidths=[90, 400]
-    )
+    header_table.setStyle(TableStyle([
+        ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+    ]))
 
     elements.append(header_table)
-
-    elements.append(Spacer(1, 20))
+    elements.append(Spacer(1, 0.4 * cm))
 
     # =========================
-    # STUDENT TABLE WITH OR WITHOUT MARKS
+    # STUDENT COUNT SUMMARY
+    # =========================
+    summary_text = f"""
+    <font size='10'><b>Total Students: {students.count()}</b>&nbsp;&nbsp;&nbsp;
+    Male: {students.filter(gender="Male").count()}&nbsp;&nbsp;&nbsp;
+    Female: {students.filter(gender="Female").count()}</font>
+    """
+    summary_para = Paragraph(summary_text, styles["Normal"])
+    elements.append(summary_para)
+    elements.append(Spacer(1, 0.2 * cm))
+
+    # =========================
+    # BUILD STUDENT TABLE
     # =========================
     if term_id:
-        # Include academic details
+        # Include academic details with marks
         subjects = Subject.objects.filter(school=school).order_by("name")
         marks_qs = StudentMark.objects.filter(
             student__in=students,
@@ -1624,19 +1698,18 @@ def download_class_list_pdf(request, class_id):
             for mark in marks_qs
         }
         
-        # Build header
+        # Build header row
         data = [["#", "Student Name", "Admission No", "Gender"]]
         for subject in subjects:
             data[0].append(subject.short_name)
-        data[0].extend(["Total", "Avg", "Grade", "Points"])
+        data[0].extend(["Total", "Avg", "Grade"])
         
-        # Build rows
+        # Build student rows
         for i, student in enumerate(students, start=1):
             row = [str(i), student.name, student.admission_number, student.gender]
             
             total_marks = 0
             total_subjects = 0
-            total_points = 0
             
             for subject in subjects:
                 mark = mark_map.get((student.id, subject.id))
@@ -1645,8 +1718,6 @@ def download_class_list_pdf(request, class_id):
                     row.append(str(marks_value))
                     total_marks += marks_value
                     total_subjects += 1
-                    if mark.points:
-                        total_points += mark.points
                 else:
                     row.append("-")
             
@@ -1660,18 +1731,17 @@ def download_class_list_pdf(request, class_id):
             ).first()
             
             grade_letter = grade_obj.short_form if grade_obj else "-"
-            
-            row.extend([str(total_marks), str(average), grade_letter, str(total_points)])
+            row.extend([str(total_marks), str(average), grade_letter])
             data.append(row)
         
-        # Calculate column widths
+        # Calculate column widths for landscape
         col_count = len(data[0])
         subject_cols = len(subjects)
-        col_widths = [40, 150, 100, 60] + [45] * subject_cols + [50, 50, 45, 45]
+        col_widths = [0.5*cm, 4*cm, 2*cm, 1.2*cm] + [0.8*cm] * subject_cols + [1*cm, 1*cm, 0.8*cm]
         
         table = Table(data, colWidths=col_widths)
     else:
-        # Basic table without marks
+        # Basic table without marks (portrait)
         data = [[
             "#",
             "Student Name",
@@ -1689,77 +1759,73 @@ def download_class_list_pdf(request, class_id):
 
         table = Table(
             data,
-            colWidths=[40, 250, 120, 80]
+            colWidths=[0.8*cm, 8*cm, 3*cm, 1.5*cm]
         )
 
-    table.setStyle(TableStyle([
-
+    # Professional table styling with alternating row colors
+    table_style = [
         # HEADER
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0d6efd")),
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-
-        # GRID
-        ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
-
-        # FONT
         ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, 0), 8 if term_id else 10),
-
+        ("FONTSIZE", (0, 0), (-1, 0), 9 if term_id else 10),
+        ("PADDING", (0, 0), (-1, 0), 8),
+        
+        # ALTERNATING ROW COLORS
+        ("BACKGROUND", (0, 1), (-1, -1), colors.white),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8f9fa")]),
+        
+        # GRID
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#dee2e6")),
+        
+        # FONT
+        ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+        ("FONTSIZE", (0, 1), (-1, -1), 8 if term_id else 9),
+        
         # PADDING
-        ("BOTTOMPADDING", (0, 0), (-1, 0), 10),
-        ("TOPPADDING", (0, 0), (-1, 0), 10),
-
+        ("TOPPADDING", (0, 1), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 1), (-1, -1), 6),
+        ("LEFTPADDING", (0, 0), (-1, -1), 4),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+        
         # ALIGNMENT
-        ("ALIGN", (0, 0), (-1, -1), "CENTER" if term_id else "LEFT"),
-
-        # BODY BACKGROUND
-        ("BACKGROUND", (0, 1), (-1, -1), colors.whitesmoke),
-
-    ]))
-
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("ALIGN", (1, 0), (1, -1), "LEFT"),
+    ]
+    
+    table.setStyle(TableStyle(table_style))
     elements.append(table)
 
-    elements.append(Spacer(1, 25))
+    elements.append(Spacer(1, 0.3 * cm))
 
     # =========================
-    # SUMMARY FOOTER
+    # STATISTICS FOOTER
     # =========================
     total_students = students.count()
+    male_students = students.filter(gender__iexact="Male").count()
+    female_students = students.filter(gender__iexact="Female").count()
 
-    male_students = students.filter(
-        gender__iexact="Male"
-    ).count()
+    stats_text = f"""
+    <b>Summary:</b> Total Students: <b>{total_students}</b> 
+    &nbsp;&nbsp;|&nbsp;&nbsp;
+    Male: <b>{male_students}</b> 
+    &nbsp;&nbsp;|&nbsp;&nbsp;
+    Female: <b>{female_students}</b>
+    """
 
-    female_students = students.filter(
-        gender__iexact="Female"
-    ).count()
+    stats_para = Paragraph(stats_text, styles["Normal"])
+    elements.append(stats_para)
 
-    footer = Paragraph(
-        f"""
-        <b>Total Students:</b> {total_students}
-        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-        <b>Male:</b> {male_students}
-        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-        <b>Female:</b> {female_students}
-        """,
-        styles["Normal"]
-    )
-
-    elements.append(footer)
-
-    elements.append(Spacer(1, 30))
+    elements.append(Spacer(1, 0.2 * cm))
 
     # =========================
-    # SYSTEM FOOTER
+    # FOOTER
     # =========================
-    generated = Paragraph(
-        f"""
-        Generated by Brainet ERP System
-        """,
-        styles["Italic"]
-    )
-
-    elements.append(generated)
+    footer_text = f"""
+    <font size='8'><i>Generated by Brainet ERP System | {now.strftime("%d-%m-%Y %H:%M")} | Classification: Official Record</i></font>
+    """
+    footer_para = Paragraph(footer_text, styles["Normal"])
+    elements.append(footer_para)
 
     # =========================
     # BUILD PDF
@@ -1769,17 +1835,12 @@ def download_class_list_pdf(request, class_id):
     # =========================
     # RETURN DOWNLOAD RESPONSE
     # =========================
-    with open(file_path, "rb") as pdf:
-
+    with open(file_path, "rb") as pdf_file:
         response = HttpResponse(
-            pdf.read(),
+            pdf_file.read(),
             content_type="application/pdf"
         )
-
-        response[
-            "Content-Disposition"
-        ] = f'attachment; filename="{filename}"'
-
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response
 from django.shortcuts import get_object_or_404, render
 from students.models import Student

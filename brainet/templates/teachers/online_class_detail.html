@@ -58,6 +58,25 @@
                         <strong>Description</strong>
                         <p>{{ online_class.description|default:'No description added yet.' }}</p>
                     </div>
+
+                    <div class="mt-4 border rounded-4 p-3 bg-light">
+                        <h5 class="mb-3">Class Board</h5>
+                        <form method="post" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <label class="form-label">Board Notes</label>
+                                <textarea name="board_notes" class="form-control" rows="5">{{ online_class.board_notes }}</textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Board Attachment</label>
+                                <input type="file" name="board_attachment" class="form-control">
+                                {% if online_class.board_attachment %}
+                                <small class="text-muted">Current file: <a href="{{ online_class.board_attachment.url }}" target="_blank">{{ online_class.board_attachment.name }}</a></small>
+                                {% endif %}
+                            </div>
+                            <button type="submit" name="board_save" class="btn btn-primary rounded-4">Save Board</button>
+                        </form>
+                    </div>
                 </div>
             </div>
 

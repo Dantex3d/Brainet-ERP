@@ -30,6 +30,11 @@ urlpatterns = [
         name='account_profile'
     ),
     path(
+        'resend-verification/',
+        views.resend_verification_email,
+        name='resend_verification_email'
+    ),
+    path(
         'verify-email/<str:token>/',
         views.verify_user_email,
         name='verify_user_email'

@@ -213,6 +213,18 @@ def verify_user_email(request, token):
     return redirect('home')
 
 
+@login_required
+def resend_verification_email(request):
+    user = request.user
+    if user.email_verified:
+        messages.info(request, 'Your account is already verified.')
+        return redirect('account_profile')
+
+    send_verification_email(user, request=request)
+    messages.success(request, 'Verification email sent. Check your inbox.')
+    return redirect('account_profile')
+
+
 def create_custom_user(request):
     if request.method == "POST":
 
