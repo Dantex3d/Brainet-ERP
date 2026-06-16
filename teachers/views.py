@@ -184,7 +184,6 @@ def teacher_dashboard(request):
         })
 
     subjects = list(subject_groups.values())
-    subject_list = [group["subject"] for group in subjects]
 
     # =========================
     # STUDENTS (SAFE) - prefer context of a single assignment if present
