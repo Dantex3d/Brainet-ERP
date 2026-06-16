@@ -1,0 +1,79 @@
+name: Build and Release Apps
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'desktop-app/**'
+      - 'mobile-app/**'
+      - '.github/workflows/build-release.yml'
+  workflow_dispatch:
+
+jobs:
+  build-desktop:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install desktop app dependencies
+        run: |
+          cd desktop-app
+          npm install
+
+      - name: Build desktop app
+        run: |
+          cd desktop-app
+          npm run package
+
+      - name: Create Release and Upload Artifacts
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: desktop-app/dist/BrainetERP-win32-x64/**/*.exe
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload desktop build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: desktop-app-windows
+          path: desktop-app/dist/BrainetERP-win32-x64/
+          retention-days: 30
+
+  build-mobile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install mobile app dependencies
+        run: |
+          cd mobile-app
+          npm install --legacy-peer-deps
+
+      - name: Build Expo preview bundle
+        run: |
+          cd mobile-app
+          npm install -g eas-cli
+          # Note: To actually build APK/IPA, you'll need to configure EAS and add credentials
+
+      - name: Upload mobile build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: mobile-app-prebuild
+          path: mobile-app/node_modules/
+          retention-days: 7

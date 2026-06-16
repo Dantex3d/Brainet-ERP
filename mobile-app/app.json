@@ -24,7 +24,10 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0b1220"
-      }
+      },
+      "minSdkVersion": 29,
+      "targetSdkVersion": 34,
+      "versionCode": 1
     }
   }
 }
