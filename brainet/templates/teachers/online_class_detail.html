@@ -1,5 +1,5 @@
 {% extends "dashboards/base.html" %}
-{% load static %}
+{% load static text_filters %}
 
 {% block title %}Class Details{% endblock %}
 
@@ -95,7 +95,7 @@
                                 </div>
                                 <div class="text-end">
                                     <span class="badge bg-{{ participant.status == 'joined'|yesno:'success,warning' }} text-capitalize">
-                                        {{ participant.status|replace:'_',' ' }}
+                                        {{ participant.status|cut:"_"|title }}
                                     </span>
                                     {% if participant.mic_enabled %}
                                     <span class="badge bg-primary">Mic On</span>

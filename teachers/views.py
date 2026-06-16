@@ -256,7 +256,7 @@ def teacher_dashboard(request):
     return render(request, template_name, {
         "teacher": teacher,
         "assigned_classes": assigned_classes,
-        "subjects": subject_list,
+        "subjects": subjects,
         "subject_groups": subjects,
         "students": students,
         "assignments": assignments,

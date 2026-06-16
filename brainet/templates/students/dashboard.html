@@ -1,5 +1,5 @@
 {% extends 'dashboards/base.html' %}
-{% load static %}
+{% load static text_filters %}
 
 {% block content %}
 
@@ -472,7 +472,7 @@
                 </div>
                 {% endif %}
                 <div class="mt-2">
-                    <span class="badge bg-secondary text-capitalize">Status: {{ item.status|replace:'_',' ' }}</span>
+                    <span class="badge bg-secondary text-capitalize">Status: {{ item.status|cut:"_"|title }}</span>
                 </div>
             </div>
             {% endwith %}

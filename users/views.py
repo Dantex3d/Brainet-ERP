@@ -21,6 +21,22 @@ class CustomLoginView(LoginView):
     authentication_form = CustomAuthenticationForm
     redirect_authenticated_user = True
 
+    def form_valid(self, form):
+        """Override form_valid to check verification status"""
+        user = form.get_user()
+        
+        # For DOS/Principal, require email verification before allowing login
+        if user.role in ['dos', 'principal'] and not user.email_verified:
+            messages.warning(
+                self.request, 
+                f"Your {user.role} account requires verification. Please check your email for the verification code."
+            )
+            return redirect(f"{reverse('verify_user_code')}?email={user.email}")
+        
+        # Normal login flow
+        login(self.request, user)
+        return redirect(self.get_success_url())
+
     def get_success_url(self):
 
         user = self.request.user
@@ -211,6 +227,38 @@ def verify_user_email(request, token):
     user.mark_email_verified()
     messages.success(request, 'Your email has been verified successfully. Please log in.')
     return redirect('home')
+
+
+def verify_user_code(request):
+    """Verify user account using a numeric verification code (for DOS/Principal)"""
+    email = request.GET.get('email') or request.POST.get('email')
+    
+    if not email:
+        messages.error(request, 'Email address is required.')
+        return redirect('home')
+    
+    try:
+        user = User.objects.get(email=email, role__in=['dos', 'principal'])
+    except User.DoesNotExist:
+        messages.error(request, 'Account not found or verification not required.')
+        return redirect('home')
+    
+    if user.email_verified:
+        messages.info(request, 'Your account is already verified. Please log in.')
+        return redirect('home')
+    
+    if request.method == 'POST':
+        code = request.POST.get('code', '').strip()
+        success, message = user.verify_code(code)
+        
+        if success:
+            messages.success(request, message + ' You can now log in.')
+            return redirect('home')
+        else:
+            messages.error(request, message)
+            return render(request, 'users/verify_code.html', {'email': email})
+    
+    return render(request, 'users/verify_code.html', {'email': email})
 
 
 @login_required

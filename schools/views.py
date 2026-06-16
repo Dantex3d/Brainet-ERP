@@ -54,18 +54,35 @@ def send_user_verification_email(user, request=None, role_name=None):
     if not settings.EMAIL_HOST_USER or not user.email:
         return
 
-    token = user.generate_email_verification_token()
-    verify_link = request.build_absolute_uri(reverse('verify_user_email', args=[token])) if request else reverse('verify_user_email', args=[token])
-    subject = f"Verify your Brainet account"
-    if role_name:
-        subject = f"Verify your {role_name} account"
-
-    body = (
-        f"Hello {getattr(user, 'first_name', user.email)},\n\n"
-        f"Please verify your email address by clicking the link below:\n\n{verify_link}\n\n"
-        "Once verified you can use this email for password reset and secure access.\n\n"
-        "If you did not request this account, please contact support."
-    )
+    # Generate verification code for DOS/Principal
+    if user.role in ['dos', 'principal']:
+        code = user.generate_verification_code()
+        verify_link = request.build_absolute_uri(reverse('verify_user_code')) + f"?email={user.email}" if request else reverse('verify_user_code') + f"?email={user.email}"
+        
+        subject = f"Verify your {role_name or user.role} account on Brainet"
+        body = (
+            f"Hello {user.email},\n\n"
+            f"Your {role_name or user.role} account has been created on Brainet.\n\n"
+            f"Please enter the following verification code to activate your account:\n\n"
+            f"CODE: {code}\n\n"
+            f"Or click here to verify: {verify_link}\n\n"
+            f"This code will expire in 1 hour.\n\n"
+            f"If you did not request this account, please contact support."
+        )
+    else:
+        # For other roles, use token-based verification
+        token = user.generate_email_verification_token()
+        verify_link = request.build_absolute_uri(reverse('verify_user_email', args=[token])) if request else reverse('verify_user_email', args=[token])
+        subject = f"Verify your Brainet account"
+        if role_name:
+            subject = f"Verify your {role_name} account"
+        
+        body = (
+            f"Hello {getattr(user, 'first_name', user.email)},\n\n"
+            f"Please verify your email address by clicking the link below:\n\n{verify_link}\n\n"
+            "Once verified you can use this email for password reset and secure access.\n\n"
+            "If you did not request this account, please contact support."
+        )
 
     try:
         send_mail(
@@ -2147,12 +2164,13 @@ def register_dos_by_superuser(request):
 
                 return redirect("superuser_dashboard")
 
-            # CREATE USER
+            # CREATE USER (initially unverified)
             user = User.objects.create_user(
             email=email,
             password=password,
             role="dos",
-            school=school
+            school=school,
+            email_verified=False  # Must verify via code before full access
 
             )
 
@@ -2226,12 +2244,13 @@ def register_principal_by_superuser(request):
                 messages.warning(request, "This school already has a Principal account.")
                 return redirect("superuser_dashboard")
 
-            # CREATE USER
+            # CREATE USER (initially unverified)
             user = CustomUser.objects.create_user(
                 email=email,
                 password=password,
                 role="principal",
-                school=school
+                school=school,
+                email_verified=False  # Must verify via code before full access
             )
 
             # CREATE PRINCIPAL PROFILE
