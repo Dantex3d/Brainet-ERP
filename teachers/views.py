@@ -1,30 +1,26 @@
 import csv
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render, redirect
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.db.models import Q
+from django.utils import timezone
+from django.utils.dateparse import parse_datetime
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
 
 from assignments.models import Assignment, Submission
-from assignments.models import Submission
+from classes.models import Class, Stream
 from schools.models import Notification, Principal, Subject, SchoolNotice
 from students.models import Student
 from users.models import CustomUser
-from .models import Teacher, ClassTeacherAssignment, TeacherSubjectAssignment
-from classes.models import Stream
-from django.http import HttpResponse
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
-from .models import Teacher
-from classes.models import Class
-from django.contrib.auth.decorators import login_required
-from users.models import CustomUser
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, get_object_or_404
-from .models import Teacher
-from django.shortcuts import render, redirect
-from django.contrib import messages
-from django.shortcuts import get_object_or_404, redirect
-from django.contrib import messages
-from classes.models import Class
-from .models import Teacher
+from .models import (
+    Teacher,
+    ClassTeacherAssignment,
+    TeacherSubjectAssignment,
+    OnlineClass,
+    OnlineClassParticipant,
+)
 
 def assign_teacher_class(request):
     school = request.user.school
@@ -253,6 +249,11 @@ def teacher_dashboard(request):
     # =========================
     template_name = "dashboards/subject_teacher.html" if getattr(request.user, "role", "") == "subject_teacher" else "teachers/dashboard.html"
 
+    online_classes = OnlineClass.objects.filter(
+        teacher=teacher,
+        school=school
+    ).select_related("class_obj", "stream", "subject")
+
     return render(request, template_name, {
         "teacher": teacher,
         "assigned_classes": assigned_classes,
@@ -268,7 +269,196 @@ def teacher_dashboard(request):
         "students_count": students.count() if hasattr(students, 'count') else len(students),
         "assignments_count": assignments.count(),
         "pending_marks": submissions.filter(assignment__isnull=False).count() if hasattr(submissions, 'filter') else len(submissions),
+        "online_classes": online_classes,
     })    
+
+
+@login_required
+def teacher_online_classes(request):
+    teacher = get_object_or_404(
+        Teacher,
+        user=request.user,
+        school=request.user.school
+    )
+
+    school = teacher.school
+
+    assigned_class_ids = TeacherSubjectAssignment.objects.filter(
+        teacher=teacher,
+        school=school
+    ).values_list("class_obj_id", flat=True).distinct()
+
+    streams = Stream.objects.filter(
+        id__in=TeacherSubjectAssignment.objects.filter(
+            teacher=teacher,
+            school=school,
+            stream__isnull=False
+        ).values_list("stream_id", flat=True).distinct()
+    ).order_by("name")
+
+    subjects = Subject.objects.filter(
+        id__in=TeacherSubjectAssignment.objects.filter(
+            teacher=teacher,
+            school=school
+        ).values_list("subject_id", flat=True).distinct(),
+        school=school
+    ).order_by("name")
+
+    classes = Class.objects.filter(
+        school=school,
+        id__in=assigned_class_ids
+    ).order_by("name")
+
+    online_classes = OnlineClass.objects.filter(
+        teacher=teacher,
+        school=school
+    ).select_related("class_obj", "stream", "subject").order_by("-start_time")
+
+    if request.method == "POST":
+        try:
+            topic = request.POST.get("topic", "").strip()
+            description = request.POST.get("description", "").strip()
+            class_id = request.POST.get("class_id")
+            stream_id = request.POST.get("stream_id")
+            subject_id = request.POST.get("subject_id")
+            meeting_link = request.POST.get("meeting_link", "").strip()
+            tools = request.POST.get("tools", "Screen Share, Chat, Whiteboard").strip()
+            start_time = parse_datetime(request.POST.get("start_time"))
+            end_time = parse_datetime(request.POST.get("end_time"))
+            duration_minutes = request.POST.get("duration_minutes")
+
+            if not topic:
+                messages.error(request, "Topic is required.")
+                return redirect("teacher_online_classes")
+
+            if not class_id:
+                messages.error(request, "Class is required.")
+                return redirect("teacher_online_classes")
+
+            class_obj = get_object_or_404(Class, id=class_id, school=school)
+            stream = None
+            if stream_id:
+                stream = get_object_or_404(Stream, id=stream_id, class_group__school=school)
+
+            subject = None
+            if subject_id:
+                subject = get_object_or_404(Subject, id=subject_id, school=school)
+
+            if not start_time or not end_time:
+                messages.error(request, "Start time and end time are required.")
+                return redirect("teacher_online_classes")
+
+            if timezone.is_naive(start_time):
+                start_time = timezone.make_aware(start_time, timezone.get_current_timezone())
+            if timezone.is_naive(end_time):
+                end_time = timezone.make_aware(end_time, timezone.get_current_timezone())
+
+            if start_time >= end_time:
+                messages.error(request, "End time must be after start time.")
+                return redirect("teacher_online_classes")
+
+            duration = None
+            if duration_minutes:
+                try:
+                    duration = int(duration_minutes)
+                except ValueError:
+                    duration = None
+
+            online_class = OnlineClass.objects.create(
+                school=school,
+                teacher=teacher,
+                class_obj=class_obj,
+                stream=stream,
+                subject=subject,
+                topic=topic,
+                description=description,
+                start_time=start_time,
+                end_time=end_time,
+                duration_minutes=duration,
+                meeting_link=meeting_link or None,
+                tools=tools,
+            )
+
+            students_for_class = Student.objects.filter(
+                school=school,
+                current_class=class_obj
+            )
+            if stream:
+                students_for_class = students_for_class.filter(stream=stream)
+
+            for student in students_for_class:
+                OnlineClassParticipant.objects.get_or_create(
+                    online_class=online_class,
+                    student=student,
+                )
+
+            messages.success(request, "Online class scheduled successfully.")
+            return redirect("teacher_online_classes")
+
+        except Exception as e:
+            messages.error(request, f"Could not schedule online class: {str(e)}")
+            return redirect("teacher_online_classes")
+
+    return render(request, "teachers/online_classes.html", {
+        "teacher": teacher,
+        "classes": classes,
+        "streams": streams,
+        "subjects": subjects,
+        "online_classes": online_classes,
+    })
+
+
+@login_required
+def teacher_online_class_detail(request, online_class_id):
+    teacher = get_object_or_404(
+        Teacher,
+        user=request.user,
+        school=request.user.school
+    )
+
+    online_class = get_object_or_404(
+        OnlineClass,
+        id=online_class_id,
+        teacher=teacher,
+        school=teacher.school
+    )
+
+    participants = OnlineClassParticipant.objects.filter(
+        online_class=online_class
+    ).select_related("student").order_by("-status", "joined_at")
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        participant_id = request.POST.get("participant_id")
+
+        if participant_id:
+            participant = get_object_or_404(
+                OnlineClassParticipant,
+                id=participant_id,
+                online_class=online_class
+            )
+
+            if action == "toggle_mic":
+                participant.mic_enabled = not participant.mic_enabled
+                participant.save()
+                messages.success(request, f"{participant.student.name}'s mic updated.")
+            elif action == "mark_joined":
+                participant.status = "joined"
+                participant.joined_at = timezone.now()
+                participant.save()
+                messages.success(request, f"{participant.student.name} marked as joined.")
+            elif action == "mark_failed":
+                participant.status = "failed"
+                participant.save()
+                messages.success(request, f"{participant.student.name} marked as failed to join.")
+
+        return redirect("teacher_online_class_detail", online_class_id=online_class.id)
+
+    return render(request, "teachers/online_class_detail.html", {
+        "teacher": teacher,
+        "online_class": online_class,
+        "participants": participants,
+    })
 
 
 @login_required

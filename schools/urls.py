@@ -133,7 +133,7 @@ urlpatterns = [
     # STUDENT AUTH
     # =====================================================
     path("student/dashboard/", views.student_dashboard, name="student_dashboard"),
-   
+    path("student/online-class/<int:online_class_id>/action/", views.student_online_class_action, name="student_online_class_action"),
 
     # =====================================================
     # PRINCIPAL

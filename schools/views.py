@@ -13,6 +13,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth import authenticate, get_user_model, login
 from django.db import transaction
+from django.db.models import Q
 from django.urls import reverse
 
 import students
@@ -24,7 +25,7 @@ from students.models import Student
 from schools.models import School, Dormitory, DirectorOfStudies, Term
 from schools.models import Class, Subject, VoucherRequest
 from classes.models import Stream
-from teachers.models import ClassTeacherAssignment, Teacher, TeacherSubjectAssignment
+from teachers.models import ClassTeacherAssignment, Teacher, TeacherSubjectAssignment, OnlineClass, OnlineClassParticipant
 from subjects.models import ClassSubject
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
 from reportlab.platypus import Image as RLImage
@@ -1257,6 +1258,7 @@ def student_dashboard(request):
     # CLASS DATA
     # =========================
     current_class = student.current_class
+    current_stream = student.stream
 
     # =========================
     # SUBJECTS (FROM CLASS OR SCHOOL)
@@ -1270,7 +1272,8 @@ def student_dashboard(request):
     # =========================
     assignments = Assignment.objects.filter(
         school=school,
-        class_assigned=current_class
+        class_assigned=current_class,
+        is_active=True
     ).order_by("-created_at")
 
     # =========================
@@ -1278,7 +1281,62 @@ def student_dashboard(request):
     # =========================
     submissions = Submission.objects.filter(
         student=student
-    )
+    ).select_related("assignment")
+
+    # =========================
+    # ASSIGNMENT STATUS
+    # =========================
+    submissions_by_assignment = {s.assignment_id: s for s in submissions}
+    assignments_with_status = []
+    for assignment in assignments:
+        submission = submissions_by_assignment.get(assignment.id)
+        assignments_with_status.append({
+            "assignment": assignment,
+            "is_submitted": bool(submission),
+            "is_graded": submission.status == "graded" if submission else False,
+            "score": submission.score if submission and submission.score is not None else None,
+            "feedback": submission.feedback if submission else "",
+            "submission": submission,
+        })
+
+    marked_assignments = [item for item in assignments_with_status if item["is_graded"]]
+
+    marks = StudentMark.objects.filter(
+        student=student
+    ).select_related("subject").order_by("-created_at")
+
+    average = 0
+    if marks.exists():
+        total_score = sum([float(mark.marks) for mark in marks if mark.marks is not None])
+        average = round(total_score / marks.count(), 1) if marks.count() else 0
+
+    online_classes = OnlineClass.objects.filter(
+        school=school,
+        class_obj=current_class
+    ).filter(
+        Q(stream__isnull=True) | Q(stream=current_stream)
+    ).select_related("teacher", "subject", "class_obj", "stream").order_by("start_time")
+
+    for online_class in online_classes:
+        OnlineClassParticipant.objects.get_or_create(
+            online_class=online_class,
+            student=student,
+        )
+
+    participant_records = OnlineClassParticipant.objects.filter(
+        student=student,
+        online_class__in=online_classes
+    ).select_related("online_class")
+    participant_map = {p.online_class_id: p for p in participant_records}
+
+    online_class_view = []
+    for online_class in online_classes:
+        participant = participant_map.get(online_class.id)
+        online_class_view.append({
+            "online_class": online_class,
+            "participant": participant,
+            "status": participant.status if participant else "not_tried",
+        })
 
     # =========================
     # CONTEXT
@@ -1286,11 +1344,18 @@ def student_dashboard(request):
     return render(request, "students/dashboard.html", {
         "student": student,
         "class": current_class,
+        "stream": current_stream,
         "subjects": subjects,
         "assignments": assignments,
+        "assignments_with_status": assignments_with_status,
+        "marked_assignments": marked_assignments,
         "submissions": submissions,
+        "marks": marks,
+        "average": average,
+        "online_classes": online_class_view,
         "notices": SchoolNotice.objects.filter(school=school).filter(recipient_type__in=['students','all']).order_by('-created_at'),
     })
+
 def add_dorm(request):
     school = request.user.school
 
@@ -1304,6 +1369,39 @@ def add_dorm(request):
         messages.success(request, "Dormitory added successfully.")
         return redirect("manage_dorms")  
     return render(request, "dos/add_dorm.html")
+
+
+@login_required
+def student_online_class_action(request, online_class_id):
+    student = get_object_or_404(
+        Student,
+        user=request.user,
+        school=request.user.school
+    )
+
+    online_class = get_object_or_404(
+        OnlineClass,
+        id=online_class_id,
+        school=student.school
+    )
+
+    participant, _ = OnlineClassParticipant.objects.get_or_create(
+        online_class=online_class,
+        student=student,
+    )
+
+    action = request.POST.get("action")
+    if action == "join":
+        participant.status = "joined"
+        participant.joined_at = timezone.now()
+        participant.save()
+        messages.success(request, "You have joined the class.")
+    elif action == "fail":
+        participant.status = "failed"
+        participant.save()
+        messages.error(request, "Marked as failed to join.")
+
+    return redirect("student_dashboard")
 
 @login_required
 def view_dorm_students(request, dorm_id):
