@@ -1,5 +1,6 @@
-const { contextBridge } = require('electron');
+const { contextBridge } = require("electron");
 
-contextBridge.exposeInMainWorld('desktopApp', {
-  getAppUrl: () => process.env.APP_URL || 'http://localhost:8000',
+contextBridge.exposeInMainWorld("api", {
+  // Example: expose a safe method
+  ping: () => "pong"
 });

@@ -1,14 +1,15 @@
 {
-  "name": "brainet-desktop-app",
+  "name": "brainet-analytics-system",
   "version": "0.1.0",
-  "description": "Electron desktop wrapper for the Brainet  system.",
+  "description": "Electron desktop wrapper for the Brainet system.",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "package": "electron-packager . BrainetERP --platform=win32 --arch=x64 --out=dist --overwrite",
+    "package": "electron-packager . BrainetERP --platform=win32 --arch=x64 --out=dist --overwrite --icon=assets/brainet.ico",
     "build": "npm run package",
-    "build:portable": "electron-packager . BrainetAnalytics --platform=win32 --arch=x64 --out=dist --overwrite --portable",
-    "build:all": "npm run build && npm run build:portable"
+    "build:portable": "electron-packager . BrainetAnalytics --platform=win32 --arch=x64 --out=dist --overwrite --portable --icon=assets/brainet.ico",
+    "build:all": "npm run build && npm run build:portable",
+    "dist": "electron-builder"
   },
   "keywords": [
     "brainet",
@@ -19,7 +20,25 @@
   "author": "Brainet",
   "license": "MIT",
   "devDependencies": {
-    "electron": "^26.0.0",
+    "electron": "^42.4.1",
+    "electron-builder": "^26.15.3",
     "electron-packager": "^17.1.0"
+  },
+  "build": {
+    "appId": "com.brainet.erp",
+    "productName": "Brainet Analytics",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "offline.html",
+      "preload.js",
+      "assets/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/brainet.ico"
+    }
   }
 }

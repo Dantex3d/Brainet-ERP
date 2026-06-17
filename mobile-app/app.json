@@ -1,15 +1,13 @@
 {
   "expo": {
-    "name": "Brainet Mobile App",
-    "slug": "brainet-mobile-app",
-    "version": "1.0.0",
+    "name": "Brainet Analytics",        
+    "slug": "brainet-analytics-system",
     "orientation": "portrait",
-    "platforms": ["android", "ios"],
-    "icon": "./assets/icon.png",
+    "icon": "./assets/brainet.png",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0b1220"
+      "backgroundColor": "#ffffff"
     },
     "updates": {
       "fallbackToCacheTimeout": 0
@@ -18,16 +16,15 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.brainet.analytics"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0b1220"
+        "foregroundImage": "./assets/brainet.png",
+        "backgroundColor": "#ffffff"
       },
-      "minSdkVersion": 29,
-      "targetSdkVersion": 34,
-      "versionCode": 1
+      "package": "com.brainet.analytics"
     }
   }
 }
