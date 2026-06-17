@@ -81,7 +81,8 @@ def add_teacher(request):
                 email=email,
                 password=password,
                 school=school,
-                role="teacher"
+                role="teacher",
+                email_verified=False  # Must verify via code before full access
             )
 
             # =========================
@@ -110,9 +111,13 @@ def add_teacher(request):
                 except Exception:
                     pass
 
+            # Send verification email
+            from schools.views import send_user_verification_email
+            send_user_verification_email(user, request=request, role_name='Teacher')
+
             messages.success(
                 request,
-                "Teacher added successfully."
+                f"Teacher {name} added successfully. A verification email has been sent to {email}."
             )
 
             return redirect("manage_teachers")

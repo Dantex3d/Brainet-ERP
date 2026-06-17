@@ -358,6 +358,435 @@ def superuser_dashboard(request):
         "dashboards/superuser.html",
         context
     )
+
+
+def _superuser_management_context():
+    schools = School.objects.all().order_by("-id")
+    principals = Principal.objects.select_related("school", "user").all().order_by("-id")
+    doss = DirectorOfStudies.objects.select_related("school", "user").all().order_by("-id")
+
+    return {
+        "schools": schools,
+        "principals": principals,
+        "doss": doss,
+    }
+
+
+def _process_school_submission(request):
+    action = request.POST.get("action", "create")
+    school_id = request.POST.get("school_id")
+    name = (request.POST.get("name") or "").strip()
+    address = (request.POST.get("address") or "").strip()
+    phone = (request.POST.get("phone") or "").strip()
+    email = (request.POST.get("email") or "").strip()
+    subscription_balance = request.POST.get("subscription_balance") or 0
+    motto = (request.POST.get("motto") or "").strip()
+    logo = request.FILES.get("logo")
+
+    if not all([name, address, phone, email]):
+        messages.error(request, "Please fill in all required school fields.")
+        return False
+
+    if action == "update":
+        school = get_object_or_404(School, id=school_id)
+
+        if School.objects.exclude(id=school.id).filter(name=name).exists():
+            messages.warning(request, "Another school already uses that name.")
+            return False
+
+        if School.objects.exclude(id=school.id).filter(email=email).exists():
+            messages.warning(request, "Another school already uses that email.")
+            return False
+
+        if School.objects.exclude(id=school.id).filter(phone=phone).exists():
+            messages.warning(request, "Another school already uses that phone number.")
+            return False
+
+        school.name = name
+        school.address = address
+        school.phone = phone
+        school.email = email
+        school.motto = motto
+        school.subscription_balance = subscription_balance
+
+        if logo:
+            school.logo = logo
+
+        school.save()
+        messages.success(request, f"{school.name} updated successfully.")
+        return True
+
+    if School.objects.filter(name=name).exists():
+        messages.warning(request, "A school with that name already exists.")
+        return False
+
+    if School.objects.filter(email=email).exists():
+        messages.warning(request, "A school with that email already exists.")
+        return False
+
+    if School.objects.filter(phone=phone).exists():
+        messages.warning(request, "A school with that phone number already exists.")
+        return False
+
+    School.objects.create(
+        name=name,
+        address=address,
+        phone=phone,
+        email=email,
+        motto=motto,
+        subscription_balance=subscription_balance,
+        logo=logo,
+        is_active=False,
+    )
+
+    messages.success(request, "School added successfully.")
+    messages.warning(
+        request,
+        "New school accounts expire within 48 hours if not activated. Contact admin to activate."
+    )
+    return True
+
+
+def _process_principal_submission(request):
+    action = request.POST.get("action", "create")
+    principal_id = request.POST.get("principal_id")
+    name = (request.POST.get("name") or "").strip()
+    email = (request.POST.get("email") or "").strip()
+    phone = (request.POST.get("phone") or "").strip()
+    password = request.POST.get("password") or ""
+    school_id = request.POST.get("school")
+
+    if not all([name, email, phone, school_id]):
+        messages.error(request, "Please fill all required principal fields.")
+        return False
+
+    school = get_object_or_404(School, id=school_id)
+
+    if action == "update":
+        principal = get_object_or_404(Principal, id=principal_id)
+        user = principal.user
+
+        if user and CustomUser.objects.exclude(id=user.id).filter(email=email).exists():
+            messages.warning(request, "Another user already uses that email.")
+            return False
+
+        if Principal.objects.exclude(id=principal.id).filter(phone=phone).exists():
+            messages.warning(request, "Another principal already uses that phone number.")
+            return False
+
+        if Principal.objects.exclude(id=principal.id).filter(school=school).exists():
+            messages.warning(request, "This school already has a Principal account.")
+            return False
+
+        principal.name = name
+        principal.email = email
+        principal.phone = phone
+        principal.school = school
+        principal.save()
+
+        if user:
+            user.email = email
+            user.school = school
+            user.role = "principal"
+            user.save(update_fields=["email", "school", "role"])
+
+            if password:
+                user.set_password(password)
+                user.save(update_fields=["password"])
+
+        messages.success(request, f"{name} updated successfully.")
+        return True
+
+    if not password:
+        messages.error(request, "Password is required when creating a principal account.")
+        return False
+
+    if CustomUser.objects.filter(email=email).exists():
+        messages.warning(request, "Email already taken.")
+        return False
+
+    if Principal.objects.filter(phone=phone).exists():
+        messages.warning(request, "Phone number already used.")
+        return False
+
+    if Principal.objects.filter(school=school).exists():
+        messages.warning(request, "This school already has a Principal account.")
+        return False
+
+    user = CustomUser.objects.create_user(
+        email=email,
+        password=password,
+        role="principal",
+        school=school,
+        email_verified=False,
+    )
+
+    Principal.objects.create(
+        user=user,
+        school=school,
+        name=name,
+        email=email,
+        phone=phone,
+    )
+
+    send_user_verification_email(user, request=request, role_name='Principal')
+    messages.success(request, f"{name} registered successfully as Principal. A verification email has been sent.")
+    return True
+
+
+def _process_dos_submission(request):
+    action = request.POST.get("action", "create")
+    dos_id = request.POST.get("dos_id")
+    name = (request.POST.get("name") or "").strip()
+    email = (request.POST.get("email") or "").strip()
+    phone = (request.POST.get("phone") or "").strip()
+    password = request.POST.get("password") or ""
+    school_id = request.POST.get("school")
+
+    if not all([name, email, phone, school_id]):
+        messages.error(request, "Please fill all required DOS fields.")
+        return False
+
+    school = get_object_or_404(School, id=school_id)
+
+    if action == "update":
+        dos = get_object_or_404(DirectorOfStudies, id=dos_id)
+        user = dos.user
+
+        if user and CustomUser.objects.exclude(id=user.id).filter(email=email).exists():
+            messages.warning(request, "Another user already uses that email.")
+            return False
+
+        if DirectorOfStudies.objects.exclude(id=dos.id).filter(phone=phone).exists():
+            messages.warning(request, "Another DOS already uses that phone number.")
+            return False
+
+        if DirectorOfStudies.objects.exclude(id=dos.id).filter(school=school).exists():
+            messages.warning(request, "This school already has a DOS account.")
+            return False
+
+        dos.name = name
+        dos.email = email
+        dos.phone = phone
+        dos.school = school
+        dos.save()
+
+        if user:
+            user.email = email
+            user.school = school
+            user.role = "dos"
+            user.save(update_fields=["email", "school", "role"])
+
+            if password:
+                user.set_password(password)
+                user.save(update_fields=["password"])
+
+        messages.success(request, f"{name} updated successfully.")
+        return True
+
+    if not password:
+        messages.error(request, "Password is required when creating a DOS account.")
+        return False
+
+    if CustomUser.objects.filter(email=email).exists():
+        messages.warning(request, "Email already taken.")
+        return False
+
+    if DirectorOfStudies.objects.filter(phone=phone).exists():
+        messages.warning(request, "Phone number already used.")
+        return False
+
+    if DirectorOfStudies.objects.filter(school=school).exists():
+        messages.warning(request, "This school already has a DOS account.")
+        return False
+
+    user = CustomUser.objects.create_user(
+        email=email,
+        password=password,
+        role="dos",
+        school=school,
+        email_verified=False,
+    )
+
+    DirectorOfStudies.objects.create(
+        user=user,
+        school=school,
+        name=name,
+        email=email,
+        phone=phone,
+    )
+
+    send_user_verification_email(user, request=request, role_name='Director of Studies')
+    messages.success(request, f"{name} registered successfully. A verification email has been sent.")
+    return True
+
+
+@superuser_required
+def manage_schools(request):
+    if request.method == "POST":
+        _process_school_submission(request)
+        return redirect("manage_schools")
+
+    context = _superuser_management_context()
+    return render(request, "dashboards/manage_schools.html", context)
+
+
+@superuser_required
+def manage_principals(request):
+    if request.method == "POST":
+        _process_principal_submission(request)
+        return redirect("manage_principals")
+
+    context = _superuser_management_context()
+    return render(request, "dashboards/manage_principals.html", context)
+
+
+@superuser_required
+def edit_principal_by_superuser(request, principal_id):
+    principal = get_object_or_404(Principal, id=principal_id)
+
+    if request.method == "POST":
+        name = (request.POST.get("name") or "").strip()
+        email = (request.POST.get("email") or "").strip()
+        phone = (request.POST.get("phone") or "").strip()
+        password = request.POST.get("password") or ""
+        school_id = request.POST.get("school")
+
+        if not all([name, email, phone, school_id]):
+            messages.error(request, "Please fill all required principal fields.")
+            return redirect("edit_principal_by_superuser", principal_id=principal.id)
+
+        school = get_object_or_404(School, id=school_id)
+
+        if CustomUser.objects.exclude(id=principal.user_id).filter(email=email).exists():
+            messages.warning(request, "Another user already uses that email.")
+            return redirect("edit_principal_by_superuser", principal_id=principal.id)
+
+        if Principal.objects.exclude(id=principal.id).filter(phone=phone).exists():
+            messages.warning(request, "Another principal already uses that phone number.")
+            return redirect("edit_principal_by_superuser", principal_id=principal.id)
+
+        if Principal.objects.exclude(id=principal.id).filter(school=school).exists():
+            messages.warning(request, "This school already has a Principal account.")
+            return redirect("edit_principal_by_superuser", principal_id=principal.id)
+
+        principal.name = name
+        principal.email = email
+        principal.phone = phone
+        principal.school = school
+        principal.save()
+
+        if principal.user:
+            principal.user.email = email
+            principal.user.school = school
+            principal.user.role = "principal"
+            principal.user.save(update_fields=["email", "school", "role"])
+
+            if password:
+                principal.user.set_password(password)
+                principal.user.save(update_fields=["password"])
+
+        messages.success(request, f"{name} updated successfully.")
+        return redirect("manage_principals")
+
+    context = _superuser_management_context()
+    context.update({"principal": principal})
+    return render(request, "dashboards/edit_principal.html", context)
+
+
+@superuser_required
+def delete_principal_by_superuser(request, principal_id):
+    principal = get_object_or_404(Principal, id=principal_id)
+
+    if request.method == "POST":
+        principal_name = principal.name
+        user = principal.user
+        principal.delete()
+        if user:
+            user.delete()
+        messages.success(request, f"{principal_name} deleted successfully.")
+        return redirect("manage_principals")
+
+    return redirect("manage_principals")
+
+
+@superuser_required
+def manage_dos(request):
+    if request.method == "POST":
+        _process_dos_submission(request)
+        return redirect("manage_dos")
+
+    context = _superuser_management_context()
+    return render(request, "dashboards/manage_dos.html", context)
+
+
+@superuser_required
+def edit_dos_by_superuser(request, dos_id):
+    dos = get_object_or_404(DirectorOfStudies, id=dos_id)
+
+    if request.method == "POST":
+        name = (request.POST.get("name") or "").strip()
+        email = (request.POST.get("email") or "").strip()
+        phone = (request.POST.get("phone") or "").strip()
+        password = request.POST.get("password") or ""
+        school_id = request.POST.get("school")
+
+        if not all([name, email, phone, school_id]):
+            messages.error(request, "Please fill all required DOS fields.")
+            return redirect("edit_dos_by_superuser", dos_id=dos.id)
+
+        school = get_object_or_404(School, id=school_id)
+
+        if CustomUser.objects.exclude(id=dos.user_id).filter(email=email).exists():
+            messages.warning(request, "Another user already uses that email.")
+            return redirect("edit_dos_by_superuser", dos_id=dos.id)
+
+        if DirectorOfStudies.objects.exclude(id=dos.id).filter(phone=phone).exists():
+            messages.warning(request, "Another DOS already uses that phone number.")
+            return redirect("edit_dos_by_superuser", dos_id=dos.id)
+
+        if DirectorOfStudies.objects.exclude(id=dos.id).filter(school=school).exists():
+            messages.warning(request, "This school already has a DOS account.")
+            return redirect("edit_dos_by_superuser", dos_id=dos.id)
+
+        dos.name = name
+        dos.email = email
+        dos.phone = phone
+        dos.school = school
+        dos.save()
+
+        if dos.user:
+            dos.user.email = email
+            dos.user.school = school
+            dos.user.role = "dos"
+            dos.user.save(update_fields=["email", "school", "role"])
+
+            if password:
+                dos.user.set_password(password)
+                dos.user.save(update_fields=["password"])
+
+        messages.success(request, f"{name} updated successfully.")
+        return redirect("manage_dos")
+
+    context = _superuser_management_context()
+    context.update({"dos": dos})
+    return render(request, "dashboards/edit_dos.html", context)
+
+
+@superuser_required
+def delete_dos_by_superuser(request, dos_id):
+    dos = get_object_or_404(DirectorOfStudies, id=dos_id)
+
+    if request.method == "POST":
+        dos_name = dos.name
+        user = dos.user
+        dos.delete()
+        if user:
+            user.delete()
+        messages.success(request, f"{dos_name} deleted successfully.")
+        return redirect("manage_dos")
+
+    return redirect("manage_dos")
 from django.contrib import messages
 from .models import DOSQuery
 from django.shortcuts import redirect
@@ -660,6 +1089,107 @@ def edit_school_info(request):
         return redirect('principal_dashboard')
 
     return render(request, 'schools/edit_school_info.html', {'school': school})
+
+
+@login_required
+def principal_school_manager(request):
+    """Principal page for editing school info and managing the school DOS account."""
+    school = getattr(request.user, 'school', None)
+    if school is None:
+        messages.error(request, "You are not assigned to a school.")
+        return redirect('landing_page')
+
+    dos = getattr(school, 'dos', None)
+
+    if request.method == 'POST':
+        section = request.POST.get('section')
+
+        if section == 'school':
+            school.name = request.POST.get('name', school.name)
+            school.motto = request.POST.get('motto', school.motto)
+            school.address = request.POST.get('address', school.address)
+            school.email = request.POST.get('email', school.email)
+            school.phone = request.POST.get('phone', school.phone)
+
+            logo = request.FILES.get('logo')
+            if logo:
+                school.logo = logo
+
+            school.save()
+            messages.success(request, "School information updated successfully.")
+            return redirect('principal_school_manager')
+
+        if section == 'dos':
+            name = (request.POST.get('name') or '').strip()
+            email = (request.POST.get('email') or '').strip()
+            phone = (request.POST.get('phone') or '').strip()
+            password = request.POST.get('password') or ''
+
+            if not all([name, email, phone]):
+                messages.error(request, "Please fill all DOS fields.")
+                return redirect('principal_school_manager')
+
+            if dos:
+                user = dos.user
+                if user and CustomUser.objects.exclude(id=user.id).filter(email=email).exists():
+                    messages.warning(request, "Another user already uses that email.")
+                    return redirect('principal_school_manager')
+                if DirectorOfStudies.objects.exclude(id=dos.id).filter(phone=phone).exists():
+                    messages.warning(request, "Another DOS already uses that phone number.")
+                    return redirect('principal_school_manager')
+
+                dos.name = name
+                dos.email = email
+                dos.phone = phone
+                dos.save()
+
+                if user:
+                    user.email = email
+                    user.school = school
+                    user.role = 'dos'
+                    user.save(update_fields=['email', 'school', 'role'])
+                    if password:
+                        user.set_password(password)
+                        user.save(update_fields=['password'])
+
+                messages.success(request, "DOS information updated successfully.")
+                return redirect('principal_school_manager')
+
+            if not password:
+                messages.error(request, "Password is required when creating a DOS account.")
+                return redirect('principal_school_manager')
+
+            if CustomUser.objects.filter(email=email).exists():
+                messages.warning(request, "Email already taken.")
+                return redirect('principal_school_manager')
+
+            if DirectorOfStudies.objects.filter(phone=phone).exists():
+                messages.warning(request, "Phone number already used.")
+                return redirect('principal_school_manager')
+
+            user = CustomUser.objects.create_user(
+                email=email,
+                password=password,
+                role='dos',
+                school=school,
+                email_verified=False,
+            )
+
+            DirectorOfStudies.objects.create(
+                user=user,
+                school=school,
+                name=name,
+                email=email,
+                phone=phone,
+            )
+            send_user_verification_email(user, request=request, role_name='Director of Studies')
+            messages.success(request, "DOS account created successfully. A verification email has been sent.")
+            return redirect('principal_school_manager')
+
+    return render(request, 'schools/principal_school_manager.html', {
+        'school': school,
+        'dos': dos,
+    })
 
 
 @login_required

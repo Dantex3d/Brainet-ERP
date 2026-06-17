@@ -211,16 +211,16 @@
                         <a href="{% url 'superuser_dashboard' %}" class="nav-link btn btn-outline-primary text-start rounded-3 py-2">
                             🏠 Dashboard Home
                         </a>
-                        <a href="{% url 'add_school' %}" class="nav-link btn btn-outline-success text-start rounded-3 py-2">
+                        <a href="{% url 'manage_schools' %}" class="nav-link btn btn-outline-success text-start rounded-3 py-2">
                             ➕ Register School
                         </a>
-                        <a href="#schools-section" data-bs-toggle="collapse" class="nav-link btn btn-outline-info text-start rounded-3 py-2">
+                        <a href="{% url 'manage_schools' %}" class="nav-link btn btn-outline-info text-start rounded-3 py-2">
                             🏢 Manage Schools
                         </a>
-                        <a href="#principals-section" data-bs-toggle="collapse" class="nav-link btn btn-outline-primary text-start rounded-3 py-2">
+                        <a href="{% url 'manage_principals' %}" class="nav-link btn btn-outline-primary text-start rounded-3 py-2">
                             👨‍💼 Manage Principals
                         </a>
-                        <a href="#dos-section" data-bs-toggle="collapse" class="nav-link btn btn-outline-info text-start rounded-3 py-2">
+                        <a href="{% url 'manage_dos' %}" class="nav-link btn btn-outline-info text-start rounded-3 py-2">
                             👩‍💻 Register DOS
                         </a>
                         <a href="#vouchers" data-bs-toggle="collapse" class="nav-link btn btn-outline-warning text-start rounded-3 py-2">
@@ -233,106 +233,6 @@
                 </div>
             </div>
         </div>
-
-        <!-- MAIN CONTENT AREA -->
-        <div class="col-lg-9">
-
-            <!-- REGISTER NEW SCHOOL -->
-            <div class="card border-0 shadow-lg rounded-4 mb-4">
-                <div class="card-header bg-success text-white rounded-top-4">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">➕ Register New School</h5>
-                        <small class="text-white-50">Quick Add</small>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="alert alert-warning rounded-3 mb-4">
-                        ⚠ New school accounts expire within 48 hours if they are not activated. Contact admin to activate the account.
-                    </div>
-                    <form method="post" action="{% url 'add_school' %}" enctype="multipart/form-data">
-                        {% csrf_token %}
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold">School Name</label>
-                                <input type="text" name="name" class="form-control rounded-3" required>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold">Email</label>
-                                <input type="email" name="email" class="form-control rounded-3" required>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold">Phone</label>
-                                <input type="text" name="phone" class="form-control rounded-3" required>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold">Address</label>
-                                <input type="text" name="address" class="form-control rounded-3" required>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold">Subscription Balance</label>
-                                <input type="number" name="subscription_balance" value="0" class="form-control rounded-3">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold">School Logo</label>
-                                <input type="file" name="logo" class="form-control rounded-3">
-                            </div>
-                        </div>
-                        <button type="submit" class="btn btn-success px-4 rounded-3">
-                            ✓ Add School
-                        </button>
-                    </form>
-                </div>
-            </div>
-
-            <!-- REGISTER PRINCIPAL -->
-            <div class="card border-0 shadow-lg rounded-4 mb-4" id="principals-section">
-                <div class="card-header bg-primary text-white rounded-top-4">
-                    <h5 class="mb-0">👨‍💼 Register Principal</h5>
-                </div>
-                <div class="card-body">
-                    <form method="POST" action="{% url 'register_principal_by_superuser' %}">
-                        {% csrf_token %}
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold">Full Name</label>
-                                <input type="text" name="name" class="form-control rounded-3" required>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold">Email</label>
-                                <input type="email" name="email" class="form-control rounded-3" required>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold">Phone</label>
-                                <input type="text" name="phone" class="form-control rounded-3" required>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold">Password</label>
-                                <input type="password" name="password" class="form-control rounded-3" required>
-                            </div>
-                            <div class="col-md-12 mb-3">
-                                <label class="form-label fw-bold">Select School</label>
-                                <select name="school" class="form-select rounded-3" required>
-                                    <option value="">-- Choose School --</option>
-                                    {% for school in schools %}
-                                    <option value="{{ school.id }}">{{ school.name }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                        </div>
-                        <button type="submit" class="btn btn-primary px-4 rounded-3">
-                            ✓ Register Principal
-                        </button>
-                    </form>
-                </div>
-            </div>
-
-            <!-- SCHOOLS MANAGEMENT TABLE -->
-            <div class="card border-0 shadow-lg rounded-4 mb-4" id="schools-section">
-                <div class="card-header bg-info text-white rounded-top-4">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">🏢 Registered Schools ({{ schools.count }})</h5>
-                        <div class="badge bg-light text-dark px-3 py-2">Active: {{ active_schools }}/{{ schools.count }}</div>
-                    </div>
                 </div>
                 <div class="card-body p-0 table-responsive">
                     <table class="table table-hover align-middle mb-0">
@@ -392,7 +292,7 @@
                             <tr>
                                 <td colspan="6" class="text-center text-muted py-5">
                                     <p>No schools registered yet.</p>
-                                    <a href="{% url 'add_school' %}" class="btn btn-sm btn-primary">Register First School</a>
+                                    <a href="{% url 'manage_schools' %}" class="btn btn-sm btn-primary">Register First School</a>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -401,134 +301,7 @@
                 </div>
             </div>
 
-            <!-- PRINCIPALS AND DOS LIST -->
-            <div class="row g-4 mb-4">
-                <div class="col-lg-6">
-                    <div class="card border-0 shadow-lg rounded-4 h-100">
-                        <div class="card-header bg-primary text-white rounded-top-4">
-                            <h5 class="mb-0">👨‍💼 Principals</h5>
-                        </div>
-                        <div class="card-body table-responsive">
-                            {% if principals.count > 0 %}
-                            <table class="table table-sm mb-0">
-                                <thead>
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>Email</th>
-                                        <th>School</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for principal in principals %}
-                                    <tr>
-                                        <td>{{ principal.name }}</td>
-                                        <td>{{ principal.email }}</td>
-                                        <td>{{ principal.school.name }}</td>
-                                        <td>
-                                            {% if principal.user.email_verified %}
-                                            <span class="badge bg-success">Verified</span>
-                                            {% else %}
-                                            <span class="badge bg-warning">Unverified</span>
-                                            {% endif %}
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                            {% else %}
-                            <p class="text-muted text-center py-4">No principals registered yet.</p>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-lg-6">
-                    <div class="card border-0 shadow-lg rounded-4 h-100">
-                        <div class="card-header bg-info text-white rounded-top-4">
-                            <h5 class="mb-0">👩‍💻 Directors of Studies</h5>
-                        </div>
-                        <div class="card-body table-responsive">
-                            {% if doss.count > 0 %}
-                            <table class="table table-sm mb-0">
-                                <thead>
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>Email</th>
-                                        <th>School</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for dos in doss %}
-                                    <tr>
-                                        <td>{{ dos.name }}</td>
-                                        <td>{{ dos.email }}</td>
-                                        <td>{{ dos.school.name }}</td>
-                                        <td>
-                                            {% if dos.user.email_verified %}
-                                            <span class="badge bg-success">Verified</span>
-                                            {% else %}
-                                            <span class="badge bg-warning">Unverified</span>
-                                            {% endif %}
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                            {% else %}
-                            <p class="text-muted text-center py-4">No DOS accounts registered yet.</p>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- DOS & VOUCHERS GRID -->
-            <div class="row g-4 mb-4">
-
-                <!-- REGISTER DOS -->
-                <div class="col-lg-6" id="dos-section">
-                    <div class="card border-0 shadow-lg rounded-4 h-100">
-                        <div class="card-header bg-dark text-white rounded-top-4">
-                            <h5 class="mb-0">👩‍💻 Register DOS</h5>
-                        </div>
-                        <div class="card-body">
-                            <form method="post" action="{% url 'register_dos_by_superuser' %}">
-                                {% csrf_token %}
-                                <div class="mb-3">
-                                    <label class="form-label fw-bold">Full Name</label>
-                                    <input type="text" name="name" class="form-control rounded-3" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label fw-bold">Email</label>
-                                    <input type="email" name="email" class="form-control rounded-3" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label fw-bold">Phone</label>
-                                    <input type="text" name="phone" class="form-control rounded-3" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label fw-bold">School</label>
-                                    <select name="school" class="form-select rounded-3" required>
-                                        <option value="">-- Choose School --</option>
-                                        {% for school in schools %}
-                                        <option value="{{ school.id }}">{{ school.name }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label fw-bold">Password</label>
-                                    <input type="password" name="password" class="form-control rounded-3" required>
-                                </div>
-                                <button type="submit" class="btn btn-success w-100 rounded-3">
-                                    ✓ Create DOS Account
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-
+          
                 <!-- PENDING VOUCHERS -->
                 <div class="col-lg-6" id="vouchers">
                     <div class="card border-0 shadow-lg rounded-4 h-100">

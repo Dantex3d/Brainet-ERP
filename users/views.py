@@ -25,11 +25,13 @@ class CustomLoginView(LoginView):
         """Override form_valid to check verification status"""
         user = form.get_user()
         
-        # For DOS/Principal, require email verification before allowing login
-        if user.role in ['dos', 'principal'] and not user.email_verified:
+        # For DOS/Principal/Teacher, require email verification before allowing login
+        if user.role in ['dos', 'principal', 'teacher'] and not user.email_verified:
+            role_map = {'dos': 'DOS', 'principal': 'Principal', 'teacher': 'Teacher'}
+            role_name = role_map.get(user.role, user.role)
             messages.warning(
                 self.request, 
-                f"Your {user.role} account requires verification. Please check your email for the verification code."
+                f"Your {role_name} account requires verification. Please check your email for the verification code."
             )
             return redirect(f"{reverse('verify_user_code')}?email={user.email}")
         
@@ -230,7 +232,7 @@ def verify_user_email(request, token):
 
 
 def verify_user_code(request):
-    """Verify user account using a numeric verification code (for DOS/Principal)"""
+    """Verify user account using a numeric verification code (for DOS/Principal/Teacher)"""
     email = request.GET.get('email') or request.POST.get('email')
     
     if not email:
@@ -238,7 +240,7 @@ def verify_user_code(request):
         return redirect('home')
     
     try:
-        user = User.objects.get(email=email, role__in=['dos', 'principal'])
+        user = User.objects.get(email=email, role__in=['dos', 'principal', 'teacher'])
     except User.DoesNotExist:
         messages.error(request, 'Account not found or verification not required.')
         return redirect('home')
@@ -259,6 +261,32 @@ def verify_user_code(request):
             return render(request, 'users/verify_code.html', {'email': email})
     
     return render(request, 'users/verify_code.html', {'email': email})
+
+
+def resend_verification_code(request):
+    """Resend verification code for DOS/Principal/Teacher accounts"""
+    email = request.GET.get('email') or request.POST.get('email')
+    
+    if not email:
+        messages.error(request, 'Email address is required.')
+        return redirect('home')
+    
+    try:
+        user = User.objects.get(email=email, role__in=['dos', 'principal', 'teacher'])
+    except User.DoesNotExist:
+        messages.error(request, 'Account not found.')
+        return redirect('home')
+    
+    if user.email_verified:
+        messages.info(request, 'Your account is already verified.')
+        return redirect('home')
+    
+    # Regenerate and send code
+    from schools.views import send_user_verification_email
+    send_user_verification_email(user, request=request, role_name=user.get_role_display())
+    
+    messages.success(request, 'A new verification code has been sent to your email.')
+    return redirect(f"{reverse('verify_user_code')}?email={email}")
 
 
 @login_required

@@ -44,5 +44,10 @@ urlpatterns = [
         views.verify_user_code,
         name='verify_user_code'
     ),
+    path(
+        'resend-code/',
+        views.resend_verification_code,
+        name='resend_verification_code'
+    ),
     path('logout/', views.custom_logout, name='logout')
 ]

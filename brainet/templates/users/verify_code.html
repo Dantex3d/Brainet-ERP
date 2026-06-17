@@ -54,8 +54,8 @@
                         <p class="text-muted mb-0">
                             Didn't receive a code?
                         </p>
-                        <a href="{% url 'home' %}" class="text-decoration-none fw-bold">
-                            Try logging in again
+                        <a href="{% url 'resend_verification_code' %}?email={{ email }}" class="text-decoration-none fw-bold">
+                            Resend Code
                         </a>
                     </div>
 

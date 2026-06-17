@@ -38,8 +38,8 @@
                 <button onclick="location.reload()" class="btn btn-outline-primary shadow-sm rounded-3" title="Refresh Dashboard">
                     🔄 Refresh
                 </button>
-                <a href="{% url 'edit_school_info' %}" class="btn btn-outline-secondary shadow-sm rounded-3" title="Edit School Info">
-                    ⚙️ Edit School
+                <a href="{% url 'principal_school_manager' %}" class="btn btn-outline-secondary shadow-sm rounded-3" title="Manage School and DOS">
+                    ⚙️ School & DOS
                 </a>
                 <a href="{% url 'send_school_notice' %}" class="btn btn-outline-success shadow-sm rounded-3" title="New Announcement">
                     📢 New Announcement
@@ -125,7 +125,7 @@
                 <div class="card-header bg-primary text-white rounded-top-4">
                     <div class="d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">📋 Management Center</h5>
-                        <small class="text-white-50">Quick Actions</small>
+                        <small class="text-white-50">Direct links</small>
                     </div>
                 </div>
                 <div class="card-body">
@@ -163,7 +163,7 @@
                         <div class="col-md-6">
                             <a href="{% url 'marks_hub' %}" class="btn btn-outline-danger w-100 py-3 rounded-3">
                                 📊 Marks Hub
-                        </a>
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -233,14 +233,17 @@
                     <h5 class="mb-0">⚡ Quick Access</h5>
                 </div>
                 <div class="card-body d-grid gap-2">
+                    <a href="{% url 'principal_school_manager' %}" class="btn btn-dark rounded-3 text-start py-2">
+                        🏫 School & DOS Manager
+                    </a>
                     <a href="{% url 'add_student' %}" class="btn btn-outline-primary rounded-3 text-start py-2">
-                        ➕ Add Student
+                        👨‍🎓 Add Student
                     </a>
                     <a href="{% url 'add_class' %}" class="btn btn-outline-success rounded-3 text-start py-2">
-                        ➕ Add Class
+                        📚 Add Class
                     </a>
                     <a href="{% url 'manage_dorms' %}" class="btn btn-outline-secondary rounded-3 text-start py-2">
-                        ➕ Manage Dormitories
+                        🏠 Manage Dormitories
                     </a>
                     <a href="{% url 'enter_marks' %}" class="btn btn-outline-info rounded-3 text-start py-2">
                         📝 Enter Marks

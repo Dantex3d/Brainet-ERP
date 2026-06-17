@@ -1,0 +1,111 @@
+{% extends 'dashboards/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+        <div>
+            <h3 class="fw-bold mb-1">🏫 School & DOS Manager</h3>
+            <p class="text-muted mb-0">Update your school profile and maintain the DOS account from one place.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'principal_dashboard' %}" class="btn btn-outline-secondary rounded-3">← Back to Dashboard</a>
+            <a href="#school-form" class="btn btn-primary rounded-3">School</a>
+            <a href="#dos-form" class="btn btn-dark rounded-3">DOS</a>
+        </div>
+    </div>
+
+    {% if messages %}
+    <div class="mb-4">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} shadow-sm rounded-3">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="row g-4">
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-lg rounded-4 h-100">
+                <div class="card-header bg-primary text-white rounded-top-4">
+                    <h5 class="mb-0" id="school-form">✏️ Edit School Information</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input type="hidden" name="section" value="school">
+                        <div class="mb-3 text-center">
+                            {% if school.logo %}
+                            <img src="{{ school.logo.url }}" alt="School Logo" class="rounded-circle mb-3" style="width: 110px; height: 110px; object-fit: cover;">
+                            {% endif %}
+                            <input type="file" name="logo" class="form-control rounded-3">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">School Name</label>
+                            <input type="text" name="name" class="form-control rounded-3" value="{{ school.name }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Motto</label>
+                            <input type="text" name="motto" class="form-control rounded-3" value="{{ school.motto|default:'' }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Address</label>
+                            <textarea name="address" class="form-control rounded-3" rows="3" required>{{ school.address }}</textarea>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Email</label>
+                                <input type="email" name="email" class="form-control rounded-3" value="{{ school.email }}" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Phone</label>
+                                <input type="text" name="phone" class="form-control rounded-3" value="{{ school.phone }}" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary rounded-3 w-100">Save School Changes</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-lg rounded-4 h-100">
+                <div class="card-header bg-dark text-white rounded-top-4">
+                    <h5 class="mb-0" id="dos-form">👩‍💻 Add / Edit DOS</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="section" value="dos">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Full Name</label>
+                            <input type="text" name="name" class="form-control rounded-3" value="{% if dos %}{{ dos.name }}{% endif %}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Email</label>
+                            <input type="email" name="email" class="form-control rounded-3" value="{% if dos %}{{ dos.email }}{% endif %}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Phone</label>
+                            <input type="text" name="phone" class="form-control rounded-3" value="{% if dos %}{{ dos.phone }}{% endif %}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Password</label>
+                            <input type="password" name="password" class="form-control rounded-3" placeholder="{% if dos %}Leave blank to keep current password{% else %}Required for new DOS{% endif %}">
+                        </div>
+                        {% if dos %}
+                        <div class="alert alert-info rounded-3">
+                            Current DOS account is linked to {{ dos.school.name }}. Update the fields above to edit it.
+                        </div>
+                        {% else %}
+                        <div class="alert alert-warning rounded-3">
+                            No DOS account is assigned yet. Create one from this form.
+                        </div>
+                        {% endif %}
+                        <button type="submit" class="btn btn-dark rounded-3 w-100">Save DOS Changes</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

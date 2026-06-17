@@ -1,0 +1,151 @@
+{% extends 'dashboards/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+        <div>
+            <h3 class="fw-bold mb-1">🏢 School Manager</h3>
+            <p class="text-muted mb-0">Add new schools or edit existing records without leaving the page.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'superuser_dashboard' %}" class="btn btn-outline-secondary rounded-3">← Back to Dashboard</a>
+            <a href="#school-form" class="btn btn-primary rounded-3">Add School</a>
+        </div>
+    </div>
+
+    {% if messages %}
+    <div class="mb-4">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} shadow-sm rounded-3">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="row g-4">
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-lg rounded-4 sticky-top" style="top: 1rem;">
+                <div class="card-header bg-success text-white rounded-top-4">
+                    <h5 class="mb-0" id="school-form">➕ Add / Edit School</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="create">
+                        <input type="hidden" name="school_id" value="">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">School Name</label>
+                            <input type="text" name="name" class="form-control rounded-3" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Email</label>
+                            <input type="email" name="email" class="form-control rounded-3" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Phone</label>
+                            <input type="text" name="phone" class="form-control rounded-3" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Address</label>
+                            <textarea name="address" class="form-control rounded-3" rows="3" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Motto</label>
+                            <input type="text" name="motto" class="form-control rounded-3">
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Subscription Balance</label>
+                                <input type="number" name="subscription_balance" value="0" class="form-control rounded-3">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Logo</label>
+                                <input type="file" name="logo" class="form-control rounded-3">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-success rounded-3 w-100">Save School</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-lg rounded-4">
+                <div class="card-header bg-dark text-white rounded-top-4 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Existing Schools</h5>
+                    <span class="badge bg-light text-dark">{{ schools.count }}</span>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table align-middle">
+                            <thead>
+                                <tr>
+                                    <th>School</th>
+                                    <th>Contact</th>
+                                    <th>Status</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for school in schools %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ school.name }}</strong><br>
+                                        <small class="text-muted">{{ school.address|truncatechars:40 }}</small>
+                                    </td>
+                                    <td>
+                                        <div>{{ school.email }}</div>
+                                        <small class="text-muted">{{ school.phone }}</small>
+                                    </td>
+                                    <td>
+                                        {% if school.is_active %}
+                                        <span class="badge bg-success">Active</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        <button
+                                            type="button"
+                                            class="btn btn-sm btn-outline-primary"
+                                            data-school-id="{{ school.id }}"
+                                            data-school-name="{{ school.name|escapejs }}"
+                                            data-school-email="{{ school.email|escapejs }}"
+                                            data-school-phone="{{ school.phone|escapejs }}"
+                                            data-school-address="{{ school.address|escapejs }}"
+                                            data-school-motto="{{ school.motto|default:''|escapejs }}"
+                                            data-school-balance="{{ school.subscription_balance }}"
+                                            onclick="fillSchoolForm(this)">
+                                            Edit
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted py-4">No schools found.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function fillSchoolForm(button) {
+    const form = document.querySelector('#school-form').closest('.card-body').querySelector('form');
+    form.querySelector('input[name="action"]').value = 'update';
+    form.querySelector('input[name="school_id"]').value = button.dataset.schoolId;
+    form.querySelector('input[name="name"]').value = button.dataset.schoolName;
+    form.querySelector('input[name="email"]').value = button.dataset.schoolEmail;
+    form.querySelector('input[name="phone"]').value = button.dataset.schoolPhone;
+    form.querySelector('textarea[name="address"]').value = button.dataset.schoolAddress;
+    form.querySelector('input[name="motto"]').value = button.dataset.schoolMotto;
+    form.querySelector('input[name="subscription_balance"]').value = button.dataset.schoolBalance;
+    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+</script>
+{% endblock %}
