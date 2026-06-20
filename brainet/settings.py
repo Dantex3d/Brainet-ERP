@@ -2,7 +2,7 @@ from pathlib import Path
 import os
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
-
+import smtplib
 # =========================================================
 # BASE DIRECTORY
 # =========================================================
@@ -176,6 +176,7 @@ EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'brainetsystem@gmail.com')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'pbidnvmwcigmylyy')
 SERVER_EMAIL = EMAIL_HOST_USER
+EMAIL_TIMEOUT = 120
 
 # =========================================================
 # STATIC FILES
