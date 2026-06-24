@@ -27,7 +27,7 @@ ALLOWED_HOSTS = os.environ.get(
     
 ).split(",")
 CSRF_TRUSTED_ORIGINS = [
-    "https://brainet.up.railway.app
+    "https://brainet.up.railway.app"
 ]
 
 # =========================================================
