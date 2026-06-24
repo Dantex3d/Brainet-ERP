@@ -49,51 +49,99 @@ from teachers.models import Teacher
 def superuser_required(view_func):
     return user_passes_test(lambda u: u.is_superuser)(view_func)
 
+from django.conf import settings
+from django.urls import reverse
+from utils.email_service import send_email
+
 
 def send_user_verification_email(user, request=None, role_name=None):
-    if not settings.EMAIL_HOST_USER or not user.email:
+    if not settings.BREVO_API_KEY or not user.email:
         return
 
-    # Generate verification code for DOS/Principal
-    if user.role in ['dos', 'principal',]:
+    # =========================
+    # DOS / PRINCIPAL FLOW
+    # =========================
+    if user.role in ['dos', 'principal']:
         code = user.generate_verification_code()
-        verify_link = request.build_absolute_uri(reverse('verify_user_code')) + f"?email={user.email}" if request else reverse('verify_user_code') + f"?email={user.email}"
-        
+
+        verify_link = (
+            request.build_absolute_uri(reverse('verify_user_code')) + f"?email={user.email}"
+            if request
+            else reverse('verify_user_code') + f"?email={user.email}"
+        )
+
         subject = f"Verify your {role_name or user.role} account on Brainet"
+
         body = (
             f"Hello {user.email},\n\n"
             f"Your {role_name or user.role} account has been created on Brainet.\n\n"
-            f"Please enter the following verification code to activate your account:\n\n"
+            f"Please enter the verification code below:\n\n"
             f"CODE: {code}\n\n"
-            f"Or click here to verify: {verify_link}\n\n"
-            f"This code will expire in 1 hour.\n\n"
-            f"If you did not request this account, please contact support."
-        )
-    else:
-        # For other roles, use token-based verification
-        token = user.generate_email_verification_token()
-        verify_link = request.build_absolute_uri(reverse('verify_user_email', args=[token])) if request else reverse('verify_user_email', args=[token])
-        subject = f"Verify your Brainet account"
-        if role_name:
-            subject = f"Verify your {role_name} account"
-        
-        body = (
-            f"Hello {getattr(user, 'first_name', user.email)},\n\n"
-            f"Please verify your email address by clicking the link below:\n\n{verify_link}\n\n"
-            "Once verified you can use this email for password reset and secure access.\n\n"
-            "If you did not request this account, please contact support."
+            f"Or click here:\n{verify_link}\n\n"
+            f"This code expires in 1 hour.\n\n"
+            f"If this wasn't you, contact support."
         )
 
-    try:
-        send_mail(
+        send_email(
+            to_email=user.email,
             subject=subject,
-            message=body,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[user.email],
-            fail_silently=True,
+            message=body
         )
-    except Exception:
-        pass
+        return
+
+    # =========================
+    # OTHER USERS FLOW
+    # =========================
+    token = user.generate_email_verification_token()
+
+    verify_link = (
+        request.build_absolute_uri(reverse('verify_user_email', args=[token]))
+        if request
+        else reverse('verify_user_email', args=[token])
+    )
+
+    subject = f"Verify your {role_name or 'Brainet'} account"
+
+    body = (
+        f"Hello {getattr(user, 'first_name', user.email)},\n\n"
+        f"Please verify your email by clicking below:\n\n{verify_link}\n\n"
+        "After verification you can access your account.\n\n"
+        "If you didn't request this, ignore this email."
+    )
+
+    send_email(
+        to_email=user.email,
+        subject=subject,
+        message=body
+    )
+
+
+def send_school_verification_email(school, request=None):
+    if not settings.BREVO_API_KEY or not school.email:
+        return
+
+    token = school.generate_verification_token()
+
+    verify_link = (
+        request.build_absolute_uri(reverse('verify_school_via_token', args=[token]))
+        if request
+        else reverse('verify_school_via_token', args=[token])
+    )
+
+    subject = "Verify your school registration on Brainet"
+
+    body = (
+        f"Hello {school.name},\n\n"
+        f"Please verify your school email:\n\n{verify_link}\n\n"
+        "This link expires in 1 hour.\n\n"
+        "If you did not register, ignore this message."
+    )
+
+    send_email(
+        to_email=school.email,
+        subject=subject,
+        message=body
+    )
 
 
 def send_school_verification_email(school, request=None):
