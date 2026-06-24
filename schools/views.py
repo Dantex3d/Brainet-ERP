@@ -55,7 +55,7 @@ def send_user_verification_email(user, request=None, role_name=None):
         return
 
     # Generate verification code for DOS/Principal
-    if user.role in ['dos', 'principal']:
+    if user.role in ['dos', 'principal',]:
         code = user.generate_verification_code()
         verify_link = request.build_absolute_uri(reverse('verify_user_code')) + f"?email={user.email}" if request else reverse('verify_user_code') + f"?email={user.email}"
         
