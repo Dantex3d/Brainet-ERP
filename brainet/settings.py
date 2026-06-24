@@ -22,7 +22,8 @@ DEBUG = os.environ.get("DEBUG", "False") == "True"
 
 ALLOWED_HOSTS = os.environ.get(
     "ALLOWED_HOSTS",
-    ".onrender.com,localhost,127.0.0.1"
+    ".onrender.com,localhost,127.0.0.1,.up.raylway.app"
+    
 ).split(",")
 
 # =========================================================
