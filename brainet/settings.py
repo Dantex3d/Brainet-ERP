@@ -18,17 +18,18 @@ SECRET_KEY = os.environ.get(
     "django-insecure-development-key"
 )
 
-DEBUG = os.environ.get("DEBUG", "False") == "False"
+DEBUG = os.environ.get("DEBUG", "False") == "True"
 
 ALLOWED_HOSTS = [
     "brainetanalytics.co.ke",
     "www.brainetanalytics.co.ke",
+    "brainet.up.railway.app",
 ]
     
-    
-).split(",")
 CSRF_TRUSTED_ORIGINS = [
-    "https://brainet.up.railway.app"
+    "https://brainetanalytics.co.ke",
+    "https://www.brainetanalytics.co.ke",
+    "https://brainet.up.railway.app",
 ]
 
 # =========================================================
@@ -220,7 +221,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # =========================================================
 
 if not DEBUG:
-    #SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')#
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SESSION_COOKIE_SECURE = True
     SECURE_SSL_REDIRECT = False
     CSRF_COOKIE_SECURE = True
