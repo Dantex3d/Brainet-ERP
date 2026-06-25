@@ -1,6 +1,6 @@
 import sib_api_v3_sdk
 from sib_api_v3_sdk.rest import ApiException
-from django.conf importbl7 settings
+from django.conf import settings
 
 
 def send_email(to_email, subject, message):
