@@ -179,19 +179,10 @@ EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.smtp.
 EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.zoho.com')
 EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
 EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
-<<<<<<< HEAD
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 EMAIL_TIMEOUT = int(os.environ.get('EMAIL_TIMEOUT', 10))
-=======
-EMAIL_USE_SSL = os.environ.get('EMAIL_USE_SSL', 'False') == 'True'
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'brainetsystem@gmail.com')
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'pbidnvmwcigmylyy')
-SERVER_EMAIL = EMAIL_HOST_USER
-EMAIL_SUBJECT_PREFIX = '[Brainet] '
-EMAIL_TIMEOUT = 10
->>>>>>> 6e3f988 (Fix verification and teacher admin flow)
 
 # =========================================================
 # STATIC FILES
@@ -229,12 +220,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SESSION_COOKIE_SECURE = True
-<<<<<<< HEAD
     SECURE_SSL_REDIRECT = True
     CSRF_COOKIE_SECURE = True
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
-=======
-    CSRF_COOKIE_SECURE = True
->>>>>>> 6e3f988 (Fix verification and teacher admin flow)
