@@ -1,0 +1,10 @@
+<!-- templates/dashboards/student.html -->
+
+{% block content %}
+<div class="container mt-4">
+  <h2 class="text-info">Student Dashboard</h2>
+  <p>Assignments Due: <span class="badge bg-danger">{{ assignments_due }}</span></p>
+  <p>Reports Available: <span class="badge bg-success">{{ reports_count }}</span></p>
+  <button class="btn btn-info">Download Report</button>
+</div>
+{% endblock %}

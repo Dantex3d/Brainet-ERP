@@ -1,0 +1,264 @@
+{% extends 'dashboards/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    <!-- PAGE HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary mb-0">➕ Add New Class</h2>
+        <a href="{% url 'dashboard' %}" class="btn btn-outline-primary shadow-sm">⬅ Back to Dashboard</a>
+    </div>
+
+    <!-- ADD CLASS FORM -->
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow rounded-4 mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Class Information</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'add_class' %}" id="classForm">
+                        {% csrf_token %}
+
+                        <!-- Class Name -->
+                        <div class="mb-3">
+                            <label for="className" class="form-label fw-bold">Class Name *</label>
+                            <input 
+                                type="text" 
+                                id="className"
+                                name="name" 
+                                class="form-control form-control-lg" 
+                                placeholder="e.g., Grade 9, Form 2, Class A" 
+                                required>
+                            <small class="text-muted">Enter a descriptive name for the class</small>
+                        </div>
+
+                        <!-- Class Level -->
+                        <div class="mb-3">
+                            <label for="classLevel" class="form-label fw-bold">Class Level *</label>
+                            <input 
+                                type="number" 
+                                id="classLevel"
+                                name="level" 
+                                class="form-control form-control-lg" 
+                                placeholder="e.g., 9, 10, 11" 
+                                required>
+                            <small class="text-muted">Enter numeric level (9, 10, 11, 12, etc.)</small>
+                        </div>
+
+                        <!-- Class Master (Teacher) -->
+                        <div class="mb-3">
+                            <label for="classMaster" class="form-label fw-bold">Class Master / Teacher</label>
+                            <select 
+                                id="classMaster"
+                                name="class_master" 
+                                class="form-select form-select-lg">
+                                <option value="">-- Select a Teacher (Optional) --</option>
+                                {% for teacher in teachers %}
+                                <option value="{{ teacher.id }}">{{ teacher.user.get_full_name }}</option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-muted">Assign a class master/teacher. Can be changed later.</small>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+
+            <!-- STREAMS MANAGEMENT -->
+            <div class="card shadow rounded-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">🌊 Streams / Divisions</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-3">Add streams/divisions for this class (e.g., Stream A, Stream B)</p>
+
+                    <!-- Add Stream Form -->
+                    <div class="mb-4">
+                        <div class="input-group input-group-lg">
+                            <input 
+                                type="text" 
+                                id="streamNameInput"
+                                class="form-control" 
+                                placeholder="Enter stream name (e.g., A, B, East, West)"
+                                aria-label="Stream name">
+                            <button 
+                                type="button" 
+                                class="btn btn-success" 
+                                id="addStreamBtn"
+                                onclick="addStream()">
+                                ➕ Add Stream
+                            </button>
+                        </div>
+                        <small class="text-muted d-block mt-2">Press Enter or click Add Stream to add</small>
+                    </div>
+
+                    <!-- Streams List -->
+                    <div id="streamsList" class="mb-3">
+                        <div class="alert alert-info mb-0" id="noStreamsMsg">
+                            <small>No streams added yet. Add one above.</small>
+                        </div>
+                    </div>
+
+                    <!-- Hidden input for storing streams data -->
+                    <input type="hidden" id="streamsData" name="streams" value="[]">
+
+                </div>
+            </div>
+
+            <!-- ACTION BUTTONS -->
+            <div class="d-flex gap-2 mt-4 justify-content-between">
+                    <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary btn-lg">❌ Cancel</a>
+                <button 
+                    type="submit" 
+                    form="classForm"
+                    class="btn btn-success btn-lg"
+                    onclick="saveClassWithStreams()">
+                    💾 Save Class & Streams
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+<style>
+    .stream-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        background-color: #e7f3ff;
+        border: 1px solid #b3d9ff;
+        border-radius: 20px;
+        margin-right: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .stream-badge .remove-btn {
+        cursor: pointer;
+        font-weight: bold;
+        color: #dc3545;
+        margin-left: 0.5rem;
+        transition: all 0.2s ease;
+    }
+
+    .stream-badge .remove-btn:hover {
+        transform: scale(1.2);
+    }
+
+    .stream-badge.added {
+        background-color: #d4edda;
+        border-color: #82c856;
+    }
+
+    .form-control-lg,
+    .form-select-lg {
+        padding: 0.75rem 1rem;
+        font-size: 1rem;
+    }
+
+    .btn-lg {
+        padding: 0.75rem 2rem;
+        font-size: 1rem;
+    }
+</style>
+
+<script>
+    let streams = [];
+
+    // Allow Enter key to add stream
+    document.getElementById('streamNameInput')?.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            addStream();
+        }
+    });
+
+    function addStream() {
+        const input = document.getElementById('streamNameInput');
+        const streamName = input.value.trim();
+
+        if (!streamName) {
+            alert('Please enter a stream name');
+            input.focus();
+            return;
+        }
+
+        // Check for duplicates
+        if (streams.includes(streamName)) {
+            alert('This stream already exists');
+            return;
+        }
+
+        // Add to array
+        streams.push(streamName);
+        input.value = '';
+
+        // Update display
+        renderStreams();
+        input.focus();
+    }
+
+    function removeStream(streamName) {
+        streams = streams.filter(s => s !== streamName);
+        renderStreams();
+    }
+
+    function renderStreams() {
+        const streamsList = document.getElementById('streamsList');
+        const noStreamsMsg = document.getElementById('noStreamsMsg');
+        const streamsData = document.getElementById('streamsData');
+
+        // Update hidden input
+        streamsData.value = JSON.stringify(streams);
+
+        if (streams.length === 0) {
+            streamsList.innerHTML = '<div class="alert alert-info mb-0" id="noStreamsMsg"><small>No streams added yet. Add one above.</small></div>';
+            return;
+        }
+
+        // Hide no streams message
+        let html = '';
+        streams.forEach(stream => {
+            html += `
+                <span class="stream-badge added">
+                    <strong>${stream}</strong>
+                    <span class="remove-btn" onclick="removeStream('${stream}')">✕</span>
+                </span>
+            `;
+        });
+
+        streamsList.innerHTML = html;
+    }
+
+    function saveClassWithStreams() {
+        const form = document.getElementById('classForm');
+        
+        // Validate class name and level
+        if (!form.name.value.trim()) {
+            alert('Please enter a class name');
+            form.name.focus();
+            return;
+        }
+
+        if (!form.level.value) {
+            alert('Please enter a class level');
+            form.level.focus();
+            return;
+        }
+
+        // Add streams data to form before submit
+        document.getElementById('streamsData').value = JSON.stringify(streams);
+
+        // Submit form
+        form.submit();
+    }
+
+    // Initialize streams display
+    renderStreams();
+</script>
+
+{% endblock %}

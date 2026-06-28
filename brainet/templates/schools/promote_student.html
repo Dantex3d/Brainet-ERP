@@ -1,0 +1,193 @@
+{% extends 'dashboards/base.html' %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    <!-- PAGE HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary mb-0">👤 {{ student.name }}</h2>
+        <a href="{% url 'promotion_center' %}" class="btn btn-outline-primary shadow-sm">⬅ Back</a>
+    </div>
+
+    <!-- STUDENT INFO -->
+    <div class="card shadow rounded-4 mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Student Information</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Name:</strong> {{ student.name }}</p>
+                    <p><strong>Admission #:</strong> {{ student.admission_number }}</p>
+                    <p><strong>Gender:</strong> {{ student.gender }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Current Class:</strong> 
+                        {% if student.current_class %}
+                            {{ student.current_class.name }}
+                        {% else %}
+                            <span class="text-muted">-</span>
+                        {% endif %}
+                    </p>
+                    <p><strong>Current Stream:</strong> 
+                        {% if student.stream %}
+                            {{ student.stream.name }}
+                        {% else %}
+                            <span class="text-muted">-</span>
+                        {% endif %}
+                    </p>
+                    <p><strong>Status:</strong> 
+                        <span class="badge bg-success">{{ student.status|title }}</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PROMOTION OPTIONS -->
+    <form method="post">
+        {% csrf_token %}
+        
+        <!-- PROMOTE -->
+        <div class="card shadow rounded-4 mb-3 border-success">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">✓ Promote to Next Level</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <p><strong>Current Class:</strong> 
+                            {{ student.current_class.name if student.current_class else '-' }}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Next Class:</strong> 
+                            {% if next_class %}
+                                <span class="badge bg-success">{{ next_class.name }}</span>
+                                {% if next_stream %}
+                                    - {{ next_stream.name }}
+                                {% endif %}
+                            {% else %}
+                                <span class="badge bg-primary">🎓 Graduated</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="remarks_promote" class="form-label">Remarks (Optional)</label>
+                    <textarea 
+                        name="remarks" 
+                        id="remarks_promote"
+                        class="form-control" 
+                        rows="2"
+                        placeholder="Add any remarks..."></textarea>
+                </div>
+
+                <button type="submit" 
+                        name="action" 
+                        value="promote"
+                        class="btn btn-success w-100">
+                    🚀 Promote Student
+                </button>
+            </div>
+        </div>
+
+        <!-- REPEAT -->
+        <div class="card shadow rounded-4 mb-3 border-warning">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0">🔄 Repeat Year</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-3">
+                    Keep the student in the same class for another year.
+                </p>
+
+                <div class="mb-3">
+                    <label for="remarks_repeat" class="form-label">Reason for Repetition</label>
+                    <textarea 
+                        name="remarks" 
+                        id="remarks_repeat"
+                        class="form-control" 
+                        rows="2"
+                        placeholder="Explain why the student is repeating..."></textarea>
+                </div>
+
+                <button type="submit" 
+                        name="action" 
+                        value="repeat"
+                        class="btn btn-warning w-100">
+                    🔄 Mark as Repeated
+                </button>
+            </div>
+        </div>
+
+        <!-- DROP -->
+        <div class="card shadow rounded-4 mb-3 border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0">✕ Drop from School</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-3">
+                    Remove the student from school (use only in exceptional cases).
+                </p>
+
+                <div class="mb-3">
+                    <label for="remarks_drop" class="form-label">Reason for Dropping</label>
+                    <textarea 
+                        name="remarks" 
+                        id="remarks_drop"
+                        class="form-control" 
+                        rows="2"
+                        placeholder="Explain why the student is being dropped..."></textarea>
+                </div>
+
+                <button type="submit" 
+                        name="action" 
+                        value="drop"
+                        class="btn btn-danger w-100"
+                        onclick="return confirm('Are you sure? This action cannot be easily undone.')">
+                    ✕ Drop Student
+                </button>
+            </div>
+        </div>
+
+    </form>
+
+    <a href="{% url 'promotion_center' %}" class="btn btn-outline-secondary w-100">
+        ⬅ Cancel
+    </a>
+
+</div>
+
+<style>
+    .card {
+        border-radius: 1rem;
+        border: none;
+    }
+    
+    .card-header {
+        border-radius: 1rem 1rem 0 0;
+    }
+    
+    .badge {
+        padding: 0.5rem 0.8rem;
+        font-size: 0.85rem;
+    }
+</style>
+
+<script>
+// Prevent form submission if no action is selected
+document.querySelectorAll('button[type="submit"]').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+        const textarea = this.parentElement.querySelector('textarea');
+        if (textarea && !textarea.value.trim()) {
+            if (!confirm('No remarks added. Continue anyway?')) {
+                e.preventDefault();
+            }
+        }
+    });
+});
+</script>
+
+{% endblock %}

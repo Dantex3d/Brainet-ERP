@@ -1,0 +1,19 @@
+{% extends 'dashboards/base.html' %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="card shadow-sm rounded-4">
+        <div class="card-body">
+            <h3 class="mb-3">Delete Assignment</h3>
+            <p>Are you sure you want to delete the assignment <strong>{{ assignment.title }}</strong>?</p>
+            <p class="text-muted">This will archive the assignment so it no longer appears to students or on your dashboard.</p>
+
+            <form method="post" action="{% url 'delete_assignment' assignment.id %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">Yes, delete assignment</button>
+                <a href="{% url 'teacher_assignments' %}" class="btn btn-secondary ms-2">Cancel</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

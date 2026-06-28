@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Database
+db.sqlite3
+
+# Logs
+*.log
+
+# Desktop builds
+desktop-app/
+win-unpacked/
+*.exe
+*.rar
+*.pak
+
+# Mobile assets (if these are generated)
+mobile-app/assets/
+
+# Environment
+.env
+venv/
+.venv/

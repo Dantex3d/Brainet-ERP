@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+    <title>Edit Subject</title>
+
+    <style>
+
+        body{
+            font-family: Arial;
+            background: #f4f6f9;
+            padding: 30px;
+        }
+
+        .container{
+            width: 500px;
+            margin: auto;
+        }
+
+        .card{
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        h1{
+            margin-top: 0;
+            color: #1e3a8a;
+        }
+
+        .form-group{
+            margin-bottom: 20px;
+        }
+
+        label{
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        input{
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 15px;
+        }
+
+        button{
+            background: #1e3a8a;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 15px;
+        }
+
+        button:hover{
+            background: #162d63;
+        }
+
+        .back-btn{
+            display: inline-block;
+            margin-top: 15px;
+            text-decoration: none;
+            color: #1e3a8a;
+            font-weight: bold;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="card">
+
+        <h1>Edit Subject</h1>
+
+        <form method="POST">
+
+            {% csrf_token %}
+
+            <div class="form-group">
+
+                <label>
+                    Subject Name
+                </label>
+
+                <input
+                    type="text"
+                    name="name"
+                    value="{{ subject.name }}"
+                    required
+                >
+
+            </div>
+
+            <div class="form-group">
+
+                <label>
+                    Subject Code
+                </label>
+
+                <input
+                    type="text"
+                    name="code"
+                    value="{{ subject.code }}"
+                >
+
+            </div>
+
+            <button type="submit">
+                Update Subject
+            </button>
+
+        </form>
+
+        <a
+            href="{% url 'manage_subjects' %}"
+            class="back-btn"
+        >
+            ← Back to Subjects
+        </a>
+
+    </div>
+
+</div>
+
+</body>
+</html>

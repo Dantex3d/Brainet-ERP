@@ -1,0 +1,99 @@
+{% extends 'dashboards/base.html' %}
+{% load static %}
+
+{% block title %}Verify Your Account{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-0 shadow-lg rounded-4">
+                <div class="card-body p-5">
+                    <!-- Header -->
+                    <div class="text-center mb-4">
+                        <h2 class="fw-bold text-primary mb-2">Account Verification</h2>
+                        <p class="text-muted">Enter the 6-digit code sent to your email</p>
+                    </div>
+
+                    <!-- Email Display -->
+                    <div class="alert alert-info rounded-3">
+                        <small class="text-muted">Code sent to:</small><br>
+                        <strong class="text-dark">{{ email }}</strong>
+                    </div>
+
+                    <!-- Verification Code Form -->
+                    <form method="post" class="needs-validation">
+                        {% csrf_token %}
+                        
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-dark mb-2">Verification Code</label>
+                            <input 
+                                type="text" 
+                                name="code" 
+                                class="form-control form-control-lg text-center fs-5 rounded-3"
+                                placeholder="000000"
+                                maxlength="6"
+                                pattern="\d{6}"
+                                inputmode="numeric"
+                                required
+                                autofocus
+                            >
+                            <small class="form-text text-muted d-block mt-2">
+                                Enter the 6-digit code. It will expire in 1 hour.
+                            </small>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <button type="submit" class="btn btn-primary btn-lg w-100 rounded-3 fw-bold">
+                            Verify Account
+                        </button>
+                    </form>
+
+                    <!-- Resend Code Link -->
+                    <div class="text-center mt-4">
+                        <p class="text-muted mb-0">
+                            Didn't receive a code?
+                        </p>
+                        <a href="{% url 'resend_verification_code' %}?email={{ email }}" class="text-decoration-none fw-bold">
+                            Resend Code
+                        </a>
+                    </div>
+
+                    <!-- Help Text -->
+                    <div class="alert alert-warning rounded-3 mt-4 mb-0">
+                        <small>
+                            <strong>Note:</strong> This account requires email verification before access. 
+                            If you believe this is an error, please contact your school administrator.
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Info Box -->
+            <div class="card border-0 mt-4">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold text-dark mb-3">What should you do?</h6>
+                    <ul class="mb-0 small text-muted">
+                        <li>Check your email for the verification code (check spam/junk folder)</li>
+                        <li>Enter the 6-digit code in the field above</li>
+                        <li>Once verified, you can log in with your email and password</li>
+                        <li>Verification codes expire after 1 hour</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    input[type="text"]:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+    }
+    
+    input[type="text"]::placeholder {
+        letter-spacing: 8px;
+        font-weight: 500;
+    }
+</style>
+{% endblock %}

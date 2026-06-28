@@ -1,0 +1,118 @@
+{% extends 'dashboards/base.html' %}
+{% load static %}
+
+{% block content %}
+
+<div class="container py-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="fw-bold">⚙️ Edit School Information</h3>
+        <a href="{% url 'principal_dashboard' %}" class="btn btn-outline-secondary">
+            ← Back
+        </a>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-header bg-primary text-white py-3">
+                    <h5 class="mb-0">School Details</h5>
+                </div>
+
+                <div class="card-body p-4">
+                    <form method="POST" enctype="multipart/form-data">
+                        {% csrf_token %}
+
+                        <!-- School Logo -->
+                        <div class="mb-4 text-center">
+                            <div class="mb-3">
+                                {% if school.logo %}
+                                    <img src="{{ school.logo.url }}" alt="School Logo" class="rounded-circle" style="width: 120px; height: 120px; object-fit: cover;">
+                                {% else %}
+                                    <div class="rounded-circle bg-light d-flex align-items-center justify-content-center" style="width: 120px; height: 120px; margin: 0 auto;">
+                                        <i class="bi bi-image" style="font-size: 3rem; color: #ccc;"></i>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <label class="form-label fw-bold">School Logo</label>
+                            <input type="file" 
+                                   name="logo" 
+                                   class="form-control rounded-3"
+                                   accept="image/*">
+                            <small class="text-muted">Upload a new logo to replace the current one</small>
+                        </div>
+
+                        <!-- School Name -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">School Name</label>
+                            <input type="text" 
+                                   name="name" 
+                                   class="form-control form-control-lg rounded-3"
+                                   value="{{ school.name }}"
+                                   required>
+                        </div>
+
+                        <!-- School Motto -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">School Motto</label>
+                            <input type="text" 
+                                   name="motto" 
+                                   class="form-control form-control-lg rounded-3"
+                                   value="{{ school.motto|default:'' }}"
+                                   placeholder="e.g., Excellence in Education">
+                        </div>
+
+                        <!-- Address -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Address</label>
+                            <textarea name="address" 
+                                      class="form-control rounded-3" 
+                                      rows="3"
+                                      required>{{ school.address }}</textarea>
+                        </div>
+
+                        <!-- Contact Info -->
+                        <div class="row">
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label fw-bold">Email Address</label>
+                                <input type="email" 
+                                       name="email" 
+                                       class="form-control form-control-lg rounded-3"
+                                       value="{{ school.email }}"
+                                       required>
+                            </div>
+
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label fw-bold">Phone Number</label>
+                                <input type="tel" 
+                                       name="phone" 
+                                       class="form-control form-control-lg rounded-3"
+                                       value="{{ school.phone }}"
+                                       required>
+                            </div>
+                        </div>
+
+                        <!-- Info Box -->
+                        <div class="alert alert-info rounded-3 mb-4">
+                            <i class="bi bi-info-circle"></i>
+                            <strong>Note:</strong> Changes to school information will be reflected across the system immediately.
+                        </div>
+
+                        <!-- Buttons -->
+                        <div class="d-flex gap-2 justify-content-end">
+                            <a href="{% url 'principal_dashboard' %}" class="btn btn-light border rounded-3">
+                                Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary rounded-3">
+                                💾 Save Changes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}

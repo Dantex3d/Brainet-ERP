@@ -1,0 +1,64 @@
+{% extends 'dashboards/base.html' %}
+{% load static %}
+
+{% block content %}
+
+<div class="container py-5">
+
+    <div class="row justify-content-center">
+
+        <div class="col-lg-6">
+
+            <div class="card border-0 shadow-lg rounded-4 text-center">
+
+                <div class="card-body p-5">
+
+                    <img src="{% static 'images/error500.png' %}"
+                         class="img-fluid mb-4"
+                         style="max-height: 180px;">
+
+                    <h1 class="display-1 fw-bold text-warning">
+                        500
+                    </h1>
+
+                    <h3 class="fw-bold mb-3">
+                        Internal Server Error
+                    </h3>
+
+                    <p class="text-muted mb-4">
+
+                        Something went wrong while processing your request.
+
+                        Please try again later or contact support.
+
+                    </p>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+
+                        <a href="/"
+                           class="btn btn-primary px-4">
+
+                            Return Dashboard
+
+                        </a>
+
+                        <button onclick="location.reload()"
+                                class="btn btn-outline-dark px-4">
+
+                            Retry
+
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

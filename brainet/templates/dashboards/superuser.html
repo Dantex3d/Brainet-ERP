@@ -1,0 +1,546 @@
+{% extends 'dashboards/base.html' %}
+{% load static %}
+
+{% block content %}
+
+<!-- MESSAGES SECTION -->
+{% if messages %}
+<div class="container-fluid px-4 py-3">
+    <div class="row">
+        <div class="col-lg-12">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm rounded-3 d-flex align-items-center" role="alert">
+                <span class="me-3">
+                    {% if message.tags == 'success' %}✓{% elif message.tags == 'danger' %}✕{% elif message.tags == 'warning' %}⚠{% else %}ℹ{% endif %}
+                </span>
+                <div>{{ message }}</div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="container-fluid py-4">
+
+    <!-- HEADER WITH CONTROLS -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div>
+                <h1 class="fw-bold text-primary mb-1">
+                    🎯 Superuser Control Center
+                </h1>
+                <p class="text-muted mb-0">
+                    Manage schools, subscriptions, staff, platform analytics, vouchers and system operations.
+                </p>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="d-flex justify-content-end gap-2 align-items-center flex-wrap">
+
+                <!-- NOTIFICATION BELL WITH DROPDOWN -->
+                <div class="dropdown position-relative">
+                    <button class="btn btn-light shadow-sm rounded-3 position-relative" data-bs-toggle="dropdown" title="Notifications">
+                        🔔
+                        {% if unread_notifications > 0 or queries.count > 0 or pending_vouchers > 0 %}
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                            {{ unread_notifications|add:queries.count|add:pending_vouchers }}
+                        </span>
+                        {% endif %}
+                    </button>
+
+                    <ul class="dropdown-menu dropdown-menu-end shadow-lg rounded-3" style="min-width: 320px;">
+                        <li class="dropdown-header">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span>🔔 Notifications</span>
+                                {% if unread_notifications > 0 or queries.count > 0 or pending_vouchers > 0 %}
+                                <form method="POST" action="{% url 'reset_notification_count' %}" style="display: inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Reset notifications">Clear</button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+
+                        {% if unread_notifications > 0 %}
+                            {% for note in notifications|slice:":3" %}
+                            <li>
+                                <a class="dropdown-item text-truncate small" href="#" title="{{ note.message }}">
+                                    <span class="badge bg-info me-2">📌</span> {{ note.title|truncatewords:6 }}
+                                </a>
+                            </li>
+                            {% endfor %}
+                            {% if notifications.count > 3 %}
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-center small text-muted" href="#">+{{ notifications.count|add:"-3" }} more notifications</a></li>
+                            {% endif %}
+                        {% endif %}
+
+                        {% if queries.count > 0 %}
+                            {% if unread_notifications > 0 %}<li><hr class="dropdown-divider"></li>{% endif %}
+                            {% for q in queries|slice:":3" %}
+                            <li>
+                                <a class="dropdown-item text-truncate small" href="#dos-queries" data-bs-toggle="collapse">
+                                    <span class="badge bg-danger me-2">📧</span> {{ q.school.name }} - {{ q.subject|truncatewords:3 }}
+                                </a>
+                            </li>
+                            {% endfor %}
+                            {% if queries.count > 3 %}
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-center small text-muted" href="#dos-queries">+{{ queries.count|add:"-3" }} more messages</a></li>
+                            {% endif %}
+                        {% endif %}
+
+                        {% if pending_vouchers > 0 %}
+                            {% if unread_notifications > 0 or queries.count > 0 %}<li><hr class="dropdown-divider"></li>{% endif %}
+                            {% for v in vouchers|slice:":2" %}
+                            <li>
+                                <a class="dropdown-item text-truncate small" href="#vouchers" data-bs-toggle="collapse">
+                                    <span class="badge bg-warning me-2">🎫</span> {{ v.school.name }} - {{ v.term }}
+                                </a>
+                            </li>
+                            {% endfor %}
+                            {% if pending_vouchers > 2 %}
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-center small text-muted" href="#vouchers">+{{ pending_vouchers|add:"-2" }} more vouchers</a></li>
+                            {% endif %}
+                        {% endif %}
+
+                        {% if unread_notifications == 0 and queries.count == 0 and pending_vouchers == 0 %}
+                        <li><a class="dropdown-item text-muted text-center small py-3" href="#">✓ All caught up!</a></li>
+                        {% endif %}
+
+                        {% if queries.count == 0 and pending_vouchers == 0 %}
+                        <li><a class="dropdown-item text-muted text-center small py-3" href="#">✓ All caught up!</a></li>
+                        {% endif %}
+                    </ul>
+                </div>
+
+                <!-- ACTION BUTTONS -->
+                <button onclick="location.reload()" class="btn btn-outline-primary shadow-sm rounded-3" title="Refresh Dashboard">
+                    🔄 Refresh
+                </button>
+                <a href="/admin/" class="btn btn-dark shadow-sm rounded-3" title="Django Admin">
+                    ⚙️ Admin
+                </a>
+                <a href="{% url 'logout' %}" class="btn btn-danger shadow-sm rounded-3" title="Logout">
+                    🚪 Logout
+                </a>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- STATISTICS CARDS -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-lg rounded-4 bg-primary text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase text-white-50 mb-2">Total Schools</h6>
+                            <h2 class="fw-bold mb-0">{{ schools.count }}</h2>
+                        </div>
+                        <div style="font-size: 2.5rem; opacity: 0.3;">🏫</div>
+                    </div>
+                    <small class="text-white-50">Registered institutions</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-lg rounded-4 bg-success text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase text-white-50 mb-2">Active Schools</h6>
+                            <h2 class="fw-bold mb-0">{{ active_schools }}</h2>
+                        </div>
+                        <div style="font-size: 2.5rem; opacity: 0.3;">✓</div>
+                    </div>
+                    <small class="text-white-50">Operational</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-lg rounded-4 bg-warning text-dark h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase mb-2">Pending Vouchers</h6>
+                            <h2 class="fw-bold mb-0">{{ pending_vouchers }}</h2>
+                        </div>
+                        <div style="font-size: 2.5rem; opacity: 0.3;">🎫</div>
+                    </div>
+                    <small>Awaiting approval</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-lg rounded-4 bg-danger text-white h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase text-white-50 mb-2">DOS Queries</h6>
+                            <h2 class="fw-bold mb-0">{{ queries.count }}</h2>
+                        </div>
+                        <div style="font-size: 2.5rem; opacity: 0.3;">📧</div>
+                    </div>
+                    <small class="text-white-50">Support messages</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-lg rounded-4">
+                <div class="card-header bg-dark text-white rounded-top-4 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">🛡️ Pending Verifications</h5>
+                    <span class="badge bg-light text-dark">{{ unverified_accounts|length }}</span>
+                </div>
+                <div class="card-body table-responsive">
+                    {% if unverified_accounts %}
+                    <table class="table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Role</th>
+                                <th>School</th>
+                                <th>Status</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for account in unverified_accounts %}
+                            <tr>
+                                <td>
+                                    <strong>{{ account.email }}</strong>
+                                    <div class="text-muted small">{{ account.get_full_name|default:account.email }}</div>
+                                </td>
+                                <td><span class="badge bg-secondary text-uppercase">{{ account.role }}</span></td>
+                                <td>{{ account.school.name|default:"No school" }}</td>
+                                <td><span class="badge bg-warning text-dark">Not verified</span></td>
+                                <td class="text-end">
+                                    <form method="post" action="{% url 'manual_verify_user' account.id %}" class="d-inline-block" onsubmit="return confirm('Mark {{ account.email }} as verified manually?');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-success">Manual Verify</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <p class="text-muted mb-0">All visible accounts are verified.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN GRID: SIDEBAR + CONTENT -->
+    <div class="row g-4">
+
+        <!-- SIDEBAR NAVIGATION -->
+        <div class="col-lg-3 mb-4">
+            <div class="card border-0 shadow-lg rounded-4 sticky-top" style="top: 20px;">
+                <div class="card-header bg-dark text-white rounded-top-4">
+                    <h5 class="mb-0">📋 Navigation Menu</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="nav flex-column gap-1 p-3">
+                        <a href="{% url 'superuser_dashboard' %}" class="nav-link btn btn-outline-primary text-start rounded-3 py-2">
+                            🏠 Dashboard Home
+                        </a>
+                        <a href="{% url 'manage_schools' %}" class="nav-link btn btn-outline-success text-start rounded-3 py-2">
+                            ➕ Register School
+                        </a>
+                        <a href="{% url 'manage_schools' %}" class="nav-link btn btn-outline-info text-start rounded-3 py-2">
+                            🏢 Manage Schools
+                        </a>
+                        <a href="{% url 'manage_principals' %}" class="nav-link btn btn-outline-primary text-start rounded-3 py-2">
+                            👨‍💼 Manage Principals
+                        </a>
+                        <a href="{% url 'manage_dos' %}" class="nav-link btn btn-outline-info text-start rounded-3 py-2">
+                            👩‍💻 Register DOS
+                        </a>
+                        <a href="#vouchers" data-bs-toggle="collapse" class="nav-link btn btn-outline-warning text-start rounded-3 py-2">
+                            🎫 Vouchers ({{ pending_vouchers }})
+                        </a>
+                        <a href="#dos-queries" data-bs-toggle="collapse" class="nav-link btn btn-outline-danger text-start rounded-3 py-2">
+                            📧 Queries ({{ queries.count }})
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+                </div>
+                <div class="card-body p-0 table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">School Name</th>
+                                <th>Email</th>
+                                <th>Phone</th>
+                                <th>Status</th>
+                                <th>Subscription</th>
+                                <th class="pe-4">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for school in schools %}
+                            <tr>
+                                <td class="ps-4">
+                                    <div class="d-flex align-items-center">
+                                        {% if school.logo %}
+                                        <img src="{{ school.logo.url }}" width="40" height="40" class="rounded-circle me-3" alt="{{ school.name }}">
+                                        {% else %}
+                                        <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">{{ school.name|first }}</div>
+                                        {% endif %}
+                                        <strong>{{ school.name }}</strong>
+                                    </div>
+                                </td>
+                                <td><small>{{ school.email }}</small></td>
+                                <td><small>{{ school.phone }}</small></td>
+                                <td>
+                                    {% if school.is_active %}
+                                    <span class="badge bg-success px-3 py-2">✓ Active</span>
+                                    {% else %}
+                                    <span class="badge bg-danger px-3 py-2">✕ Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td><strong>KES {{ school.subscription_balance }}</strong></td>
+                                <td class="pe-4">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        {% if school.is_active %}
+                                        <form method="post" action="{% url 'deactivate_school' school.id %}" style="display: inline;">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Deactivate">🔒</button>
+                                        </form>
+                                        {% else %}
+                                        <form method="post" action="{% url 'activate_school' school.id %}" style="display: inline;">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-success" title="Activate">✓</button>
+                                        </form>
+                                        {% endif %}
+                                        <a href="{% url 'view_school' school.id %}" class="btn btn-sm btn-outline-primary" title="View">👁️</a>
+                                        <a href="{% url 'edit_school' school.id %}" class="btn btn-sm btn-outline-warning" title="Edit">✏️</a>
+                                        <a href="{% url 'delete_school' school.id %}" class="btn btn-sm btn-outline-dark" title="Delete" onclick="return confirm('Delete {{ school.name }}?')">🗑️</a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-5">
+                                    <p>No schools registered yet.</p>
+                                    <a href="{% url 'manage_schools' %}" class="btn btn-sm btn-primary">Register First School</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+          
+                <!-- PENDING VOUCHERS -->
+                <div class="col-lg-6" id="vouchers">
+                    <div class="card border-0 shadow-lg rounded-4 h-100">
+                        <div class="card-header bg-warning text-dark rounded-top-4">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">🎫 Pending Vouchers ({{ pending_vouchers }})</h5>
+                            </div>
+                        </div>
+                        <div class="card-body table-responsive">
+                            {% if pending_vouchers > 0 %}
+                            <table class="table table-sm mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>School</th>
+                                        <th>Term</th>
+                                        <th>Students</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for v in vouchers %}
+                                    <tr>
+                                        <td><small><strong>{{ v.school.name }}</strong></small></td>
+                                        <td><small>{{ v.term }}</small></td>
+                                        <td><small>{{ v.student_count }}</small></td>
+                                        <td>
+                                            {% if v.status == "pending" %}
+                                            <form method="POST" action="{% url 'approve_voucher' v.id %}" style="display: inline;">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-success btn-sm rounded-2">✓ Approve</button>
+                                            </form>
+                                            {% else %}
+                                            <span class="badge bg-success">Approved</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            {% else %}
+                            <p class="text-muted text-center py-5">✓ No pending voucher requests</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- DOS QUERIES & SUPPORT MESSAGES -->
+            <!-- PENDING LICENSE RENEWALS -->
+            <div class="card border-0 shadow-lg rounded-4 mb-4" id="renewals">
+                <div class="card-header bg-secondary text-white rounded-top-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">🔁 Pending Reactivation Requests ({{ pending_renewals_count }})</h5>
+                        {% if pending_renewals_count > 0 %}
+                        <small class="text-white-50">Review requests below</small>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if pending_renewals_count > 0 %}
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead>
+                                <tr>
+                                    <th>School</th>
+                                    <th>Requested By</th>
+                                    <th>Requested At</th>
+                                    <th>Days</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for r in pending_renewals|slice:":5" %}
+                                <tr>
+                                    <td><strong>{{ r.school.name }}</strong></td>
+                                    <td><small>{{ r.requested_by.get_full_name|default:r.requested_by.username }}</small></td>
+                                    <td><small>{{ r.requested_at|date:"d M, Y H:i" }}</small></td>
+                                    <td><small>{{ r.renewal_period_days }}</small></td>
+                                    <td>
+                                        <form method="post" action="{% url 'approve_license_renewal' r.id %}" style="display: inline;">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="status" value="approved">
+                                            <button type="submit" class="btn btn-sm btn-success">✓ Approve</button>
+                                        </form>
+                                        <form method="post" action="{% url 'approve_license_renewal' r.id %}" style="display: inline; margin-left:6px;">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="status" value="rejected">
+                                            <button type="submit" class="btn btn-sm btn-danger">✕ Reject</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4 text-muted">✓ No pending reactivation requests</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-lg rounded-4" id="dos-queries">
+                <div class="card-header bg-danger text-white rounded-top-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">📧 DOS Queries & Support Messages ({{ queries.count }})</h5>
+                        {% if queries.count > 0 %}
+                        <form method="POST" action="{% url 'clear_all_messages' %}" style="display: inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-light" title="Clear all messages">🗑️ Clear All</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if queries %}
+                        {% for q in queries %}
+                        <div class="border rounded-4 p-4 mb-4 bg-light position-relative">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <div>
+                                    <h6 class="fw-bold text-primary mb-1">
+                                        🏫 {{ q.school.name }}
+                                    </h6>
+                                    <small class="text-muted">
+                                        👤 {{ q.sender.get_full_name|default:q.sender.username }} • 
+                                        📅 {{ q.created_at|date:"d M, H:i" }}
+                                    </small>
+                                </div>
+                                <div>
+                                    <span class="badge bg-warning text-dark px-3 py-2">{{ q.status|upper }}</span>
+                                </div>
+                            </div>
+
+                            <hr class="my-3">
+
+                            <h6 class="fw-bold">📌 {{ q.subject }}</h6>
+                            <p class="mb-3">{{ q.message }}</p>
+
+                            {% if q.status == 'pending' %}
+                            <form method="post" action="{% url 'reply_message' q.id %}">
+                                {% csrf_token %}
+                                <div class="mb-3">
+                                    <textarea name="reply" rows="3" class="form-control rounded-3" placeholder="Type your reply..." required></textarea>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary btn-sm rounded-3">
+                                        ✓ Send Reply
+                                    </button>
+                                    <form method="POST" action="{% url 'delete_single_message' q.id %}" style="display: inline;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-outline-danger btn-sm rounded-3" onclick="return confirm('Delete this message?')">
+                                            🗑️ Delete
+                                        </button>
+                                    </form>
+                                </div>
+                            </form>
+                            {% elif q.status == 'replied' %}
+                            <div class="alert alert-success alert-sm py-2 px-3 rounded-3">
+                                ✓ Reply sent - Waiting for acknowledgment
+                            </div>
+                            {% else %}
+                            <div class="alert alert-info alert-sm py-2 px-3 rounded-3">
+                                ℹ️ Status: {{ q.status|title }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                    <div class="text-center py-5">
+                        <p class="text-muted fs-5">✓ No pending DOS queries</p>
+                        <small class="text-muted">All messages have been handled</small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<style>
+    .badge { font-weight: 500; }
+    .card { transition: all 0.3s ease; }
+    .card:hover { box-shadow: 0 8px 20px rgba(0,0,0,0.1) !important; }
+    .nav-link { border: 1px solid transparent; }
+    .nav-link:hover { border-color: #0d6efd; }
+    .table tbody tr { transition: background-color 0.2s ease; }
+    .table tbody tr:hover { background-color: rgba(13, 110, 253, 0.05); }
+    .dropdown-menu { animation: slideDown 0.2s ease; }
+    @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+
+{% endblock %}

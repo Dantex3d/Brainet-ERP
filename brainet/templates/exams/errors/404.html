@@ -1,0 +1,63 @@
+{% extends 'dashboards/base.html' %}
+{% load static %}
+
+{% block content %}
+
+<div class="container py-5">
+
+    <div class="row justify-content-center">
+
+        <div class="col-lg-6">
+
+            <div class="card border-0 shadow-lg rounded-4 text-center">
+
+                <div class="card-body p-5">
+
+                    <img src="{% static 'images/error404.png' %}"
+                         class="img-fluid mb-4"
+                         style="max-height: 180px;">
+
+                    <h1 class="display-1 fw-bold text-danger">
+                        404
+                    </h1>
+
+                    <h3 class="fw-bold mb-3">
+                        Page Not Found
+                    </h3>
+
+                    <p class="text-muted mb-4">
+
+                        The page you are trying to access
+                        does not exist or may have been removed.
+
+                    </p>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+
+                        <a href="/"
+                           class="btn btn-primary px-4">
+
+                            Return Dashboard
+
+                        </a>
+
+                        <button onclick="history.back()"
+                                class="btn btn-outline-dark px-4">
+
+                            Go Back
+
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

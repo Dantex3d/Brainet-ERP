@@ -1,0 +1,151 @@
+{% extends 'dashboards/base.html' %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            
+            <!-- PAGE HEADER -->
+            <h2 class="fw-bold text-primary mb-4">🔄 Request License Renewal</h2>
+
+            <!-- SCHOOL INFO -->
+            <div class="card shadow rounded-4 mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">School Details</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">School:</dt>
+                        <dd class="col-sm-8"><strong>{{ school.name }}</strong></dd>
+                        
+                        <dt class="col-sm-4">Email:</dt>
+                        <dd class="col-sm-8">{{ school.email }}</dd>
+                        
+                        <dt class="col-sm-4">Phone:</dt>
+                        <dd class="col-sm-8">{{ school.phone }}</dd>
+                        
+                        {% if school.license_expiry %}
+                        <dt class="col-sm-4">Current Expiry:</dt>
+                        <dd class="col-sm-8">{{ school.license_expiry }}</dd>
+                        {% endif %}
+                    </dl>
+                </div>
+            </div>
+
+            <!-- RENEWAL REQUEST FORM -->
+            <div class="card shadow rounded-4 border-success">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Renewal Period</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <p class="text-muted mb-3">
+                            Select how long you want to renew your license for:
+                        </p>
+                        
+                        <div class="mb-4">
+                            <div class="form-check mb-3">
+                                <input 
+                                    class="form-check-input" 
+                                    type="radio" 
+                                    name="renewal_period"
+                                    value="365"
+                                    id="period1"
+                                    checked>
+                                <label class="form-check-label" for="period1">
+                                    <strong>1 Year</strong>
+                                    <br>
+                                    <small class="text-muted">365 days - Standard renewal</small>
+                                </label>
+                            </div>
+
+                            <div class="form-check mb-3">
+                                <input 
+                                    class="form-check-input" 
+                                    type="radio" 
+                                    name="renewal_period"
+                                    value="730"
+                                    id="period2">
+                                <label class="form-check-label" for="period2">
+                                    <strong>2 Years</strong>
+                                    <br>
+                                    <small class="text-muted">730 days - Extended coverage</small>
+                                </label>
+                            </div>
+
+                            <div class="form-check">
+                                <input 
+                                    class="form-check-input" 
+                                    type="radio" 
+                                    name="renewal_period"
+                                    value="1095"
+                                    id="period3">
+                                <label class="form-check-label" for="period3">
+                                    <strong>3 Years</strong>
+                                    <br>
+                                    <small class="text-muted">1095 days - Maximum coverage</small>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 mb-3">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                ✓ Submit Renewal Request
+                            </button>
+                        </div>
+                    </form>
+
+                    <a href="{% url 'school_deactivated' school.id %}" class="btn btn-outline-secondary w-100">
+                        ⬅ Go Back
+                    </a>
+                </div>
+            </div>
+
+            <!-- INFO BOX -->
+            <div class="card shadow rounded-4 mt-4 border-info">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">ℹ️ What's Next?</h5>
+                </div>
+                <div class="card-body">
+                    <ol class="mb-0">
+                        <li>Submit your renewal request</li>
+                        <li>Our team will review within 24-48 hours</li>
+                        <li>You'll receive confirmation via email</li>
+                        <li>Your school will be automatically reactivated</li>
+                        <li>Full access restored immediately</li>
+                    </ol>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+<style>
+    .card {
+        border-radius: 1rem;
+        border: none;
+    }
+    
+    .card-header {
+        border-radius: 1rem 1rem 0 0;
+    }
+    
+    .form-check {
+        padding: 1rem;
+        background-color: #f8f9fa;
+        border-radius: 0.5rem;
+        border-left: 3px solid #0d6efd;
+    }
+    
+    .form-check input:checked ~ label {
+        color: #0d6efd;
+        font-weight: 600;
+    }
+</style>
+
+{% endblock %}

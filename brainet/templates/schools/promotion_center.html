@@ -1,0 +1,204 @@
+{% extends 'dashboards/base.html' %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    <!-- PAGE HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary mb-0">🎓 Student Promotion Center</h2>
+        <a href="{% url 'dashboard' %}" class="btn btn-outline-primary shadow-sm">⬅ Back to Dashboard</a>
+    </div>
+
+    <!-- STATISTICS CARDS -->
+    <div class="row mb-4">
+        <div class="col-md-6 col-lg-3 mb-3">
+            <div class="card shadow rounded-4 bg-primary text-white">
+                <div class="card-body text-center">
+                    <h2 class="display-6 mb-2">{{ total_students }}</h2>
+                    <p class="mb-0">Total Active Students</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-3 mb-3">
+            <div class="card shadow rounded-4 bg-success text-white">
+                <div class="card-body text-center">
+                    <h2 class="display-6 mb-2">{{ classes.count }}</h2>
+                    <p class="mb-0">Classes</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-3 mb-3">
+            <div class="card shadow rounded-4 bg-info text-white">
+                <div class="card-body text-center">
+                    <h5 class="mb-0">📊 Promotion Tools</h5>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-3 mb-3">
+            <div class="card shadow rounded-4 bg-secondary text-white">
+                <div class="card-body text-center">
+                    <h5 class="mb-0">📜 View History</h5>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN ACTIONS -->
+    <div class="row mb-4">
+
+        <!-- PROMOTE SCHOOL -->
+        <div class="col-lg-6 mb-3">
+            <div class="card shadow rounded-4 h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">🏫 Promote Entire School</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-3">
+                        Promote all students in the school to the next class level at the end of the academic year.
+                    </p>
+                    <ul class="mb-3">
+                        <li>All active students will be promoted</li>
+                        <li>New classes will be created if needed (e.g., Grade 11 East)</li>
+                        <li>Students in Level 3 will be marked as graduated</li>
+                    </ul>
+                    <a href="{% url 'promote_school' %}" class="btn btn-success w-100">
+                        ➕ Promote All Students
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- PROMOTE BY CLASS -->
+        <div class="col-lg-6 mb-3">
+            <div class="card shadow rounded-4 h-100">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">📚 Promote by Class</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-3">
+                        Promote all students in a specific class.
+                    </p>
+                    
+                    <div class="list-group">
+                        {% for class in classes %}
+                        <a href="{% url 'promote_class' class.id %}" 
+                           class="list-group-item list-group-item-action">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>{{ class.name }}</strong>
+                                    <small class="d-block text-muted">Level {{ class.level }}</small>
+                                </div>
+                                <span class="badge bg-secondary">
+                                    {{ class.students.count }} Students
+                                </span>
+                            </div>
+                        </a>
+                        {% empty %}
+                        <p class="text-muted mb-0">No classes available</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- INDIVIDUAL STUDENT PROMOTION -->
+    <div class="card shadow rounded-4 mb-4">
+        <div class="card-header bg-warning text-dark">
+            <h5 class="mb-0">👤 Individual Student Management</h5>
+        </div>
+        <div class="card-body">
+            <p class="text-muted mb-3">
+                Manage individual student promotions, repetitions, or dropouts.
+            </p>
+
+            <div class="input-group mb-3">
+                <input 
+                    type="text" 
+                    class="form-control" 
+                    id="studentSearch"
+                    placeholder="Search student by name or admission number..."
+                    aria-label="Search students">
+                <button class="btn btn-outline-secondary" type="button" id="searchBtn">
+                    🔍 Search
+                </button>
+            </div>
+
+            <div id="searchResults" class="list-group">
+                <!-- Results will be populated by JavaScript -->
+                <p class="text-muted">Start typing to search for a student</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- VIEW HISTORY -->
+    <div class="card shadow rounded-4">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0">📜 Promotion History</h5>
+        </div>
+        <div class="card-body">
+            <p class="text-muted mb-3">
+                View all promotions that have been made in the school.
+            </p>
+            <a href="{% url 'promotion_history' %}" class="btn btn-secondary w-100">
+                📋 View Full History
+            </a>
+        </div>
+    </div>
+
+</div>
+
+<style>
+    .card {
+        border-radius: 1rem;
+        border: none;
+    }
+    
+    .card-header {
+        border-radius: 1rem 1rem 0 0;
+    }
+    
+    .list-group-item {
+        border-radius: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .badge {
+        padding: 0.5rem 0.8rem;
+        font-size: 0.85rem;
+    }
+</style>
+
+<script>
+document.getElementById('studentSearch')?.addEventListener('keyup', function(e) {
+    if (e.key === 'Enter') {
+        document.getElementById('searchBtn').click();
+    }
+});
+
+document.getElementById('searchBtn')?.addEventListener('click', function() {
+    const query = document.getElementById('studentSearch').value;
+    const resultsDiv = document.getElementById('searchResults');
+    
+    if (query.length < 2) {
+        resultsDiv.innerHTML = '<p class="text-muted">Start typing to search for a student</p>';
+        return;
+    }
+    
+    // AJAX search - would fetch students matching the query
+    resultsDiv.innerHTML = '<p class="text-muted">Searching...</p>';
+    
+    // TODO: Implement AJAX search for students
+    // For now, display message
+    resultsDiv.innerHTML = `
+        <p class="text-muted">Student search feature coming soon. 
+        Use "View Full History" to see all promoted students.</p>
+    `;
+});
+</script>
+
+{% endblock %}

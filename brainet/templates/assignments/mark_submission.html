@@ -1,0 +1,66 @@
+{% extends 'dashboards/base.html' %}
+
+{% block content %}
+
+<div class="container py-5">
+
+    <div class="card shadow-sm border-0 rounded-4">
+
+        <div class="card-header bg-success text-white">
+            <h4>Mark Assignment</h4>
+        </div>
+
+        <div class="card-body">
+
+            <!-- Student + Assignment -->
+            <h5>{{ submission.student.name }}</h5>
+            <p>{{ submission.assignment.title }}</p>
+
+            <!-- Current Status -->
+            <p>
+                Status:
+                {% if submission.status == "submitted" %}
+                    <span class="badge bg-warning text-dark">Submitted</span>
+                {% elif submission.status == "graded" %}
+                    <span class="badge bg-success">Graded</span>
+                {% endif %}
+            </p>
+
+            <!-- Download File -->
+            <a href="{{ submission.file.url }}"
+               class="btn btn-primary mb-4"
+               download>
+               📥 Download Submission
+            </a>
+
+            <!-- Marking Form -->
+            <form method="post">
+                {% csrf_token %}
+
+                <div class="mb-3">
+                    <label class="form-label">Score</label>
+                    <input type="number"
+                           name="score"
+                           class="form-control"
+                           value="{{ submission.score|default:'' }}"
+                           required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Feedback</label>
+                    <textarea name="feedback"
+                              class="form-control"
+                              rows="5">{{ submission.feedback|default:'' }}</textarea>
+                </div>
+
+                <button class="btn btn-success">
+                    💾 Save Marks
+                </button>
+            </form>
+
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}

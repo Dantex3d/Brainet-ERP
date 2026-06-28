@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/private/
+
+Sitemap: https://www.brainetanalytics.co.ke/sitemaps.xml

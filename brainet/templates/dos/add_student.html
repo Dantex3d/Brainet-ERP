@@ -1,0 +1,144 @@
+{% extends 'dashboards/base.html' %}
+
+{% block content %}
+
+<div class="container py-4">
+
+    <div class="card shadow rounded-4">
+
+        <div class="card-header bg-primary text-white">
+            <h4>Add Student</h4>
+        </div>
+
+        <div class="card-body">
+
+            <form method="post">
+                {% csrf_token %}
+
+                <!-- NAME -->
+                <input type="text"
+                       name="name"
+                       class="form-control mb-3"
+                       placeholder="Student Name"
+                       required>
+
+                <!-- ADMISSION NUMBER -->
+                <input type="text"
+                       name="admission_number"
+                       class="form-control mb-3"
+                       placeholder="Admission Number"
+                       required>
+
+                <!-- GENDER -->
+                <select name="gender"
+                        class="form-control mb-3">
+
+                    <option value="">Select Gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+
+                </select>
+
+                <!-- CLASS -->
+                <select name="class_id"
+                        class="form-control mb-3"
+                        id="classSelect">
+
+                    <option value="">Select Class</option>
+
+                    {% for c in classes %}
+                        <option value="{{ c.id }}">{{ c.name }} ({{ c.level }})</option>
+                    {% endfor %}
+
+                </select>
+
+                <!-- STREAM -->
+                <select name="stream_id"
+                        class="form-control mb-3"
+                        id="streamSelect">
+
+                    <option value="">Select Stream (optional)</option>
+
+                </select>
+
+                <!-- DORM -->
+                <select name="dorm_id"
+                        class="form-control mb-3">
+
+                    <option value="">Select Dorm (optional)</option>
+
+                    {% for d in dorms %}
+                        <option value="{{ d.id }}">{{ d.name }}</option>
+                    {% endfor %}
+
+                </select>
+
+                <!-- SUBMIT -->
+                <button class="btn btn-success w-100">
+                    Save Student
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Dynamically load streams when class is selected (via AJAX)
+const classSelect = document.getElementById("classSelect");
+const streamSelect = document.getElementById("streamSelect");
+
+if (classSelect && streamSelect) {
+    classSelect.addEventListener("change", async function () {
+        const classId = this.value;
+        
+        // Clear previous streams
+        streamSelect.innerHTML = '<option value="">Select Stream (optional)</option>';
+        
+        if (!classId) {
+            return;
+        }
+        
+        try {
+            // Fetch streams for this class from API
+            const response = await fetch(`/schools/api/class-streams/?class_id=${classId}`);
+            const data = await response.json();
+            
+            if (data.success && data.streams.length > 0) {
+                // Add each stream as an option with animation
+                data.streams.forEach(stream => {
+                    const option = document.createElement('option');
+                    option.value = stream.id;
+                    option.textContent = stream.name;
+                    streamSelect.appendChild(option);
+                });
+                
+                // Show a subtle "pop" effect - light background flash
+                streamSelect.style.backgroundColor = '#e8f4f8';
+                setTimeout(() => {
+                    streamSelect.style.backgroundColor = 'white';
+                }, 300);
+            } else {
+                // No streams for this class
+                const option = document.createElement('option');
+                option.textContent = 'No streams available';
+                option.disabled = true;
+                streamSelect.appendChild(option);
+            }
+        } catch (error) {
+            console.error('Error loading streams:', error);
+            const option = document.createElement('option');
+            option.textContent = 'Error loading streams';
+            option.disabled = true;
+            streamSelect.appendChild(option);
+        }
+    });
+}
+</script>
+{% endblock %}

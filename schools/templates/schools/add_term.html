@@ -1,0 +1,49 @@
+{% extends 'dashboards/base.html' %}
+
+{% block content %}
+<div class="container py-5">
+
+    <div class="card shadow-sm border-0 rounded-4">
+        <div class="card-header bg-primary text-white">
+            <h4>Add New Term</h4>
+        </div>
+
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+
+                <div class="mb-3">
+                    <label class="form-label">Term Name</label>
+                    <input type="text" name="name" class="form-control" placeholder="e.g. Term 1" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Start Date</label>
+                    <input type="date" name="start_date" class="form-control" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">End Date</label>
+                    <input type="date" name="end_date" class="form-control" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Opening Date & Time</label>
+                    <input type="datetime-local" name="opening_datetime" class="form-control">
+                    <small class="text-muted">Optional. If left blank, the next term can inherit the closing time from the previous term.</small>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Closing Date & Time</label>
+                    <input type="datetime-local" name="closing_datetime" class="form-control">
+                    <small class="text-muted">Use this when the term ends so report forms can show the closure time.</small>
+                </div>
+
+                <button class="btn btn-success rounded-3">➕ Add Term</button>
+                <a href="{% url 'manage_terms' %}" class="btn btn-outline-secondary rounded-3">Cancel</a>
+            </form>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

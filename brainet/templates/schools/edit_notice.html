@@ -1,0 +1,33 @@
+{% extends 'dashboards/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container py-4">
+    <h3>Edit Announcement</h3>
+    <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label class="form-label">Title</label>
+            <input type="text" name="title" class="form-control" value="{{ notice.title }}" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Message</label>
+            <textarea name="message" class="form-control" rows="6" required>{{ notice.message }}</textarea>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Recipient</label>
+            <select name="recipient_type" class="form-select">
+                <option value="all" {% if notice.recipient_type == 'all' %}selected{% endif %}>Teachers & Students</option>
+                <option value="teachers" {% if notice.recipient_type == 'teachers' %}selected{% endif %}>Teachers Only</option>
+                <option value="students" {% if notice.recipient_type == 'students' %}selected{% endif %}>Students Only</option>
+            </select>
+        </div>
+        <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" name="is_urgent" id="is_urgent" {% if notice.is_urgent %}checked{% endif %}>
+            <label class="form-check-label" for="is_urgent">Mark as urgent</label>
+        </div>
+        <button class="btn btn-primary">Save</button>
+        <a href="{% url 'principal_dashboard' %}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+{% endblock %}

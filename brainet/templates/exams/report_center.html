@@ -1,0 +1,431 @@
+{% extends 'dashboards/base.html' %}
+{% load static %}
+
+{% block content %}
+
+<div class="container-fluid py-4">
+
+```
+<!-- PAGE HEADER -->
+<div class="card border-0 shadow-sm rounded-4 mb-4">
+
+    <div class="card-body">
+
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+
+            <div>
+                <h3 class="fw-bold text-primary mb-1">
+                    📄 Academic Report Center
+                </h3>
+
+                <small class="text-muted">
+                    Generate report forms, class reports and marksheets
+                </small>
+            </div>
+
+            <div class="d-flex gap-2">
+
+                <button class="btn btn-outline-primary rounded-3"
+                        onclick="window.location.reload();">
+
+                    🔄 Refresh
+                </button>
+
+                <a href="{% url 'dashboard' %}"
+                   class="btn btn-dark rounded-3">
+
+                    ⬅ Dashboard
+                </a>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- FILTER SECTION -->
+<div class="card border-0 shadow-sm rounded-4 mb-4">
+
+    <div class="card-header bg-primary text-white rounded-top-4">
+
+        <h5 class="mb-0">
+            Report Filters
+        </h5>
+
+    </div>
+
+    <div class="card-body">
+
+        <form method="get">
+
+            <div class="row g-3">
+
+                <!-- CLASS -->
+                <div class="col-lg-4">
+
+                    <label class="form-label fw-bold">
+                        Select Class
+                    </label>
+
+                    <select name="class_id"
+                            class="form-select">
+
+                        <option value="">
+                            Choose Class
+                        </option>
+
+                        {% for c in classes %}
+
+                        <option value="{{ c.id }}"
+                            {% if selected_class == c.id|stringformat:"s" %}
+                                selected
+                            {% endif %}>
+
+                            {{ c.name }}
+
+                        </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+                <!-- EXAM -->
+                <div class="col-lg-4">
+
+                    <label class="form-label fw-bold">
+                        Select Exam
+                    </label>
+
+                    <select name="exam_id"
+                            class="form-select">
+
+                        <option value="">
+                            Choose Exam
+                        </option>
+
+                        {% for exam in exams %}
+
+                        <option value="{{ exam.id }}"
+                            {% if selected_exam == exam.id|stringformat:"s" %}
+                                selected
+                            {% endif %}>
+
+                            {{ exam.name }}
+
+                        </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+                <!-- TERM -->
+                <div class="col-lg-4">
+
+                    <label class="form-label fw-bold">
+                        Select Term
+                    </label>
+
+                    <select name="term_id"
+                            class="form-select">
+
+                        <option value="">
+                            Choose Term
+                        </option>
+
+                        {% for term in terms %}
+
+                        <option value="{{ term.id }}"
+                            {% if selected_term == term.id|stringformat:"s" %}
+                                selected
+                            {% endif %}>
+
+                            {{ term.name }}
+
+                        </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+            </div>
+
+            <!-- ACTION BUTTONS -->
+            <div class="row mt-4 g-3">
+
+                <div class="col-lg-3">
+
+                    <button type="submit"
+                            class="btn btn-primary w-100 py-2">
+
+                        🔍 Load Students
+                    </button>
+
+                </div>
+
+                {% if selected_class and selected_exam and selected_term %}
+
+                <div class="col-lg-3">
+
+                    <a href="{% url 'exams_class_report' %}?class={{ selected_class }}&exam={{ selected_exam }}&term={{ selected_term }}"
+                       class="btn btn-success w-100 py-2">
+
+                        📄 Generate Class Report
+                    </a>
+
+                </div>
+
+                <div class="col-lg-3">
+
+                    <a href="{% url 'marksheet_preview' %}?class={{ selected_class }}&exam={{ selected_exam }}&term={{ selected_term }}"
+                       class="btn btn-warning w-100 py-2">
+
+                        📊 Preview Marksheet
+                    </a>
+
+                </div>
+
+                <div class="col-lg-3">
+
+                    <a href="{% url 'export_marksheet_pdf' %}?class={{ selected_class }}&exam={{ selected_exam }}&term={{ selected_term }}"
+                       class="btn btn-danger w-100 py-2">
+
+                        📥 Export PDF
+                    </a>
+
+                </div>
+
+                {% endif %}
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+<!-- STATS -->
+{% if students %}
+
+<div class="row g-4 mb-4">
+
+    <div class="col-md-4">
+
+        <div class="card border-0 shadow-sm rounded-4">
+
+            <div class="card-body text-center">
+
+                <small class="text-muted">
+                    Total Students
+                </small>
+
+                <h2 class="fw-bold text-primary">
+                    {{ students|length }}
+                </h2>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="col-md-4">
+
+        <div class="card border-0 shadow-sm rounded-4">
+
+            <div class="card-body text-center">
+
+                <small class="text-muted">
+                    Selected Exam
+                </small>
+
+                <h5 class="fw-bold text-success mt-2">
+
+                    {% for exam in exams %}
+                        {% if selected_exam == exam.id|stringformat:"s" %}
+                            {{ exam.name }}
+                        {% endif %}
+                    {% endfor %}
+
+                </h5>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="col-md-4">
+
+        <div class="card border-0 shadow-sm rounded-4">
+
+            <div class="card-body text-center">
+
+                <small class="text-muted">
+                    Selected Term
+                </small>
+
+                <h5 class="fw-bold text-warning mt-2">
+
+                    {% for term in terms %}
+                        {% if selected_term == term.id|stringformat:"s" %}
+                            {{ term.name }}
+                        {% endif %}
+                    {% endfor %}
+
+                </h5>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endif %}
+
+<!-- STUDENT TABLE -->
+<div class="card border-0 shadow-sm rounded-4">
+
+    <div class="card-header bg-dark text-white rounded-top-4">
+
+        <div class="d-flex justify-content-between align-items-center">
+
+            <h5 class="mb-0">
+                👨‍🎓 Student Report Forms
+            </h5>
+
+            <span class="badge bg-light text-dark">
+
+                {{ students|length }} Students
+
+            </span>
+
+        </div>
+
+    </div>
+
+    <div class="card-body p-0">
+
+        {% if students %}
+
+        <div class="table-responsive">
+
+            <table class="table table-hover align-middle mb-0">
+
+                <thead class="table-light">
+
+                    <tr>
+
+                        <th>#</th>
+                        <th>Student</th>
+                        <th>Admission No</th>
+                        <th>Gender</th>
+                        <th>Actions</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    {% for student in students %}
+
+                    <tr>
+
+                        <td>
+                            {{ forloop.counter }}
+                        </td>
+
+                        <td class="fw-semibold">
+                            {{ student.name }}
+                        </td>
+
+                        <td>
+                            {{ student.admission_number }}
+                        </td>
+
+                        <td>
+
+                            {% if student.gender == "Male" %}
+
+                                <span class="badge bg-primary">
+                                    Male
+                                </span>
+
+                            {% else %}
+
+                                <span class="badge bg-danger">
+                                    Female
+                                </span>
+
+                            {% endif %}
+
+                        </td>
+
+                        <td>
+
+                            <div class="d-flex flex-wrap gap-2">
+
+                                <!-- REPORT FORM -->
+                                <a href="{% url 'generate_report_forms' student.id %}?exam_id={{ selected_exam }}&term_id={{ selected_term }}"
+                                   class="btn btn-success btn-sm rounded-3">
+
+                                    📄 Report Form
+                                </a>
+
+                                <!-- PDF -->
+                                <a href="{% url 'generate_report_forms' student.id %}?exam_id={{ selected_exam }}&term_id={{ selected_term }}"
+                                   target="_blank"
+                                   class="btn btn-danger btn-sm rounded-3">
+
+                                    📥 PDF
+                                </a>
+
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+        {% else %}
+
+        <div class="text-center py-5 text-muted">
+
+            <h5>
+                No students loaded
+            </h5>
+
+            <small>
+                Select class, exam and term to continue
+            </small>
+
+        </div>
+
+        {% endif %}
+
+    </div>
+
+</div>
+```
+
+</div>
+
+{% endblock %}

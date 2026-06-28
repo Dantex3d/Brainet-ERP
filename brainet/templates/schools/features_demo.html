@@ -1,0 +1,484 @@
+{% extends 'dashboards/base.html' %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    <!-- PAGE HEADER -->
+    <div class="text-center mb-5">
+        <h1 class="fw-bold text-primary display-4">🎓 Brainet Analytics Features Demo</h1>
+        <p class="text-muted fs-5">Explore the latest features designed to streamline school management</p>
+    </div>
+
+    <!-- FEATURE 1: CLASS MANAGEMENT WITH STREAMS -->
+    <section class="mb-5">
+        <div class="row align-items-center">
+            <div class="col-lg-6 mb-4 mb-lg-0">
+                <div class="card shadow rounded-4 h-100 border-primary">
+                    <div class="card-header bg-primary text-white">
+                        <h4 class="mb-0">📚 Smart Class Management</h4>
+                    </div>
+                    <div class="card-body">
+                        <h6 class="mb-3">Create Classes with Streams</h6>
+                        <ul class="list-unstyled">
+                            <li class="mb-2">✓ Create classes with multiple streams</li>
+                            <li class="mb-2">✓ Assign class masters to classes</li>
+                            <li class="mb-2">✓ Organize students by stream (A, B, C, East, West)</li>
+                            <li class="mb-2">✓ Manage subjects and assignments per class</li>
+                        </ul>
+                        
+                        <div class="mt-4 p-3 bg-light rounded">
+                            <strong>Example:</strong>
+                            <br>
+                            Grade 10 → Streams: East, West
+                            <br>
+                            Grade 11 → Streams: A, B, C
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="card shadow rounded-4 border-success">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">Try It Now</h5>
+                    </div>
+                    <div class="card-body">
+                        <img src="https://via.placeholder.com/400x300?text=Class+Management+Screenshot" 
+                             alt="Class Management" 
+                             class="img-fluid rounded mb-3">
+                        <a href="{% url 'add_class' %}" class="btn btn-success btn-lg w-100">
+                            ➕ Go to Add Class
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <hr class="my-5">
+
+    <!-- FEATURE 2: SCHOOL DEACTIVATION & LICENSE RENEWAL -->
+    <section class="mb-5">
+        <div class="row align-items-center flex-row-reverse">
+            <div class="col-lg-6 mb-4 mb-lg-0">
+                <div class="card shadow rounded-4 h-100 border-warning">
+                    <div class="card-header bg-warning text-dark">
+                        <h4 class="mb-0">🔒 License Management</h4>
+                    </div>
+                    <div class="card-body">
+                        <h6 class="mb-3">Smart License & Deactivation System</h6>
+                        <ul class="list-unstyled">
+                            <li class="mb-2">✓ Automatic license expiry tracking</li>
+                            <li class="mb-2">✓ One-click deactivation with reason logging</li>
+                            <li class="mb-2">✓ Easy license renewal requests (1/2/3 years)</li>
+                            <li class="mb-2">✓ Superuser approval workflow</li>
+                            <li class="mb-2">✓ Auto-reactivation upon approval</li>
+                        </ul>
+                        
+                        <div class="mt-4 p-3 bg-light rounded">
+                            <strong>How it works:</strong>
+                            <br>
+                            1. School deactivated (expired/suspended)
+                            <br>
+                            2. Request renewal → pending approval
+                            <br>
+                            3. Superuser approves → Auto-reactivated ✓
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="card shadow rounded-4 border-danger">
+                    <div class="card-header bg-danger text-white">
+                        <h5 class="mb-0">See the Flow</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="accordion" id="licenseDemo">
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#step1">
+                                        Step 1: School Gets Deactivated
+                                    </button>
+                                </h2>
+                                <div id="step1" class="accordion-collapse collapse show" data-bs-parent="#licenseDemo">
+                                    <div class="accordion-body">
+                                        License expires → School marked as inactive
+                                        <br><br>
+                                        <span class="badge bg-danger">🔒 Deactivated</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#step2">
+                                        Step 2: Request Renewal
+                                    </button>
+                                </h2>
+                                <div id="step2" class="accordion-collapse collapse" data-bs-parent="#licenseDemo">
+                                    <div class="accordion-body">
+                                        School DOS requests renewal
+                                        <br>
+                                        • Choose period: 1, 2, or 3 years
+                                        <br><br>
+                                        <span class="badge bg-warning">⏳ Pending Approval</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#step3">
+                                        Step 3: Auto-Reactivation
+                                    </button>
+                                </h2>
+                                <div id="step3" class="accordion-collapse collapse" data-bs-parent="#licenseDemo">
+                                    <div class="accordion-body">
+                                        Superuser approves → Automatic reactivation!
+                                        <br>
+                                        • School active again ✓
+                                        • License extended
+                                        <br><br>
+                                        <span class="badge bg-success">✓ Active</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <hr class="my-5">
+
+    <!-- FEATURE 3: STUDENT PROMOTION SYSTEM -->
+    <section class="mb-5">
+        <div class="row align-items-center">
+            <div class="col-lg-6 mb-4 mb-lg-0">
+                <div class="card shadow rounded-4 h-100 border-success">
+                    <div class="card-header bg-success text-white">
+                        <h4 class="mb-0">🎓 Smart Student Promotion</h4>
+                    </div>
+                    <div class="card-body">
+                        <h6 class="mb-3">End-of-Year Promotion Made Simple</h6>
+                        <ul class="list-unstyled">
+                            <li class="mb-2">✓ Promote entire school in seconds</li>
+                            <li class="mb-2">✓ Auto-create next level classes</li>
+                            <li class="mb-2">✓ Maintain student streams (East → East)</li>
+                            <li class="mb-2">✓ Handle individual students</li>
+                            <li class="mb-2">✓ Support: Promote, Repeat, or Drop</li>
+                            <li class="mb-2">✓ Complete audit trail</li>
+                        </ul>
+                        
+                        <div class="mt-4 p-3 bg-light rounded">
+                            <strong>Example Promotion:</strong>
+                            <br>
+                            Grade 10 East → Grade 11 East ✓
+                            <br>
+                            (Grade 11 East auto-created if missing)
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="card shadow rounded-4 border-info">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">Promotion Options</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <h6 class="mb-2">🏫 School-Wide</h6>
+                            <p class="text-muted mb-2">Promote all students at once</p>
+                            <button class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#schoolPromoDemo">
+                                View Demo
+                            </button>
+                        </div>
+
+                        <hr>
+
+                        <div class="mb-3">
+                            <h6 class="mb-2">📚 By Class</h6>
+                            <p class="text-muted mb-2">Promote specific class only</p>
+                            <button class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#classPromoDemo">
+                                View Demo
+                            </button>
+                        </div>
+
+                        <hr>
+
+                        <div>
+                            <h6 class="mb-2">👤 Individual</h6>
+                            <p class="text-muted mb-2">Handle students one by one</p>
+                            <button class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#studentPromoDemo">
+                                View Demo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <hr class="my-5">
+
+    <!-- PROMOTION LOGIC VISUAL -->
+    <section class="mb-5">
+        <div class="card shadow rounded-4 bg-light">
+            <div class="card-header bg-dark text-white">
+                <h4 class="mb-0">📊 Promotion Logic Flow</h4>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-3 mb-3">
+                        <div class="p-3 bg-white rounded border-2 border-primary">
+                            <h5 class="text-primary">Level 1</h5>
+                            <p class="text-muted mb-0">Grade 10</p>
+                        </div>
+                    </div>
+
+                    <div class="col-md-1 mb-3 d-flex align-items-center justify-content-center">
+                        <h3 class="text-success">→</h3>
+                    </div>
+
+                    <div class="col-md-3 mb-3">
+                        <div class="p-3 bg-white rounded border-2 border-info">
+                            <h5 class="text-info">Level 2</h5>
+                            <p class="text-muted mb-0">Grade 11</p>
+                        </div>
+                    </div>
+
+                    <div class="col-md-1 mb-3 d-flex align-items-center justify-content-center">
+                        <h3 class="text-success">→</h3>
+                    </div>
+
+                    <div class="col-md-3 mb-3">
+                        <div class="p-3 bg-white rounded border-2 border-warning">
+                            <h5 class="text-warning">Level 3</h5>
+                            <p class="text-muted mb-0">Grade 12</p>
+                        </div>
+                    </div>
+
+                    <div class="col-md-1 mb-3 d-flex align-items-center justify-content-center">
+                        <h3 class="text-success">→</h3>
+                    </div>
+
+                    <div class="col-md-3 mb-3">
+                        <div class="p-3 bg-white rounded border-2 border-success">
+                            <h5 class="text-success">🎓</h5>
+                            <p class="text-muted mb-0">Graduated</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 p-3 bg-white rounded">
+                    <strong>Stream Handling:</strong> Students in "Grade 10 East" automatically move to "Grade 11 East"
+                    <br>
+                    <strong>Auto-Creation:</strong> If "Grade 11 East" doesn't exist, it's created automatically
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <hr class="my-5">
+
+    <!-- QUICK STATS -->
+    <section class="mb-5">
+        <h3 class="fw-bold mb-4">📈 Why These Features Matter</h3>
+        <div class="row">
+            <div class="col-md-3 mb-3">
+                <div class="card shadow rounded-4 text-center">
+                    <div class="card-body">
+                        <h2 class="text-primary">90%</h2>
+                        <p class="text-muted">Time Saved on Promotions</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card shadow rounded-4 text-center">
+                    <div class="card-body">
+                        <h2 class="text-success">0</h2>
+                        <p class="text-muted">Manual Class Creation</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card shadow rounded-4 text-center">
+                    <div class="card-body">
+                        <h2 class="text-info">100%</h2>
+                        <p class="text-muted">Audit Tracking</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card shadow rounded-4 text-center">
+                    <div class="card-body">
+                        <h2 class="text-warning">24h</h2>
+                        <p class="text-muted">License Approval</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA SECTION -->
+    <section class="bg-primary text-white rounded-4 p-5 text-center">
+        <h2 class="fw-bold mb-3">Ready to Transform Your School Management?</h2>
+        <p class="fs-5 mb-4">Experience the power of intelligent school administration with Brainet Analytics</p>
+        <div class="d-flex gap-3 justify-content-center flex-wrap">
+            <a href="{% url 'dashboard' %}" class="btn btn-light btn-lg">
+                🚀 Go to Dashboard
+            </a>
+            <a href="{% url 'promotion_center' %}" class="btn btn-outline-light btn-lg">
+                📚 Try Promotion System
+            </a>
+        </div>
+    </section>
+
+</div>
+
+<!-- DEMO MODALS -->
+
+<!-- School-Wide Promotion Demo Modal -->
+<div class="modal fade" id="schoolPromoDemo" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">🏫 School-Wide Promotion Demo</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info mb-3">
+                    <strong>Scenario:</strong> End of academic year - promote all 800 students in one click!
+                </div>
+                <ol>
+                    <li class="mb-3">
+                        <strong>Click "🎓 Student Promotion Center"</strong>
+                        <p class="text-muted">Navigate from DOS Dashboard</p>
+                    </li>
+                    <li class="mb-3">
+                        <strong>Select "🏫 Promote Entire School"</strong>
+                        <p class="text-muted">Shows: 8 classes, 800 students</p>
+                    </li>
+                    <li class="mb-3">
+                        <strong>Review Summary</strong>
+                        <p class="text-muted">Grade 10 (300) → Grade 11, Grade 11 (350) → Grade 12, Grade 12 (150) → Graduated</p>
+                    </li>
+                    <li class="mb-3">
+                        <strong>Confirm Promotion</strong>
+                        <p class="text-muted">Click "🚀 Start School-Wide Promotion"</p>
+                    </li>
+                    <li class="mb-3">
+                        <strong>Done! ✓</strong>
+                        <p class="text-muted">All promotions completed. View in history. New classes auto-created.</p>
+                    </li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Class-Specific Promotion Demo Modal -->
+<div class="modal fade" id="classPromoDemo" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">📚 Class-Specific Promotion Demo</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info mb-3">
+                    <strong>Scenario:</strong> Promote Grade 10 East (120 students) only
+                </div>
+                <ol>
+                    <li class="mb-3">
+                        <strong>Go to Promotion Center</strong>
+                        <p class="text-muted">Dashboard → 🎓 Student Promotion Center</p>
+                    </li>
+                    <li class="mb-3">
+                        <strong>Select "📚 Promote by Class"</strong>
+                        <p class="text-muted">List shows all classes with student counts</p>
+                    </li>
+                    <li class="mb-3">
+                        <strong>Click "Grade 10 East"</strong>
+                        <p class="text-muted">Shows 120 students to be promoted</p>
+                    </li>
+                    <li class="mb-3">
+                        <strong>Review Students</strong>
+                        <p class="text-muted">See all names, admission numbers, current stream</p>
+                    </li>
+                    <li class="mb-3">
+                        <strong>Confirm Promotion</strong>
+                        <p class="text-muted">120 students → Grade 11 East (auto-created if needed)</p>
+                    </li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Individual Student Promotion Demo Modal -->
+<div class="modal fade" id="studentPromoDemo" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title">👤 Individual Student Management Demo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning mb-3">
+                    <strong>Scenario:</strong> Handle special cases - promote, repeat, or drop individual students
+                </div>
+                <ol>
+                    <li class="mb-3">
+                        <strong>Search for Student</strong>
+                        <p class="text-muted">Use search box on Promotion Center</p>
+                    </li>
+                    <li class="mb-3">
+                        <strong>Click Student Name</strong>
+                        <p class="text-muted">Shows: John Doe, Grade 10 East, ADM#12345</p>
+                    </li>
+                    <li class="mb-3">
+                        <strong>Choose Action:</strong>
+                        <ul class="text-muted">
+                            <li>✓ <strong>Promote</strong> → Grade 11 East</li>
+                            <li>🔄 <strong>Repeat</strong> → Stay in Grade 10 (low marks?)</li>
+                            <li>✕ <strong>Drop</strong> → Remove from school (transferred?)</li>
+                        </ul>
+                    </li>
+                    <li class="mb-3">
+                        <strong>Add Remarks</strong>
+                        <p class="text-muted">Optional: "Excellent performance" or "Transferred to ABC School"</p>
+                    </li>
+                    <li class="mb-3">
+                        <strong>Submit</strong>
+                        <p class="text-muted">Action recorded in history with timestamp and who did it</p>
+                    </li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    section {
+        animation: fadeIn 0.5s ease-in;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .card {
+        border-radius: 1rem;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.15) !important;
+    }
+</style>
+
+{% endblock %}

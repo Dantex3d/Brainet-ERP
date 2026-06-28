@@ -1,0 +1,382 @@
+{% extends 'dashboards/base.html' %}
+{% load static %}
+
+{% block content %}
+
+<div class="container-fluid py-4">
+
+    <!-- HEADER -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+
+        <div class="card-body">
+
+            <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+
+                <div>
+                    <h2 class="fw-bold text-primary mb-1">
+                        📋 Class List Preview
+                    </h2>
+
+                    <p class="text-muted mb-0">
+                        Academic performance data before exporting
+                    </p>
+                </div>
+
+                <div class="d-flex flex-wrap gap-2">
+
+                    <a href="{% url 'view_class_students' school_class.id %}"
+                       class="btn btn-outline-primary rounded-3">
+
+                        ⬅ Back
+
+                    </a>
+
+                    {% if selected_term and preview_rows %}
+
+                        <a href="{% url 'download_class_list_pdf' school_class.id %}"
+                           class="btn btn-success rounded-3">
+
+                            📥 Export PDF
+
+                        </a>
+
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- SCHOOL HEADER -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+
+        <div class="card-body text-center">
+
+            {% if school_class.school.logo %}
+                <img src="{{ school_class.school.logo.url }}"
+                     width="80"
+                     height="80"
+                     class="rounded-circle shadow mb-3">
+            {% else %}
+                <img src="{% static 'images/school.png' %}"
+                     width="80"
+                     height="80"
+                     class="rounded-circle shadow mb-3">
+            {% endif %}
+
+            <h2 class="fw-bold mb-1">
+                {{ school_class.school.name }}
+            </h2>
+
+            <p class="text-muted mb-0">
+                {{ school_class.name }} - Class List with Academic Details
+            </p>
+
+        </div>
+
+    </div>
+
+    <!-- TERM SELECTOR -->
+    {% if not selected_term %}
+
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+
+            <div class="card-body">
+
+                <form method="GET" class="d-flex gap-2">
+
+                    <select name="term" class="form-control form-control-lg" required>
+                        <option value="">Select Term to Load Marks...</option>
+                        {% for term in terms %}
+                            <option value="{{ term.id }}">{{ term.name }}</option>
+                        {% endfor %}
+                    </select>
+
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        Load
+                    </button>
+
+                </form>
+
+            </div>
+
+        </div>
+
+    {% endif %}
+
+    <!-- STATS -->
+    {% if preview_rows %}
+
+        <div class="row g-4 mb-4">
+
+            <div class="col-lg-3 col-md-6">
+
+                <div class="card border-0 shadow-sm rounded-4 h-100">
+
+                    <div class="card-body">
+
+                        <small class="text-muted">
+                            Total Students
+                        </small>
+
+                        <h2 class="fw-bold text-primary">
+                            {{ students|length }}
+                        </h2>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="col-lg-3 col-md-6">
+
+                <div class="card border-0 shadow-sm rounded-4 h-100">
+
+                    <div class="card-body">
+
+                        <small class="text-muted">
+                            Male
+                        </small>
+
+                        <h2 class="fw-bold text-success">
+                            {{ students|dictsort:"gender"|length }}
+                        </h2>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="col-lg-3 col-md-6">
+
+                <div class="card border-0 shadow-sm rounded-4 h-100">
+
+                    <div class="card-body">
+
+                        <small class="text-muted">
+                            Subjects
+                        </small>
+
+                        <h2 class="fw-bold text-warning">
+                            {{ subjects|length }}
+                        </h2>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="col-lg-3 col-md-6">
+
+                <div class="card border-0 shadow-sm rounded-4 h-100">
+
+                    <div class="card-body">
+
+                        <small class="text-muted">
+                            Term
+                        </small>
+
+                        <h2 class="fw-bold text-info">
+                            {{ selected_term.name }}
+                        </h2>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    {% endif %}
+
+    <!-- TABLE -->
+    <div class="card border-0 shadow-sm rounded-4">
+
+        <div class="card-header bg-primary text-white rounded-top-4 d-flex justify-content-between align-items-center">
+
+            <h5 class="mb-0">
+                📚 Students with Academic Details
+            </h5>
+
+            {% if selected_term and preview_rows %}
+                <span class="badge bg-light text-dark">
+                    {{ preview_rows|length }} Students
+                </span>
+            {% endif %}
+
+        </div>
+
+        <div class="card-body p-0">
+
+            {% if selected_term and preview_rows %}
+
+                <div class="table-responsive">
+
+                    <table class="table table-hover table-bordered align-middle mb-0">
+
+                        <thead class="table-dark">
+
+                            <tr>
+
+                                <th rowspan="2" class="text-center">
+                                    Rank
+                                </th>
+
+                                <th rowspan="2">
+                                    Student Name
+                                </th>
+
+                                <th rowspan="2">
+                                    Adm No
+                                </th>
+
+                                <th rowspan="2">
+                                    Gender
+                                </th>
+
+                                <th rowspan="2" class="text-center">
+                                    Stream
+                                </th>
+
+                                <!-- ALL SUBJECTS -->
+                                {% for subject in subjects %}
+                                    <th class="text-center">
+                                        {{ subject.short_name }}
+                                    </th>
+                                {% endfor %}
+
+                                <th rowspan="2" class="text-center">
+                                    Total
+                                </th>
+
+                                <th rowspan="2" class="text-center">
+                                    Avg
+                                </th>
+
+                                <th rowspan="2" class="text-center">
+                                    Grade
+                                </th>
+
+                                <th rowspan="2" class="text-center">
+                                    Points
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody>
+
+                            {% for row in preview_rows %}
+
+                            <tr>
+
+                                <td class="text-center fw-bold">
+                                    {{ row.rank }}
+                                </td>
+
+                                <td class="fw-semibold">
+                                    {{ row.student.name }}
+                                </td>
+
+                                <td>
+                                    {{ row.student.admission_number }}
+                                </td>
+
+                                <td>
+                                    {{ row.student.gender|default:""|slice:":1" }}
+                                </td>
+
+                                <td class="text-center">
+                                    {{ row.stream_name }}
+                                </td>
+
+                                <!-- SUBJECT MARKS -->
+                                {% for score in row.subject_scores %}
+
+                                    <td class="text-center">
+
+                                        {% if score is not None %}
+                                            <span class="badge bg-primary">
+                                                {{ score }}
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted">
+                                                -
+                                            </span>
+                                        {% endif %}
+
+                                    </td>
+
+                                {% endfor %}
+
+                                <td class="text-center fw-bold text-success">
+                                    {{ row.total }}
+                                </td>
+
+                                <td class="text-center fw-bold text-primary">
+                                    {{ row.average }}
+                                </td>
+
+                                <td class="text-center">
+
+                                    <span class="badge bg-success">
+                                        {{ row.grade }}
+                                    </span>
+
+                                </td>
+
+                                <td class="text-center fw-bold text-warning">
+                                    {{ row.points }}
+                                </td>
+
+                            </tr>
+
+                            {% empty %}
+
+                            <tr>
+
+                                <td colspan="100%" class="text-center py-5 text-muted">
+
+                                    No student marks found for this term.
+
+                                </td>
+
+                            </tr>
+
+                            {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            {% else %}
+
+                <div class="card-body">
+
+                    <p class="text-muted text-center py-4 mb-0">
+
+                        Select a term above to view students with marks, grades, and points.
+
+                    </p>
+
+                </div>
+
+            {% endif %}
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

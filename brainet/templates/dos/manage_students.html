@@ -1,0 +1,84 @@
+{% extends 'dashboards/base.html' %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    <!-- Title + Add Student Link -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="fw-bold text-primary">
+            Students Management
+        </h3>
+        <a href="{% url 'add_student' %}" class="btn btn-success">
+            ➕ Add New Student
+        </a>
+    </div>
+
+
+    <!-- STUDENTS TABLE -->
+    <div class="card shadow rounded-4">
+        <div class="card-body table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Name</th>
+                        <th>Admission No</th>
+                        <th>Class</th>
+                        <th>Gender</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in students %}
+                    <tr>
+                        <td>{{ s.name }}</td>
+                        <td>{{ s.admission_number }}</td>
+                        <td>
+                            {% if s.current_class %}
+                                {{ s.current_class.name }} ({{ s.current_class.level }})
+                                {% if s.stream %} / {{ s.stream.name }}{% endif %}
+                            {% else %}-{% endif %}
+                        </td>
+                        <td>{{ s.gender }}</td>
+                        <td>
+                            <div class="d-flex gap-2 flex-wrap">
+                                <a href="{% url 'view_student' s.id %}" class="btn btn-sm btn-primary">View</a>
+                                <a href="{% url 'edit_student' s.id %}" class="btn btn-sm btn-warning">Edit</a>
+                                <form method="post" action="{% url 'delete_student' s.id %}">
+                                    {% csrf_token %}
+                                    <button class="btn btn-sm btn-danger"
+                                            onclick="return confirm('Delete this student?')">
+                                        Delete
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted">No students added yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const classSelect = document.querySelector('select[name="class_id"]');
+const quickStream = document.getElementById('quickStreamSelect');
+if(classSelect && quickStream){
+    classSelect.addEventListener('change', function(){
+        const classId = this.value;
+        Array.from(quickStream.options).forEach(function(opt){
+            if(!opt.dataset.class) return;
+            opt.style.display = (!classId || opt.dataset.class === classId) ? '' : 'none';
+        });
+        quickStream.value = '';
+    });
+}
+</script>
+{% endblock %}

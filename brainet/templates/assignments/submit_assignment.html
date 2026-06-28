@@ -1,0 +1,72 @@
+{% extends 'dashboards/base.html' %}
+
+{% block content %}
+
+<div class="container py-5">
+
+    <div class="row justify-content-center">
+
+        <div class="col-lg-7">
+
+            <div class="card border-0 shadow-sm rounded-4">
+
+                <div class="card-header bg-success text-white rounded-top-4">
+                    <h4 class="mb-0">
+                        📤 Submit Assignment
+                    </h4>
+                </div>
+
+                <div class="card-body p-4">
+
+                    <div class="mb-4">
+
+                        <h4 class="fw-bold text-primary">
+                            {{ assignment.title }}
+                        </h4>
+
+                        <p>
+                            {{ assignment.instructions }}
+                        </p>
+
+                        <small class="text-muted">
+                            Deadline:
+                            {{ assignment.due_date }}
+                        </small>
+
+                    </div>
+
+                    <form method="post"
+                          enctype="multipart/form-data">
+
+                        {% csrf_token %}
+
+                        <div class="mb-4">
+
+                            <label class="form-label fw-bold">
+                                Upload File
+                            </label>
+
+                            <input type="file"
+                                   name="file"
+                                   class="form-control"
+                                   required>
+
+                        </div>
+
+                        <button class="btn btn-success w-100 py-2">
+                            Submit Assignment
+                        </button>
+
+                    </form>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

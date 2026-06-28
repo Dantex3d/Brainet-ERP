@@ -1,0 +1,33 @@
+{% extends 'dashboards/base.html' %}
+
+{% block content %}
+
+<div class="container py-4">
+
+    <h3 class="fw-bold text-primary">
+        Student Report
+    </h3>
+
+    <div class="card shadow rounded-4 mt-3">
+
+        <div class="card-body">
+
+            <h4>{{ student.name }}</h4>
+
+            <p><strong>Admission:</strong> {{ student.admission_number }}</p>
+            <p><strong>Gender:</strong> {{ student.gender }}</p>
+            <p><strong>Class:</strong> {{ student.class_id.name }}</p>
+
+            <hr>
+
+            <p class="text-muted">
+                Academic performance section will be connected here (marks, grades, subjects).
+            </p>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

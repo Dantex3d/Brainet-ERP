@@ -1,0 +1,37 @@
+{% extends 'dashboards/base.html' %}
+
+{% block content %}
+<div class="container py-5">
+
+    <div class="card shadow-sm border-0 rounded-4">
+        <div class="card-header bg-warning text-dark">
+            <h4>Edit Term</h4>
+        </div>
+
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+
+                <div class="mb-3">
+                    <label class="form-label">Term Name</label>
+                    <input type="text" name="name" class="form-control" value="{{ term.name }}" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Start Date</label>
+                    <input type="date" name="start_date" class="form-control" value="{{ term.start_date|date:'Y-m-d' }}" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">End Date</label>
+                    <input type="date" name="end_date" class="form-control" value="{{ term.end_date|date:'Y-m-d' }}" required>
+                </div>
+
+                <button class="btn btn-success rounded-3">💾 Save Changes</button>
+                <a href="{% url 'manage_terms' %}" class="btn btn-outline-secondary rounded-3">Cancel</a>
+            </form>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

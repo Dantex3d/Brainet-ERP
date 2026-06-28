@@ -1,0 +1,44 @@
+{% extends 'dashboards/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container py-4">
+
+    <h2 class="fw-bold text-primary mb-4">✏ Edit Class</h2>
+
+    <form method="post" action="">
+        {% csrf_token %}
+
+        <div class="mb-3">
+            <label class="form-label fw-bold">Class Name</label>
+            <input type="text" name="name" class="form-control"
+                   value="{{ class_obj.name }}" required>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label fw-bold">Numeric Level</label>
+            <input type="number" name="level" class="form-control"
+                   value="{{ class_obj.level }}" required>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label fw-bold">Class Master / Teacher</label>
+            <select name="class_master" class="form-select">
+                <option value="">-- None --</option>
+                {% for t in teachers %}
+                    <option value="{{ t.id }}" {% if class_obj.class_master_id == t.id %}selected{% endif %}>
+                        {{ t.user.get_full_name }}
+                    </option>
+                {% endfor %}
+            </select>
+            <small class="text-muted d-block mt-2">Streams can be managed separately after creation.</small>
+        </div>
+
+        <div class="d-flex gap-2 mt-3">
+            <button type="submit" class="btn btn-success">💾 Save Changes</button>
+            <a href="{% url 'manage_classes' %}" class="btn btn-secondary">⬅ Back</a>
+        </div>
+    </form>
+
+</div>
+{% endblock %}

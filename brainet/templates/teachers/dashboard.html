@@ -1,0 +1,503 @@
+{% extends "dashboards/base.html" %}
+{% load static %}
+
+{% block title %}Teacher Dashboard{% endblock %}
+
+{% block content %}
+
+<div class="container-fluid py-4">
+
+    <!-- TOP BAR -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+
+        <div class="card-body">
+
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+
+                <!-- LEFT -->
+                <div class="d-flex align-items-center gap-3">
+
+                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center"
+                         style="width:60px;height:60px;font-size:25px;">
+
+                        👨‍🏫
+
+                    </div>
+
+                    <div>
+
+                        <h3 class="fw-bold text-primary mb-0">
+                            Welcome, {{ teacher.name }}
+                        </h3>
+
+                        <small class="text-muted">
+                            Teacher Dashboard
+                        </small>
+
+                    </div>
+
+                </div>
+
+                <!-- RIGHT -->
+                <div class="d-flex align-items-center gap-3">
+
+                    <!-- NOTIFICATIONS -->
+                    <div class="dropdown">
+
+                        <button class="btn btn-light position-relative border"
+                                data-bs-toggle="dropdown">
+
+                            🔔
+
+                            {% if unread_notifications > 0 %}
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                {{ unread_notifications }}
+                            </span>
+                            {% endif %}
+
+                        </button>
+
+                        <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-4 p-2"
+                            style="width:320px;">
+
+                            <li class="fw-bold px-2 mb-2">
+                                Notifications
+                            </li>
+
+                            {% for note in notifications %}
+
+                            <li class="mb-1">
+
+                                <div class="dropdown-item small">
+
+                                    <strong>
+                                        {{ note.title }}
+                                    </strong>
+
+                                    <br>
+
+                                    {{ note.message }}
+
+                                </div>
+
+                            </li>
+
+                            {% empty %}
+
+                            <li class="px-2 text-muted small">
+                                No notifications
+                            </li>
+
+                            {% endfor %}
+
+                        </ul>
+
+                    </div>
+
+                    <a href="{% url 'teacher_dashboard' %}"
+                       class="btn btn-light border">
+
+                        Refresh
+
+                    </a>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- STATS -->
+    <div class="row g-4 mb-4">
+
+        <div class="col-md-3">
+
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+
+                <div class="card-body">
+
+                    <small class="text-muted">
+                        Assigned Subjects
+                    </small>
+
+                    <h2 class="fw-bold text-primary">
+                        {{ subjects|length }}
+                    </h2>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-md-3">
+
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+
+                <div class="card-body">
+
+                    <small class="text-muted">
+                        Students
+                    </small>
+
+                    <h2 class="fw-bold text-success">
+                        {{ students|length }}
+                    </h2>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-md-3">
+
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+
+                <div class="card-body">
+
+                    <small class="text-muted">
+                        Assignments
+                    </small>
+
+                    <h2 class="fw-bold text-warning">
+                        {{ assignments|length }}
+                    </h2>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-md-3">
+
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+
+                <div class="card-body">
+
+                    <small class="text-muted">
+                        Submissions
+                    </small>
+
+                    <h2 class="fw-bold text-danger">
+                        {{ submissions|length }}
+                    </h2>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="row g-4">
+
+        <!-- LEFT SIDE -->
+        <div class="col-xl-8">
+
+            <!-- CLASS TEACHER -->
+            {% if assigned_classes %}
+
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+
+                <div class="card-header bg-primary text-white border-0 rounded-top-4">
+
+                    <h5 class="mb-0">
+                        👨‍🎓 Class Teacher Assignments
+                    </h5>
+
+                </div>
+
+                <div class="card-body">
+
+                    {% for assignment in assigned_classes %}
+                    <div class="mb-3">
+                        <p class="mb-2">
+                            You are class teacher of
+                            <strong>
+                                {{ assignment.label }}
+                            </strong>
+                        </p>
+
+                        <div class="d-flex flex-wrap gap-2">
+                            <a href="{% url 'view_class_students' assignment.class_obj.id %}{% if assignment.stream %}?stream_id={{ assignment.stream.id }}{% endif %}"
+                               class="btn btn-primary rounded-4 btn-sm">
+
+                                View & Export Class List
+
+                            </a>
+                        </div>
+                    </div>
+
+                    {% if not forloop.last %}
+                    <hr class="my-2">
+                    {% endif %}
+                    {% endfor %}
+
+                </div>
+
+
+            </div>
+
+            {% endif %}
+
+            <!-- SUBJECTS -->
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+
+                <div class="card-header bg-secondary text-white border-0 rounded-top-4">
+
+                    <h5 class="mb-0">
+                        📚 Subject Management
+                    </h5>
+
+                </div>
+
+                <div class="card-body">
+
+                    <div class="list-group">
+
+                        {% for subject_group in subject_groups %}
+
+                        <div class="list-group-item border-0 shadow-sm rounded-4 mb-3">
+
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+
+                                <div>
+
+                                    <h6 class="fw-bold mb-1">
+                                        {{ subject_group.subject.name }}
+                                    </h6>
+                                    <p class="mb-0 text-muted">
+                                        {% for assigned in subject_group.classes %}
+                                            {{ assigned.label }}{% if not forloop.last %}, {% endif %}
+                                        {% endfor %}
+                                    </p>
+
+                                </div>
+
+                                <div class="btn-group">
+
+                                    <a href="{% url 'enter_marks' %}"
+                                       class="btn btn-success btn-sm">
+
+                                        Marks
+
+                                    </a>
+
+                                    <a href="{% url 'create_assignment' %}"
+                                       class="btn btn-warning btn-sm">
+
+                                        Assignment
+
+                                    </a>
+
+                                    <a href="{% url 'teacher_assignments' %}"
+                                       class="btn btn-dark btn-sm">
+
+                                        View Assignments
+
+                                    </a>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        {% empty %}
+
+                        <div class="alert alert-light border">
+
+                            No subjects assigned
+
+                        </div>
+
+                        {% endfor %}
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- RECENT ASSIGNMENTS -->
+            <div class="card border-0 shadow-sm rounded-4">
+
+                <div class="card-header bg-white border-0">
+
+                    <div class="d-flex justify-content-between align-items-center">
+
+                        <h5 class="fw-bold mb-0">
+                            Recent Assignments
+                        </h5>
+
+                        <a href="{% url 'create_assignment' %}"
+                           class="btn btn-primary btn-sm rounded-4">
+
+                            Create Assignment
+
+                        </a>
+
+                    </div>
+
+                </div>
+
+                <div class="card-body">
+
+                    {% for assignment in assignments|slice:":5" %}
+
+                    <div class="border rounded-4 p-3 mb-3">
+
+                        <div class="d-flex justify-content-between">
+
+                            <div>
+
+                                <h6 class="fw-bold">
+                                    {{ assignment.title }}
+                                </h6>
+
+                                <small class="text-muted">
+                                    {{ assignment.subject.name }}
+                                </small>
+
+                            </div>
+
+                            <span class="badge bg-primary">
+
+                                {{ assignment.class_assigned.name }}
+
+                            </span>
+
+                        </div>
+
+                        <hr>
+
+                        <small class="text-muted">
+
+                            Due:
+                            {{ assignment.due_date }}
+
+                        </small>
+
+                    </div>
+
+                    {% empty %}
+
+                    <div class="alert alert-light border">
+
+                        No assignments created
+
+                    </div>
+
+                    {% endfor %}
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- RIGHT SIDE -->
+        <div class="col-xl-4">
+
+            <!-- RECENT SUBMISSIONS -->
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+
+                <div class="card-header bg-dark text-white border-0 rounded-top-4">
+
+                    <h5 class="mb-0">
+                        📥 Recent Submissions
+                    </h5>
+
+                </div>
+
+                <div class="card-body">
+
+                    {% for submission in submissions|slice:":6" %}
+
+                    <div class="border rounded-4 p-2 mb-2">
+
+                        <strong>
+                            {{ submission.student.name }}
+                        </strong>
+
+                        <br>
+
+                        <small class="text-muted">
+
+                            {{ submission.assignment.title }}
+
+                        </small>
+
+                    </div>
+
+                    {% empty %}
+
+                    <div class="alert alert-light border">
+
+                        No submissions yet
+
+                    </div>
+
+                    {% endfor %}
+
+                </div>
+
+            </div>
+
+            <!-- QUICK ACTIONS -->
+            <div class="card border-0 shadow-sm rounded-4">
+
+                <div class="card-header bg-white border-0">
+
+                    <h5 class="fw-bold mb-0">
+                        ⚡ Quick Actions
+                    </h5>
+
+                </div>
+
+                <div class="card-body d-grid gap-2">
+
+                    <a href="{% url 'create_assignment' %}"
+                       class="btn btn-primary rounded-4">
+
+                        Create Assignment
+
+                    </a>
+
+                    <a href="{% url 'teacher_assignments' %}"
+                       class="btn btn-warning rounded-4">
+
+                        View Assignments
+
+                    </a>
+
+                    <a href="{% url 'teacher_online_classes' %}"
+                       class="btn btn-info rounded-4">
+
+                        Online Classes
+
+                    </a>
+
+                    <a href="{% url 'enter_marks' %}"
+                       class="btn btn-success rounded-4">
+
+                        Enter Marks
+
+                    </a>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

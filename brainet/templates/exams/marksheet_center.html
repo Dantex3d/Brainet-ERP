@@ -1,0 +1,483 @@
+{% extends 'dashboards/base.html' %}
+{% block content %}
+
+<div class="container-fluid py-4">
+
+    <!-- ====================================== -->
+    <!-- HEADER -->
+    <!-- ====================================== -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+            <h2 class="fw-bold mb-0">
+                📊 Marksheet Center
+            </h2>
+
+            <small class="text-muted">
+                Professional Results Management System
+            </small>
+        </div>
+
+        <div class="d-flex gap-2">
+
+            <!-- REFRESH -->
+            <button class="btn btn-outline-primary"
+                    onclick="location.reload()">
+
+                🔄 Refresh
+
+            </button>
+
+            <!-- DASHBOARD -->
+            <a href="{% url 'dashboard' %}"
+               class="btn btn-dark">
+
+                ⬅ Dashboard
+
+            </a>
+
+        </div>
+
+    </div>
+
+    <!-- ====================================== -->
+    <!-- FILTER CARD -->
+    <!-- ====================================== -->
+    <div class="card shadow border-0 mb-4">
+
+        <div class="card-header bg-primary text-white">
+
+            <h5 class="mb-0">
+                🎯 Generate Results
+            </h5>
+
+        </div>
+
+        <div class="card-body">
+
+            <form method="get">
+
+                <div class="row g-3">
+
+                    <!-- CLASS -->
+                    <div class="col-md-4">
+
+                        <label class="fw-semibold mb-1">
+                            Class
+                        </label>
+
+                        <select name="class"
+                                class="form-select"
+                                onchange="this.form.submit()">
+
+                            <option value="">
+                                Select Class
+                            </option>
+
+                            {% for c in classes %}
+
+                                <option value="{{ c.id }}"
+                                    {% if selected_class == c.id|stringformat:"s" %}
+                                        selected
+                                    {% endif %}>
+
+                                    {{ c.name }}
+
+                                </option>
+
+                            {% endfor %}
+
+                        </select>
+
+                    </div>
+
+                    <!-- TERM -->
+                    <div class="col-md-4">
+
+                        <label class="fw-semibold mb-1">
+                            Term
+                        </label>
+
+                        <select name="term"
+                                class="form-select"
+                                onchange="this.form.submit()">
+
+                            <option value="">
+                                Select Term
+                            </option>
+
+                            {% for t in terms %}
+
+                                <option value="{{ t.id }}"
+                                    {% if selected_term == t.id|stringformat:"s" %}
+                                        selected
+                                    {% endif %}>
+
+                                    {{ t.name }}
+
+                                </option>
+
+                            {% endfor %}
+
+                        </select>
+
+                    </div>
+
+                    <!-- EXAM -->
+                    <div class="col-md-4">
+
+                        <label class="fw-semibold mb-1">
+                            Exam
+                        </label>
+
+                        <select name="exam"
+                                class="form-select"
+                                onchange="this.form.submit()">
+
+                            <option value="">
+                                Select Exam
+                            </option>
+
+                            {% for e in exams %}
+
+                                <option value="{{ e.id }}"
+                                    {% if selected_exam == e.id|stringformat:"s" %}
+                                        selected
+                                    {% endif %}>
+
+                                    {{ e.name }}
+
+                                </option>
+
+                            {% endfor %}
+
+                        </select>
+
+                    </div>
+
+                    <!-- STREAM (appears if class is selected) -->
+                    {% if selected_class %}
+                    <div class="col-md-4">
+
+                        <label class="fw-semibold mb-1">
+                            Stream / Division
+                        </label>
+
+                        <select name="stream"
+                                class="form-select"
+                                onchange="this.form.submit()">
+
+                            <option value="">
+                                All Streams
+                            </option>
+
+                            {% for s in streams %}
+
+                                <option value="{{ s.id }}"
+                                    {% if selected_stream == s.id|stringformat:"s" %}
+                                        selected
+                                    {% endif %}>
+
+                                    {{ s.name }}
+
+                                </option>
+
+                            {% endfor %}
+
+                        </select>
+
+                    </div>
+                    {% endif %}
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+<!-- ====================================== -->
+<!-- ACTION BUTTONS -->
+<!-- ====================================== -->
+{% if selected_class and selected_term and selected_exam %}
+
+<div class="card shadow border-0 mb-4">
+
+    <div class="card-body">
+
+        <div class="row g-3">
+
+            <!-- VIEW RESULTS -->
+            <div class="col-lg-3 col-md-6">
+
+                <a href="#results_table"
+                   class="btn btn-success w-100 py-3">
+
+                    👁 View Results
+
+                </a>
+
+            </div>
+
+            <!-- EXPORT MARKSHEET PDF -->
+            <div class="col-lg-3 col-md-6">
+
+                <a href="{% url 'export_marksheet_pdf' %}?class={{ selected_class }}&term={{ selected_term }}&exam={{ selected_exam }}{% if selected_stream %}&stream={{ selected_stream }}{% endif %}"
+                   class="btn btn-danger w-100 py-3">
+
+                    📄 Export Marksheet PDF
+
+                </a>
+
+            </div>
+
+            <!-- EXPORT CLASS REPORT -->
+            <div class="col-lg-3 col-md-6">
+
+                <a href="{% url 'export_class_report' selected_class selected_term selected_exam %}"
+                   class="btn btn-primary w-100 py-3">
+
+                    📘 Export Class Report
+
+                </a>
+
+            </div>
+
+            <!-- PRINT -->
+            <div class="col-lg-3 col-md-6">
+
+                <button onclick="window.print()"
+                        class="btn btn-dark w-100 py-3">
+
+                    🖨 Print Results
+
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endif %}
+
+    <!-- ====================================== -->
+    <!-- RESULTS TABLE -->
+    <!-- ====================================== -->
+    <div class="card shadow border-0">
+
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+
+            <div>
+
+                <h5 class="mb-0">
+                    {% if display_title %}
+                        📑 {{ display_title }}
+                    {% else %}
+                        📑 Results Preview
+                    {% endif %}
+                </h5>
+
+            </div>
+
+            {% if students %}
+
+            <span class="badge bg-light text-dark">
+
+                {{ students|length }} Students
+
+            </span>
+
+            {% endif %}
+
+        </div>
+
+        <div class="card-body">
+
+            {% if students %}
+
+            <div class="table-responsive">
+
+                <table class="table table-bordered table-hover align-middle"
+                       id="results_table">
+
+                    <thead class="table-primary">
+
+                        <tr>
+
+                            <th>#</th>
+
+                            <th>
+                                Admission No
+                            </th>
+
+                            <th>
+                                Student Name
+                            </th>
+
+                            <th>
+                                Gender
+                            </th>
+
+                            {% for subject in subject_headers %}
+
+                                <th class="text-center">
+                                    {{ subject.name }}
+                                </th>
+
+                            {% endfor %}
+
+                            <th class="bg-warning">
+                                Total
+                            </th>
+
+                            <th class="bg-info text-white">
+                                Average
+                            </th>
+
+                            <th class="bg-success text-white">
+                                Grade
+                            </th>
+
+                            <th class="bg-dark text-white">
+                                Points
+                            </th>
+
+                            <th class="bg-danger text-white">
+                                Rank
+                            </th>
+
+                            <th class="bg-secondary text-white">
+                                Stream Rank
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                        {% for item in students %}
+
+                        <tr>
+
+                            <!-- NUMBER -->
+                            <td>
+                                {{ forloop.counter }}
+                            </td>
+
+                            <!-- ADM -->
+                            <td>
+                                {{ item.student.admission_number }}
+                            </td>
+
+                            <!-- NAME -->
+                            <td class="fw-semibold">
+                                {{ item.student.name }}
+                            </td>
+
+                            <!-- GENDER -->
+                            <td>
+                                {{ item.student.gender|default:""|slice:":1" }}
+                            </td>
+
+                            <td>
+                                {{ item.stream_name }}
+                            </td>
+
+                            <!-- SUBJECT MARKS -->
+                            {% for result in item.marks_data %}
+
+                            <td class="text-center">
+
+                                {% if result.marks == "-" %}
+
+                                    -
+
+                                {% else %}
+
+                                    <div class="fw-bold">
+                                        {{ result.marks }}
+                                    </div>
+
+                                    <small class="text-muted">
+                                        {{ result.grade }}
+                                    </small>
+
+                                {% endif %}
+
+                            </td>
+
+                            {% endfor %}
+
+                            <!-- TOTAL -->
+                            <td class="fw-bold bg-light">
+                                {{ item.total_marks }}
+                            </td>
+
+                            <!-- AVG -->
+                            <td>
+                                {{ item.average }}
+                            </td>
+
+                            <!-- GRADE -->
+                            <td class="fw-bold text-success">
+                                {{ item.grade }}
+                            </td>
+
+                            <!-- POINTS -->
+                            <td>
+                                {{ item.points }}
+                            </td>
+
+                            <!-- RANK -->
+                            <td class="fw-bold text-danger">
+                                {{ item.rank }}
+                            </td>
+
+                            <!-- STREAM RANK -->
+                            <td class="text-center">
+                                {{ item.stream_rank }}
+                            </td>
+
+                        </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+            {% else %}
+
+            <!-- EMPTY -->
+            <div class="text-center py-5">
+
+                <h5 class="text-muted">
+
+                    No Results Loaded
+
+                </h5>
+
+                <p class="text-muted">
+
+                    Select Class, Term and Exam to generate results preview.
+
+                </p>
+
+            </div>
+
+            {% endif %}
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
