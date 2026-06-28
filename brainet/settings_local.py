@@ -7,6 +7,11 @@ This file extends settings.py and overrides specific settings for local developm
 from .settings import *
 from pathlib import Path
 import os
+from dotenv import load_dotenv
+
+# Load .env from project root if present
+BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / '.env')
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -15,6 +20,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # =========================================================
 DEBUG = True
 ALLOWED_HOSTS = ['*', 'localhost', '127.0.0.1', '0.0.0.0']
+
+# Prevent local dev from forcing HTTPS
+SECURE_SSL_REDIRECT = False
+CSRF_COOKIE_SECURE = False
+SESSION_COOKIE_SECURE = False
+SECURE_HSTS_SECONDS = 0
+SECURE_PROXY_SSL_HEADER = None
 
 # Use a simple test secret key
 SECRET_KEY = 'test-secret-key-for-development-and-testing-only'
@@ -30,9 +42,16 @@ DATABASES = {
 }
 
 # =========================================================
-# EMAIL - Use Console Backend for Testing
+# EMAIL - prefer .env values but default to console backend for safety
 # =========================================================
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST = os.environ.get('EMAIL_HOST', globals().get('EMAIL_HOST', 'smtp.zoho.com'))
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', globals().get('EMAIL_PORT', 587)))
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', str(globals().get('EMAIL_USE_TLS', True))) in ('True', 'true', '1')
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', globals().get('EMAIL_HOST_USER'))
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', globals().get('EMAIL_HOST_PASSWORD'))
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', globals().get('DEFAULT_FROM_EMAIL', 'webmaster@localhost'))
+EMAIL_TIMEOUT = int(os.environ.get('EMAIL_TIMEOUT', globals().get('EMAIL_TIMEOUT', 10)))
 
 # =========================================================
 # CACHE - Use Dummy Cache for Testing

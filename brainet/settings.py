@@ -22,7 +22,7 @@ SECRET_KEY = os.environ.get(
     "django-insecure-development-key"
 )
 
-DEBUG = os.environ.get("DEBUG", "False") == "False"
+DEBUG = os.environ.get("DEBUG", "False").lower() in ("1", "true", "yes")
 
 ALLOWED_HOSTS = [
     "brainetanalytics.co.ke",
@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     'classes',
     'assignments',
     'subjects',
+
 ]
 
 # =========================================================
@@ -213,6 +214,27 @@ STATICFILES_STORAGE = (
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# =========================================================
+# REMOTE MEDIA (S3) - optional
+# If you want uploaded files to be stored on S3/GCS, set USE_S3=True or
+# provide AWS_STORAGE_BUCKET_NAME and related env vars. Install
+# `django-storages[boto3]` and `boto3` and configure the environment variables.
+# =========================================================
+USE_S3 = os.environ.get('USE_S3', 'False') == 'True' or bool(os.environ.get('AWS_STORAGE_BUCKET_NAME'))
+if USE_S3:
+    # Only add 'storages' app when S3 is enabled to avoid import errors when not installed
+    INSTALLED_APPS.append('storages')
+    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+    AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
+    AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME')
+    AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', None)
+    AWS_S3_CUSTOM_DOMAIN = os.environ.get('AWS_S3_CUSTOM_DOMAIN') or f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
+    MEDIA_URL = os.environ.get('MEDIA_URL') or f"https://{AWS_S3_CUSTOM_DOMAIN}/media/"
+else:
+    # Use local MEDIA_ROOT / MEDIA_URL (defined above)
+    pass
 
 # =========================================================
 # DEFAULT PRIMARY KEY FIELD

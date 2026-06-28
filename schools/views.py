@@ -5,6 +5,7 @@ import re
 from urllib import request
 from django.utils import timezone
 from django.conf import settings
+import logging
 from django.core.mail import send_mail
 
 from django.http import HttpResponse, JsonResponse
@@ -3140,21 +3141,35 @@ def add_school(request):
         subscription_balance = request.POST.get("subscription_balance") or 0
         logo = request.FILES.get("logo")
 
-        School.objects.create(
-            name=name,
-            address=address,
-            phone=phone,
-            email=email,
-            subscription_balance=subscription_balance,
-            logo=logo,
-            is_active=False,
-        )
-
-        messages.success(request, "School added successfully.")
-        messages.warning(
-            request,
-            "New school accounts expire within 48 hours if not activated. Contact admin to activate."
-        )
+        logger = logging.getLogger(__name__)
+        try:
+            School.objects.create(
+                name=name,
+                address=address,
+                phone=phone,
+                email=email,
+                subscription_balance=subscription_balance,
+                logo=logo,
+                is_active=False,
+            )
+            messages.success(request, "School added successfully.")
+            messages.warning(
+                request,
+                "New school accounts expire within 48 hours if not activated. Contact admin to activate."
+            )
+        except (OSError, IOError) as e:
+            # Likely running on a read-only filesystem (serverless). Create record without logo
+            logger.exception("Failed to save uploaded logo file for school: %s", e)
+            school = School.objects.create(
+                name=name,
+                address=address,
+                phone=phone,
+                email=email,
+                subscription_balance=subscription_balance,
+                is_active=False,
+            )
+            messages.success(request, "School added, but logo upload failed.")
+            messages.error(request, "Logo could not be saved on this server. Configure remote media storage (S3/GCS) and try again.")
 
     return redirect("superuser_dashboard")
 
