@@ -24,7 +24,6 @@
           rel="stylesheet">
 
     <style>
-
         *{
             margin:0;
             padding:0;
@@ -85,6 +84,115 @@
 
             color:#fff !important;
 
+        }
+
+        .nav-summary{
+            color:#d1d5db;
+            font-size:0.95rem;
+            margin-left:20px;
+            display:flex;
+            align-items:center;
+            gap:0.5rem;
+        }
+
+        .hero-donate{
+            color:#a5f3fc;
+            font-size:1rem;
+            margin-top:10px;
+            font-weight:600;
+        }
+
+        .schools-track{
+            overflow:hidden;
+            padding:40px 0;
+            position:relative;
+        }
+
+        .schools-marquee{
+            display:flex;
+            align-items:center;
+            gap:24px;
+            width:max-content;
+            animation:marqueeScroll 24s linear infinite;
+        }
+
+        .school-pill{
+            flex:0 0 auto;
+            display:flex;
+            align-items:center;
+            gap:16px;
+            background:#ffffff;
+            border-radius:18px;
+            padding:18px 24px;
+            box-shadow:0 15px 35px rgba(15,23,42,0.1);
+            min-width:260px;
+            white-space:nowrap;
+        }
+
+        .schools-track::before,
+        .schools-track::after{
+            content:'';
+            position:absolute;
+            top:0;
+            bottom:0;
+            width:120px;
+            pointer-events:none;
+            background:linear-gradient(to right, rgba(248,250,252,1), rgba(248,250,252,0));
+        }
+
+        .schools-track::after{
+            right:0;
+            transform:rotateY(180deg);
+        }
+
+        .school-pill img{
+            max-height:60px;
+            max-width:60px;
+            object-fit:contain;
+            border-radius:12px;
+            background:#f8fafc;
+            padding:8px;
+        }
+
+        .school-pill h5{
+            margin:0;
+            font-size:1rem;
+            font-weight:800;
+            color:#0f172a;
+        }
+
+        .school-pill small{
+            color:#64748b;
+            font-size:0.88rem;
+        }
+
+        .faq-card{
+            background:#f8fafc;
+            border:none;
+            border-radius:25px;
+            padding:30px;
+            box-shadow:0 15px 35px rgba(15,23,42,0.08);
+        }
+
+        .footer-links{
+            display:flex;
+            justify-content:center;
+            gap:12px;
+            flex-wrap:wrap;
+            margin-top:15px;
+        }
+
+        .footer-links a{
+            min-width:140px;
+        }
+
+        @keyframes marqueeScroll{
+            0%{
+                transform:translateX(0);
+            }
+            100%{
+                transform:translateX(-50%);
+            }
         }
 
         .nav-btn{
@@ -476,8 +584,13 @@
 
             </a>
 
-            <div class="d-flex gap-2 flex-wrap">
-
+            <div class="d-flex align-items-center flex-wrap">
+                <span class="nav-summary">
+                    <i class="bi bi-heart-fill"></i>
+                    Donate/Appreciate: Safaricom / M-Pesa 0700267517
+                </span>
+            </div>
+            <div class="d-flex gap-2 flex-wrap mt-3 mt-lg-0">
                 <a href="{% url 'login' %}"
                    class="btn btn-success nav-btn">
 
@@ -516,6 +629,10 @@
                 to automate administration, examinations,
                 analytics, reporting, finance and academic operations.
 
+            </p>
+
+            <p class="hero-donate">
+                Support Brainet with a small appreciation via Safaricom / M-Pesa <strong>0736645038</strong>. Every contribution helps keep schools connected.
             </p>
 
             <div class="hero-buttons">
@@ -585,7 +702,7 @@
 
         <h2 class="section-title">
 
-            Powerful ERP Features
+            Powerful Analytics Features
 
         </h2>
 
@@ -898,41 +1015,146 @@
 
 </section>
 
-<!-- FOOTER -->
+<!-- Happy Schools Showcase -->
+{% if schools_list %}
+<section id="happySchools" class="features py-5 bg-light">
+    <div class="container">
+        <h3 class="section-title">Happy Schools</h3>
+        <div class="schools-track">
+            <div class="schools-marquee">
+                {% for school in schools_list %}
+                <div class="school-pill">
+                    {% if school.logo.url %}
+                    <img src="{{ school.logo.url }}" alt="{{ school.name }} logo">
+                    {% endif %}
+                    <div>
+                        <h5>{{ school.name }}</h5>
+                        <small>{{ school.motto|default:'Trusted partner in school management' }}</small>
+                    </div>
+                </div>
+                {% endfor %}
+                {% for school in schools_list %}
+                <div class="school-pill">
+                    {% if school.logo.url %}
+                    <img src="{{ school.logo.url }}" alt="{{ school.name }} logo">
+                    {% endif %}
+                    <div>
+                        <h5>{{ school.name }}</h5>
+                        <small>{{ school.motto|default:'Trusted partner in school management' }}</small>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</section>
+{% endif %}
 
+<!-- Testimonials -->
+<section class="features py-5">
+    <div class="container">
+        <h3 class="section-title">What Schools Say</h3>
+        <div class="row justify-content-center">
+            {% for t in testimonials %}
+            <div class="col-md-4">
+                <div class="feature-card mb-3">
+                    <p class="mb-2">"{{ t.text }}"</p>
+                    <p class="mb-0 fw-bold">— {{ t.author }}</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- FAQ & Help -->
+<section id="faq" class="features py-5 bg-light">
+    <div class="container">
+        <h3 class="section-title">FAQ & Help</h3>
+        <div class="row gy-4 justify-content-center">
+            <div class="col-md-4">
+                <div class="faq-card">
+                    <h5>How do I register a school?</h5>
+                    <p>Click the Register School button in the header and complete the form. Our team will guide you through onboarding.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="faq-card">
+                    <h5>Need support quickly?</h5>
+                    <p>Use the contact form or WhatsApp <strong>0700269717/0736645038</strong>. We reply fast during business hours.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="faq-card">
+                    <h5>Want to send appreciation?</h5>
+                    <p>Donate via Safaricom / M-Pesa <strong>0700269717</strong>. Your support helps keep schools connected.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Contact / Support -->
+<section id="contact" class="modules py-5 bg-white">
+    <div class="container">
+        <h3 class="section-title">Get in Touch</h3>
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="card p-4">
+                    <h5>Contact Options</h5>
+                    <p class="mb-1"><i class="bi bi-telephone"></i> Phone: <a href="tel:+254700269717">+254 700 269 717</a></p>
+                    <p class="mb-1"><i class="bi bi-phone"></i> SMS/Call: 0736645038</p>
+                    <p class="mb-1"><i class="bi bi-whatsapp"></i> WhatsApp: <a href="https://wa.me/254700269717" target="_blank">+254700269717</a></p>
+                    <p class="mb-1"><i class="bi bi-envelope"></i> Email: <a href="mailto:info@brainetanalytics.co.ke">info@brainetanalytics.co.ke</a></p>
+                    <p class="mb-0">Follow us: <a href="#"><i class="bi bi-facebook"></i> brainet analytics</a> • <a href="#"><i class="bi bi-twitter"></i> X</a></p>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card p-4">
+                    <h5>Send Us A Message</h5>
+                    <form method="post" action="{% url 'contact_submit' %}">
+                        {% csrf_token %}
+                        <div class="mb-2">
+                            <label class="form-label">Full name</label>
+                            <input name="name" class="form-control" required />
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">Email</label>
+                            <input name="email" type="email" class="form-control" required />
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">Phone (optional)</label>
+                            <input name="phone" class="form-control" />
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">Message</label>
+                            <textarea name="message" class="form-control" rows="4" required></textarea>
+                        </div>
+                        <button class="btn btn-primary">Send Message</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Footer -->
 <footer>
-
-    <h4 class="fw-bold">
-
-        Brainet Analytics ERP
-
-    </h4>
-
-    <p>
-
-        Smart School Management Platform
-
-    </p>
-
-    <p>
-
-        Contact:
-        <a href="tel:0700269517">
-
-            0700269517  / 0736645038
-
-        </a>
-
-    </p>
-
-    <p class="mb-0">
-
-        © 2026 Brainet Analytics System
-        info@brainet.co.ke
-        merkoudaniel@gmail.com
-
-    </p>
-
+    <div class="container d-flex flex-column flex-lg-row justify-content-between align-items-center">
+        <div class="text-center text-lg-start mb-3 mb-lg-0">
+            <h5 class="mb-1">Brainet Analytics</h5>
+            <small>Smart school management platform</small>
+            <p class="mb-0 mt-2"><i class="bi bi-telephone"></i> <a href="tel:+254700269517">+254 700 269 517</a> • <i class="bi bi-envelope"></i> <a href="mailto:info@brainetanalytics.co.ke">info@brainetanalytics.co.ke</a></p>
+        </div>
+        <div class="text-center text-lg-end">
+            <p class="mb-1">© 2026 Brainet Analytics System</p>
+            <p class="mb-0">Donate / Appreciate us via <strong>0736645038</strong></p>
+            <div class="footer-links">
+                <a href="#faq" class="btn btn-outline-light btn-sm">FAQ</a>
+                <a href="#contact" class="btn btn-primary btn-sm">Help</a>
+            </div>
+        </div>
+    </div>
 </footer>
 
 <!-- JS -->

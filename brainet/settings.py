@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+from dotenv import load_dotenv
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
 import smtplib
@@ -8,6 +9,9 @@ import smtplib
 # =========================================================
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load environment variables from .env at project root (development only)
+load_dotenv(BASE_DIR / '.env')
 
 # =========================================================
 # SECURITY
@@ -25,6 +29,8 @@ ALLOWED_HOSTS = [
     "www.brainetanalytics.co.ke",
     "brainet.up.railway.app",
     "brainet-erp.vercel.app",
+    "localhost",
+    "127.0.0.1",
 ]
     
 CSRF_TRUSTED_ORIGINS = [
@@ -179,9 +185,10 @@ EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.smtp.
 EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.zoho.com')
 EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
 EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
+# Load sensitive email credentials from environment only (no hard-coded defaults)
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
-DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER or 'webmaster@localhost')
 EMAIL_TIMEOUT = int(os.environ.get('EMAIL_TIMEOUT', 10))
 
 # =========================================================

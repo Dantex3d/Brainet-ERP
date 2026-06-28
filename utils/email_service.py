@@ -1,30 +1,50 @@
-import sib_api_v3_sdk
-from sib_api_v3_sdk.rest import ApiException
 from django.conf import settings
+from django.core.mail import EmailMultiAlternatives
 
 
-def send_email(to_email, subject, message):
-    configuration = sib_api_v3_sdk.Configuration()
-    configuration.api_key['api-key'] = settings.BREVO_API_KEY
+def send_email(to_email, subject, message, recipient_name=None, html=True):
+    """
+    Send an email using Django's configured email backend (SMTP/Zoho).
 
-    api_instance = sib_api_v3_sdk.TransactionalEmailsApi(
-        sib_api_v3_sdk.ApiClient(configuration)
-    )
+    - `to_email`: recipient email address (string) or list
+    - `subject`: email subject
+    - `message`: plain text or HTML body
+    - `recipient_name`: optional recipient display name to personalize headers
+    - `html`: whether `message` contains HTML
+    """
+    if not to_email:
+        return False
 
-    email = sib_api_v3_sdk.SendSmtpEmail(
-        sender={
-            "name": "Brainet",
-            "email": settings.DEFAULT_FROM_EMAIL
-        },
-        to=[{"email": to_email}],
-        subject=subject,
-        html_content=message.replace("\n", "<br>")
-    )
+    from_email = getattr(settings, "DEFAULT_FROM_EMAIL", None) or getattr(settings, "EMAIL_HOST_USER", None)
+
+    # Build a friendly "From" header
+    from_header = f"{getattr(settings, 'SITE_NAME', 'Brainet')} <{from_email}>" if from_email else None
+    if from_header:
+        from_email = from_header
+
+    # Ensure to_email is a list
+    recipients = [to_email] if isinstance(to_email, str) else list(to_email)
 
     try:
-        api_instance.send_transac_email(email)
+        if html:
+            text_content = message.replace("<br>", "\n") if "<" in message else message
+            msg = EmailMultiAlternatives(subject, text_content, from_email, recipients)
+            msg.attach_alternative(message, "text/html")
+        else:
+            msg = EmailMultiAlternatives(subject, message, from_email, recipients)
+
+        # Optional: set a Reply-To to the site support email
+        support = getattr(settings, 'SUPPORT_EMAIL', None) or from_email
+        if support:
+            msg.extra_headers = {'Reply-To': support}
+
+        msg.send(fail_silently=False)
         return True
-    except ApiException as e:
-        print("Brevo error:", e)
+    except Exception as e:
+        # Keep failures quiet but log for debugging during development
+        try:
+            print("Email send error:", str(e))
+        except Exception:
+            pass
         return False
       

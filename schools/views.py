@@ -52,18 +52,41 @@ def superuser_required(view_func):
 from django.conf import settings
 from django.urls import reverse
 from utils.email_service import send_email
+from django.views.decorators.http import require_POST
+from django.core.paginator import Paginator
+
 
 
 def send_user_verification_email(user, request=None, role_name=None):
-    if not settings.BREVO_API_KEY or not user.email:
-        return
+    # Ensure user has an email
+    if not getattr(user, 'email', None):
+        return False
+
+    # Resolve display name: prefer full name, then first_name, then related profile names
+    display_name = None
+    try:
+        display_name = user.get_full_name() if user.get_full_name() else None
+    except Exception:
+        display_name = getattr(user, 'first_name', None)
+
+    if not display_name:
+        # Try related profiles (teacher/principal/dos)
+        try:
+            from teachers.models import Teacher
+            t = Teacher.objects.filter(user=user).first()
+            if t and getattr(t, 'name', None):
+                display_name = t.name
+        except Exception:
+            pass
+
+    if not display_name:
+        display_name = user.email
 
     # =========================
-    # DOS / PRINCIPAL FLOW
+    # DOS / PRINCIPAL FLOW (6-digit code)
     # =========================
     if user.role in ['dos', 'principal']:
         code = user.generate_verification_code()
-
         verify_link = (
             request.build_absolute_uri(reverse('verify_user_code')) + f"?email={user.email}"
             if request
@@ -72,27 +95,21 @@ def send_user_verification_email(user, request=None, role_name=None):
 
         subject = f"Verify your {role_name or user.role} account on Brainet"
 
-        body = (
-            f"Hello {user.email},\n\n"
-            f"Your {role_name or user.role} account has been created on Brainet.\n\n"
-            f"Please enter the verification code below:\n\n"
-            f"CODE: {code}\n\n"
-            f"Or click here:\n{verify_link}\n\n"
-            f"This code expires in 1 hour.\n\n"
-            f"If this wasn't you, contact support."
-        )
+        html_body = f"<p>Dear {display_name},</p>"
+        html_body += f"<p>Your {role_name or user.role} account has been created on Brainet.</p>"
+        html_body += f"<p>Please use the verification code below (expires in 1 hour):</p>"
+        html_body += f"<h2>{code}</h2>"
+        html_body += f"<p>Or click here: <a href=\"{verify_link}\">Verify Account</a></p>"
+        html_body += f"<p>If you did not request this, contact support.</p>"
 
-        send_email(
-            to_email=user.email,
-            subject=subject,
-            message=body
-        )
-        return
+        return send_email(to_email=user.email, subject=subject, message=html_body, recipient_name=display_name, html=True)
 
     # =========================
-    # OTHER USERS FLOW
+    # OTHER USERS FLOW (both code + email token link)
     # =========================
+    # Generate both a short code and a token link so users may verify either way
     token = user.generate_email_verification_token()
+    code = user.generate_verification_code()
 
     verify_link = (
         request.build_absolute_uri(reverse('verify_user_email', args=[token]))
@@ -102,14 +119,15 @@ def send_user_verification_email(user, request=None, role_name=None):
 
     subject = f"Verify your {role_name or 'Brainet'} account"
 
-    body = (
-        f"Hello {getattr(user, 'first_name', user.email)},\n\n"
-        f"Please verify your email by clicking below:\n\n{verify_link}\n\n"
-        "After verification you can access your account.\n\n"
-        "If you didn't request this, ignore this email."
-    )
+    html_body = f"<p>Hi {display_name},</p>"
+    html_body += f"<p>We've created your account on Brainet. You may verify your email using either the verification code below, or by clicking the verification link.</p>"
+    html_body += f"<p><strong>Verification code:</strong></p>"
+    html_body += f"<h2 style=\"letter-spacing:4px;\">{code}</h2>"
+    html_body += f"<p>Or click the button to verify now:</p>"
+    html_body += f"<p><a href=\"{verify_link}\" style=\"display:inline-block;padding:10px 18px;background:#0d6efd;color:#fff;border-radius:6px;text-decoration:none;\">Verify Email</a></p>"
+    html_body += f"<p>If you didn't request this, ignore this email.</p>"
 
-    return _send_mail_and_close(subject, body, user.email)
+    return send_email(to_email=user.email, subject=subject, message=html_body, recipient_name=display_name, html=True)
 
 
 def send_school_verification_email(school, request=None):
@@ -126,16 +144,98 @@ def send_school_verification_email(school, request=None):
         "If you did not register this school, please ignore this message."
     )
 
+    return send_email(
+        to_email=school.email,
+        subject=subject,
+        message=body,
+        recipient_name=school.name,
+        html=False,
+    )
+
+
+@superuser_required
+def pending_verification(request):
+    """Superuser view: list users pending email verification with search and filters."""
+    q = request.GET.get('q', '').strip()
+    filter_type = request.GET.get('filter', '')
+
+    users = User.objects.filter(email_verified=False)
+
+    if q:
+        users = users.filter(Q(email__icontains=q) | Q(first_name__icontains=q) | Q(last_name__icontains=q))
+
+    if filter_type == 'failed':
+        users = users.filter(verification_attempts__gt=0)
+
+    users = users.order_by('-email_verification_sent_at')
+
+    paginator = Paginator(users, 25)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'schools/pending_verification.html', {
+        'users': page_obj,
+        'q': q,
+        'filter': filter_type,
+    })
+
+
+@superuser_required
+def pending_verification_count(request):
+    count = User.objects.filter(email_verified=False).count()
+    return JsonResponse({'count': count})
+
+
+@superuser_required
+def resend_verification_email(request, user_id):
+    user = get_object_or_404(User, id=user_id)
+    # Use send_user_verification_email's boolean result to determine success/failure
     try:
-        send_mail(
-            subject=subject,
-            message=body,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[school.email],
-            fail_silently=False,
-        )
-    except Exception:
-        pass
+        sent = send_user_verification_email(user, request=request)
+        if sent:
+            messages.success(request, f"Verification email resent to {user.email}.")
+        else:
+            support = getattr(settings, 'SUPPORT_EMAIL', None) or getattr(settings, 'DEFAULT_FROM_EMAIL', None) or 'support@brainet.local'
+            messages.error(request, f"Could not resend verification to {user.email}. Contact: {support}")
+    except Exception as e:
+        messages.error(request, f"Could not resend verification: {str(e)}")
+    return redirect('pending_verification')
+
+
+def contact_submit(request):
+    if request.method != 'POST':
+        return redirect('landing_page')
+
+    name = request.POST.get('name', '').strip()
+    email = request.POST.get('email', '').strip()
+    phone = request.POST.get('phone', '').strip()
+    message_text = request.POST.get('message', '').strip()
+
+    if not name or not email or not message_text:
+        messages.error(request, 'Please complete the contact form.')
+        return redirect('landing_page')
+
+    try:
+        # Save to DB
+        from .models import ContactMessage
+        ContactMessage.objects.create(name=name, email=email, phone=phone, message=message_text)
+
+        # Send notification to support email
+        support = getattr(settings, 'SUPPORT_EMAIL', None) or getattr(settings, 'DEFAULT_FROM_EMAIL', None)
+        subject = f"Website contact from {name}"
+        body = f"Name: {name}\nEmail: {email}\nPhone: {phone}\n\nMessage:\n{message_text}"
+        if support:
+            sent = send_email(to_email=support, subject=subject, message=body, html=False)
+            if not sent:
+                messages.warning(request, f'Thank you — your message was saved, but we could not deliver notification to support. Contact: {support}')
+            else:
+                messages.success(request, 'Thank you — your message was sent. We will get back to you shortly.')
+        else:
+            messages.success(request, 'Thank you — your message was saved. We will get back to you shortly.')
+    except Exception as e:
+        messages.error(request, f'Could not send message: {str(e)}')
+
+    return redirect('landing_page')
 
 
 @login_required
@@ -1230,7 +1330,15 @@ def reset_notification_count(request):
 
     
 def landing_page(request):
-    return render(request, "dashboards/landing.html")
+    # Show verified schools carousel and testimonials on landing
+    schools_list = School.objects.filter(is_verified=True).order_by('-created_at')[:12]
+    # Simple static testimonials; could be replaced by a model later
+    testimonials = [
+        {"author": "St. Mary's High", "text": "Brainet transformed our reporting and saved hours each week."},
+        {"author": "Green Valley Academy", "text": "Reliable, fast and great support."},
+        {"author": "Sunrise School", "text": "Teachers love the online class features and easy grading."},
+    ]
+    return render(request, "dashboards/landing.html", {"schools_list": schools_list, "testimonials": testimonials})
 
 @login_required
 def features_demo(request):

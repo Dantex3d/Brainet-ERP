@@ -104,6 +104,9 @@
                                         {% endif %}
                                     </td>
                                     <td class="text-end">
+                                        {% if not school.is_verified or not school.is_active %}
+                                        <a href="{% url 'activate_school' school.id %}" class="btn btn-sm btn-success me-1">Verify</a>
+                                        {% endif %}
                                         <a href="{% url 'edit_school' school.id %}" class="btn btn-sm btn-outline-primary">Edit</a>
                                         <a href="{% url 'view_school' school.id %}" class="btn btn-sm btn-outline-secondary">View</a>
                                         <form method="post" action="{% url 'delete_school' school.id %}" class="d-inline-block" onsubmit="return confirm('Delete this school? This action cannot be undone.');">

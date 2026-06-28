@@ -75,92 +75,18 @@
                             <small class="text-muted">Teacher should change this on first login</small>
                         </div>
 
-                        <!-- ROLE -->
+                        <!-- ROLE (fixed) -->
                         <div class="mb-4">
-                            <label for="role" class="form-label fw-semibold">Teacher Role *</label>
-                            <select 
-                                id="role"
-                                name="role" 
-                                class="form-select form-select-lg" 
-                                required>
-                                <option value="">-- Select Role --</option>
-                                <option value="form_teacher">Form Teacher (Class Master)</option>
-                                <option value="subject_teacher">Subject Teacher</option>
-                                <option value="admin_teacher">Admin Teacher</option>
-                                <option value="senior_teacher">Senior Teacher</option>
-                            </select>
-                            <small class="text-muted">The teacher's role in the school</small>
+                            <label class="form-label fw-semibold">Role</label>
+                            <div class="form-control form-control-lg">Teacher</div>
+                            <small class="text-muted">All users added here are registered as teachers. Assign specific duties later in Manage Teachers.</small>
                         </div>
                     </form>
                 </div>
             </div>
 
-            <!-- CLASS ASSIGNMENT -->
-            <div class="card shadow-sm rounded-3 border-0 mb-4">
-                <div class="card-header bg-info text-white">
-                    <h6 class="mb-0">🏫 Assign Class</h6>
-                </div>
-                <div class="card-body">
-                    <div class="mb-3">
-                        <label for="assigned_class" class="form-label fw-semibold">Class (Optional)</label>
-                        <select 
-                            id="assigned_class"
-                            name="assigned_class" 
-                            class="form-select form-select-lg"
-                            form="teacherForm">
-                            <option value="">-- No Class Assignment --</option>
-                            {% for class in classes %}
-                            <option value="{{ class.id }}">
-                                {{ class.name }} (Level {{ class.level }})
-                                {% if class.streams.all %}
-                                    - Streams: {% for stream in class.streams.all %}{{ stream.name }}{% if not forloop.last %}, {% endif %}{% endfor %}
-                                {% endif %}
-                            </option>
-                            {% empty %}
-                            <option disabled>No classes available</option>
-                            {% endfor %}
-                        </select>
-                        <small class="text-muted">Assign the teacher as a class master/form teacher</small>
-                    </div>
-                </div>
-            </div>
-
-            <!-- SUBJECT ASSIGNMENT -->
-            <div class="card shadow-sm rounded-3 border-0 mb-4">
-                <div class="card-header bg-success text-white">
-                    <h6 class="mb-0">📖 Assign Subjects (Select multiple with Ctrl/Cmd+Click)</h6>
-                </div>
-                <div class="card-body" style="max-height: 400px; overflow-y: auto;">
-                    <div id="subjectsList" class="subject-list">
-                        {% for subject in subjects %}
-                        <div class="form-check mb-2">
-                            <input 
-                                class="form-check-input subject-checkbox" 
-                                type="checkbox" 
-                                name="subjects" 
-                                value="{{ subject.id }}" 
-                                id="subject_{{ subject.id }}"
-                                form="teacherForm"
-                                onchange="updateSelectedSubjects()">
-                            <label class="form-check-label w-100" for="subject_{{ subject.id }}">
-                                <span class="fw-semibold">{{ subject.name }}</span>
-                                <small class="text-muted">({{ subject.short_name }})</small>
-                            </label>
-                        </div>
-                        {% empty %}
-                        <p class="text-muted mb-0">No subjects available. Create subjects first in the admin panel.</p>
-                        {% endfor %}
-                    </div>
-
-                    <!-- SELECTED SUBJECTS DISPLAY -->
-                    <div id="assignedSubjectsList" class="mt-3 pt-3 border-top">
-                        <small class="fw-semibold text-muted">Selected Subjects:</small>
-                        <div id="assignedList" class="d-flex flex-wrap gap-2 mt-2">
-                            <small class="text-muted">None</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <!-- NOTE: Class and subject assignment moved to Manage Teachers for clarity -->
+            <div class="alert alert-info">Class and subject assignment are optional and can be done later from the <a href="{% url 'manage_teachers' %}">Manage Teachers</a> page.</div>
 
             <!-- ACTION BUTTONS -->
             <div class="d-flex gap-2 mb-4">

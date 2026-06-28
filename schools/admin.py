@@ -40,3 +40,17 @@ from .models import DOSQuery, VoucherRequest
 
 admin.site.register(DOSQuery)
 admin.site.register(VoucherRequest)    
+
+from .models import ContactMessage
+
+
+@admin.register(ContactMessage)
+class ContactMessageAdmin(admin.ModelAdmin):
+    list_display = ('name', 'email', 'phone', 'created_at', 'handled')
+    list_filter = ('handled', 'created_at')
+    search_fields = ('name', 'email', 'message')
+    actions = ['mark_handled']
+
+    def mark_handled(self, request, queryset):
+        queryset.update(handled=True)
+    mark_handled.short_description = "Mark selected messages as handled"

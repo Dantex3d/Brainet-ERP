@@ -1,0 +1,65 @@
+{% extends 'dashboards/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3>Pending Verification</h3>
+        <form class="d-flex" method="get">
+            <input type="text" name="q" value="{{ q }}" class="form-control me-2" placeholder="Search by email or name">
+            <select name="filter" class="form-select me-2">
+                <option value="">All</option>
+                <option value="failed" {% if filter == 'failed' %}selected{% endif %}>Failed Attempts</option>
+            </select>
+            <button class="btn btn-primary">Search</button>
+        </form>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-body p-0">
+            <table class="table mb-0">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Sent At</th>
+                        <th>Attempts</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in users %}
+                    <tr>
+                        <td>{{ u.get_full_name|default:u.email }}</td>
+                        <td>{{ u.email }}</td>
+                        <td>{{ u.role }}</td>
+                        <td>{{ u.email_verification_sent_at }}</td>
+                        <td>{{ u.verification_attempts }}</td>
+                        <td class="text-end">
+                            <a href="{% url 'manual_verify_user' u.id %}" class="btn btn-sm btn-success">Verify Manually</a>
+                            <a href="{% url 'resend_verification_email' u.id %}" class="btn btn-sm btn-outline-primary">Resend Email</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="text-center p-4">No pending verifications</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <nav>
+        <ul class="pagination">
+            {% if users.has_previous %}
+            <li class="page-item"><a class="page-link" href="?page={{ users.previous_page_number }}&q={{ q }}&filter={{ filter }}">Previous</a></li>
+            {% endif %}
+            <li class="page-item disabled"><span class="page-link">Page {{ users.number }} of {{ users.paginator.num_pages }}</span></li>
+            {% if users.has_next %}
+            <li class="page-item"><a class="page-link" href="?page={{ users.next_page_number }}&q={{ q }}&filter={{ filter }}">Next</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+</div>
+
+{% endblock %}

@@ -80,7 +80,8 @@ def add_teacher(request):
         email = request.POST.get("email")
         password = request.POST.get("password")
         phone = request.POST.get("phone")
-        role = request.POST.get("role")
+        # Always use a single 'teacher' role for clarity
+        role = 'teacher'
 
         # Prevent duplicates
         if CustomUser.objects.filter(email=email).exists():
@@ -112,7 +113,7 @@ def add_teacher(request):
                 name=name,
                 email=email,
                 phone=phone,
-                role=role
+                role='teacher'
             )
 
             # If a class was selected during creation, create a class assignment
@@ -506,7 +507,6 @@ def edit_teacher(request, teacher_id):
         email = request.POST.get("email", teacher.email).strip()
         teacher.name = request.POST["name"]
         teacher.phone = request.POST["phone"]
-        teacher.role = request.POST["role"]
 
         if email and email != teacher.email:
             if CustomUser.objects.exclude(id=teacher.user_id).filter(email=email).exists():
@@ -523,17 +523,7 @@ def edit_teacher(request, teacher_id):
                 from schools.views import _verification_contact_message
                 messages.warning(request, f"Teacher details were updated, but the verification email could not be sent. {_verification_contact_message(request)}")
 
-        class_id = request.POST.get("assigned_class")
-        if class_id:
-            class_obj = get_object_or_404(Class, id=class_id, school=request.user.school)
-            # Remove any previous class assignments for this teacher and set the new one
-            ClassTeacherAssignment.objects.filter(teacher=teacher).delete()
-            ClassTeacherAssignment.objects.create(
-                school=request.user.school,
-                class_obj=class_obj,
-                stream=_resolve_class_stream(class_obj),
-                teacher=teacher
-            )
+        # Class/subject assignments are managed via Manage Teachers UI.
 
         teacher.save()
         return redirect("manage_teachers")
