@@ -1024,7 +1024,7 @@
             <div class="schools-marquee">
                 {% for school in schools_list %}
                 <div class="school-pill">
-                    {% if school.logo.url %}
+                    {% if school.logo %}
                     <img src="{{ school.logo.url }}" alt="{{ school.name }} logo">
                     {% endif %}
                     <div>
@@ -1035,7 +1035,7 @@
                 {% endfor %}
                 {% for school in schools_list %}
                 <div class="school-pill">
-                    {% if school.logo.url %}
+                    {% if school.logo %}
                     <img src="{{ school.logo.url }}" alt="{{ school.name }} logo">
                     {% endif %}
                     <div>
