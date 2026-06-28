@@ -24,6 +24,7 @@ urlpatterns = [
     path("superuser/dos/<int:dos_id>/edit/", views.edit_dos_by_superuser, name="edit_dos_by_superuser"),
     path("superuser/dos/<int:dos_id>/delete/", views.delete_dos_by_superuser, name="delete_dos_by_superuser"),
     path("superuser/users/<int:user_id>/manual-verify/", views.manual_verify_user, name="manual_verify_user"),
+    path("superuser/online-class/<int:online_class_id>/student/<int:student_id>/manual-join/", views.manual_join_online_class, name="manual_join_online_class"),
 
     # =====================================================
     # SCHOOL MANAGEMENT
@@ -143,6 +144,7 @@ urlpatterns = [
     path("student/dashboard/", views.student_dashboard, name="student_dashboard"),
     path("student/online-class/<int:online_class_id>/action/", views.student_online_class_action, name="student_online_class_action"),
     path("student/online-class/<int:online_class_id>/join/", views.student_join_online_class, name="student_join_online_class"),
+    path("student/online-class/<int:online_class_id>/get-link/", views.get_online_class_meeting_link, name="get_online_class_meeting_link"),
 
     # =====================================================
     # PRINCIPAL

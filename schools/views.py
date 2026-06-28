@@ -7,7 +7,7 @@ from django.utils import timezone
 from django.conf import settings
 from django.core.mail import send_mail
 
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -5227,3 +5227,277 @@ def promotion_history(request):
         'status_choices': StudentPromotion.PROMOTION_STATUS,
     }
     return render(request, "schools/promotion_history.html", context)
+
+
+# =========================================================
+# MANUAL USER VERIFICATION - Admin Helper
+# =========================================================
+@login_required
+@superuser_required
+def manual_verify_user(request, user_id):
+    """
+    Manually verify a user's email account.
+    Helps bypass failed verification attempts.
+    Only accessible to superusers.
+    """
+    user = get_object_or_404(User, id=user_id)
+    
+    if request.method == "POST":
+        try:
+            user.mark_email_verified()
+            messages.success(
+                request,
+                f"✅ User {user.email} has been manually verified!"
+            )
+            return redirect("superuser_dashboard")
+        except Exception as e:
+            messages.error(
+                request,
+                f"❌ Error verifying user: {str(e)}"
+            )
+            return redirect("superuser_dashboard")
+    
+    context = {
+        'user': user,
+        'is_verified': user.email_verified,
+    }
+    return render(request, "schools/manual_verify_user.html", context)
+
+
+# =========================================================
+# GET ONLINE CLASS MEETING LINK - With Authorization
+# =========================================================
+@login_required
+def get_online_class_meeting_link(request, online_class_id):
+    """
+    Fetch the meeting link for an online class.
+    ONLY returns the link if student is in the target class/stream.
+    
+    This prevents unauthorized students from accessing meeting links.
+    """
+    try:
+        student = Student.objects.get(user=request.user)
+    except Student.DoesNotExist:
+        return JsonResponse(
+            {"error": "Student profile not found"},
+            status=403
+        )
+    
+    online_class = get_object_or_404(OnlineClass, id=online_class_id)
+    
+    # =========================================
+    # VERIFY STUDENT IS IN TARGET CLASS
+    # =========================================
+    if student.current_class_id != online_class.class_obj_id:
+        return JsonResponse(
+            {"error": "You are not enrolled in this class"},
+            status=403
+        )
+    
+    # =========================================
+    # VERIFY STUDENT IS IN TARGET STREAM (if stream-specific)
+    # =========================================
+    if online_class.stream:
+        if not student.stream or student.stream_id != online_class.stream_id:
+            return JsonResponse(
+                {"error": "You are not in the stream for this class"},
+                status=403
+            )
+    
+    # =========================================
+    # RETURN MEETING LINK (Authorized)
+    # =========================================
+    from django.http import JsonResponse
+    return JsonResponse({
+        "success": True,
+        "meeting_link": online_class.meeting_link,
+        "topic": online_class.topic,
+        "teacher": online_class.teacher.name,
+    })
+
+
+# =========================================================
+# STUDENT JOIN ONLINE CLASS
+# =========================================================
+@login_required
+def student_join_online_class(request, online_class_id):
+    """
+    Allow a student to join an online class.
+    Creates/updates OnlineClassParticipant record and redirects to meeting link.
+    
+    TARGETING LOGIC:
+    - Student MUST be in the online_class.class_obj
+    - IF online_class.stream is set: student MUST be in that stream
+    - IF online_class.stream is NULL: all students in class can join
+    """
+    try:
+        student = Student.objects.get(user=request.user)
+    except Student.DoesNotExist:
+        messages.error(request, "❌ Student profile not found.")
+        return redirect("student_dashboard")
+    
+    online_class = get_object_or_404(OnlineClass, id=online_class_id)
+    
+    # =========================================
+    # VERIFY STUDENT IS IN TARGET CLASS
+    # =========================================
+    if student.current_class_id != online_class.class_obj_id:
+        messages.error(
+            request,
+            f"❌ You are not in {online_class.class_obj.name}. This class is only for that class."
+        )
+        return redirect("student_dashboard")
+    
+    # =========================================
+    # VERIFY STUDENT IS IN TARGET STREAM (if stream-specific)
+    # =========================================
+    if online_class.stream:
+        if not student.stream or student.stream_id != online_class.stream_id:
+            messages.error(
+                request,
+                f"❌ You are not in {online_class.stream.name}. This class is only for that stream."
+            )
+            return redirect("student_dashboard")
+    
+    # =========================================
+    # CREATE/UPDATE PARTICIPANT RECORD
+    # =========================================
+    try:
+        participant, created = OnlineClassParticipant.objects.get_or_create(
+            online_class=online_class,
+            student=student
+        )
+        
+        # Mark as joined
+        participant.status = "joined"
+        participant.save()
+        
+        action = "successfully joined" if created else "already joined"
+        messages.success(
+            request,
+            f"✅ You have {action} '{online_class.topic}'! Redirecting to meeting..."
+        )
+        
+        # =========================================
+        # REDIRECT TO MEETING LINK (Authorized Access Only)
+        # =========================================
+        if online_class.meeting_link:
+            return redirect(online_class.meeting_link)
+        else:
+            messages.warning(
+                request,
+                "⚠️ No meeting link available yet. Please contact your teacher."
+            )
+            return redirect("student_dashboard")
+            
+    except Exception as e:
+        messages.error(
+            request,
+            f"❌ Error joining class: {str(e)}"
+        )
+        return redirect("student_dashboard")
+
+
+# =========================================================
+# STUDENT ONLINE CLASS ACTION (For other interactions)
+# =========================================================
+@login_required
+def student_online_class_action(request, online_class_id):
+    """
+    Handle student actions on online classes (view details, record attempt, etc)
+    
+    TARGETING LOGIC:
+    - Validates student is in the target class
+    - Validates student is in target stream (if stream-specific)
+    - Does NOT expose meeting link directly
+    """
+    try:
+        student = Student.objects.get(user=request.user)
+    except Student.DoesNotExist:
+        messages.error(request, "Student profile not found.")
+        return redirect("student_dashboard")
+    
+    online_class = get_object_or_404(OnlineClass, id=online_class_id)
+    
+    # =========================================
+    # VERIFY STUDENT CAN ACCESS THIS CLASS
+    # =========================================
+    if student.current_class_id != online_class.class_obj_id:
+        messages.error(request, "❌ You don't have access to this class.")
+        return redirect("student_dashboard")
+    
+    if online_class.stream and (not student.stream or student.stream_id != online_class.stream_id):
+        messages.error(request, "❌ You don't have access to this stream's class.")
+        return redirect("student_dashboard")
+    
+    # Get or create participant record
+    participant, _ = OnlineClassParticipant.objects.get_or_create(
+        online_class=online_class,
+        student=student
+    )
+    
+    action = request.GET.get("action", "view")
+    
+    if action == "view":
+        # Show details WITHOUT the meeting link
+        context = {
+            'online_class': online_class,
+            'participant': participant,
+            'meeting_link': None,  # Don't expose link here
+        }
+        return render(request, "students/online_class_detail.html", context)
+    
+    elif action == "failed":
+        # Mark as failed attempt
+        participant.status = "failed"
+        participant.save()
+        messages.warning(request, "Failed join attempt recorded. Please try again or contact your teacher.")
+        return redirect("student_dashboard")
+    
+    else:
+        return redirect("student_dashboard")
+
+
+# =========================================================
+# MANUAL JOIN ONLINE CLASS - Admin Helper
+# =========================================================
+@login_required
+@superuser_required
+def manual_join_online_class(request, online_class_id, student_id):
+    """
+    Manually add a student to an online class and mark them as joined.
+    Helps bypass failed join attempts.
+    Only accessible to superusers.
+    """
+    online_class = get_object_or_404(OnlineClass, id=online_class_id)
+    student = get_object_or_404(Student, id=student_id)
+    
+    if request.method == "POST":
+        try:
+            participant, created = OnlineClassParticipant.objects.get_or_create(
+                online_class=online_class,
+                student=student
+            )
+            
+            # Mark as joined
+            participant.status = "joined"
+            participant.save()
+            
+            action = "joined" if created else "updated to joined"
+            messages.success(
+                request,
+                f"✅ {student.name} has been manually {action} the online class '{online_class.topic}'!"
+            )
+            return redirect("superuser_dashboard")
+        except Exception as e:
+            messages.error(
+                request,
+                f"❌ Error adding student to class: {str(e)}"
+            )
+            return redirect("superuser_dashboard")
+    
+    context = {
+        'online_class': online_class,
+        'student': student,
+    }
+    return render(request, "schools/manual_join_online_class.html", context)

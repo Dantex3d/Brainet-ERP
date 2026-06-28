@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Manual Join Online Class - Brainet{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-lg">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">📹 Manual Online Class Enrollment</h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info" role="alert">
+                        <strong>Admin Action:</strong> This will manually add a student to an online class and mark them as joined, bypassing the normal enrollment process.
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Online Class:</strong></label>
+                        <p class="form-control-plaintext">
+                            <span class="badge bg-primary">{{ online_class.topic }}</span>
+                        </p>
+                        <small class="text-muted">
+                            Subject: <strong>{{ online_class.subject.name }}</strong> | 
+                            Teacher: <strong>{{ online_class.teacher.name }}</strong>
+                        </small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Class:</strong></label>
+                        <p class="form-control-plaintext">
+                            {{ online_class.class_obj.name }}
+                            {% if online_class.stream %}
+                                <span class="badge bg-secondary">{{ online_class.stream.name }}</span>
+                            {% endif %}
+                        </p>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Student:</strong></label>
+                        <p class="form-control-plaintext">
+                            <strong>{{ student.name }}</strong><br>
+                            <small class="text-muted">Admission: {{ student.admission_number }}</small>
+                        </p>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Meeting Link:</strong></label>
+                        <p class="form-control-plaintext">
+                            <a href="{{ online_class.meeting_link }}" target="_blank" rel="noopener noreferrer">
+                                {{ online_class.meeting_link }}
+                            </a>
+                        </p>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Class Status:</strong></label>
+                        <p class="form-control-plaintext">
+                            {% if online_class.current_status == 'live' %}
+                                <span class="badge bg-danger blink">🔴 Live Now</span>
+                            {% elif online_class.current_status == 'upcoming' %}
+                                <span class="badge bg-warning">⏱️ Upcoming</span>
+                            {% else %}
+                                <span class="badge bg-dark">✓ Finished</span>
+                            {% endif %}
+                        </p>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="alert alert-warning" role="alert">
+                            <strong>Confirm Action:</strong> Are you sure you want to manually enroll this student in the class and mark them as joined?
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">
+                            ✅ Confirm Enrollment
+                        </button>
+                    </form>
+
+                    <hr>
+
+                    <a href="{% url 'superuser_dashboard' %}" class="btn btn-secondary w-100">
+                        ← Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.blink {
+    animation: blink 1s infinite;
+}
+
+@keyframes blink {
+    0%, 50%, 100% { opacity: 1; }
+    25%, 75% { opacity: 0.5; }
+}
+</style>
+{% endblock %}
