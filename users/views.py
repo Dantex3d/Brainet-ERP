@@ -4,11 +4,12 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, update_session_auth_hash, get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView
-from django.core.mail import get_connection, send_mail
+from django.core.mail import get_connection
 from django.urls import reverse, reverse_lazy
 from django.conf import settings
 from django.utils import timezone
 from schools.models import School
+from utils.email_service import send_email
 from .forms import CustomAuthenticationForm
 
 
@@ -223,25 +224,13 @@ def send_verification_email(user, request=None):
         "If you did not request this, please ignore this message."
     )
 
-    connection = get_connection()
-    try:
-        send_mail(
-            subject=subject,
-            message=body,
-            from_email=getattr(settings, "DEFAULT_FROM_EMAIL", None) or getattr(settings, "EMAIL_HOST_USER", None) or "no-reply@brainet.local",
-            recipient_list=[user.email],
-            fail_silently=False,
-            connection=connection,
-        )
-        return True
-    except Exception as e:
-        print("EMAIL ERROR:", repr(e))
-        return False
-    finally:
-        try:
-            connection.close()
-        except Exception:
-            pass
+    return send_email(
+        to_email=user.email,
+        subject=subject,
+        message=body,
+        recipient_name=getattr(user, 'first_name', user.email),
+        html=False,
+    )
 
 
 def verify_user_email(request, token):

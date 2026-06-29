@@ -3,7 +3,7 @@ Signals for student-related actions (e.g., marking assignments, generating repor
 """
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from django.core.mail import send_mail
+from utils.email_service import send_email
 from django.template.loader import render_to_string
 from assignments.models import Submission
 from schools.models import Notification
@@ -46,12 +46,12 @@ def submission_marked_signal(sender, instance, created, **kwargs):
                 f"Please log in to view more details.\n\n"
                 f"Best regards,\n{school.name}"
             )
-            send_mail(
-                subject,
-                message,
-                'no-reply@brainet.com',
-                [student.user.email],
-                fail_silently=True
+            send_email(
+                to_email=[student.user.email],
+                subject=subject,
+                message=message,
+                recipient_name=student.name,
+                html=False,
             )
         except Exception as e:
             print(f"Error sending email: {str(e)}")

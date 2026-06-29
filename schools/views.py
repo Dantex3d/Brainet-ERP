@@ -6,7 +6,7 @@ from urllib import request
 from django.utils import timezone
 from django.conf import settings
 import logging
-from django.core.mail import send_mail
+from utils.email_service import send_email
 
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
@@ -948,12 +948,12 @@ def send_query(request):
 
         try:
             if settings.EMAIL_HOST_USER and superuser.email:
-                send_mail(
+                send_email(
+                    to_email=[superuser.email],
                     subject=f"DOS query: {subject}",
                     message=f"{request.user.get_full_name() or request.user.email} sent a DOS query:\n\n{message_text}",
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=[superuser.email],
-                    fail_silently=True,
+                    recipient_name=superuser.get_full_name() or superuser.email,
+                    html=False,
                 )
         except Exception:
             pass
@@ -2950,21 +2950,21 @@ def activate_school(request, school_id):
 
     try:
         if settings.EMAIL_HOST_USER and school.email:
-            send_mail(
+            send_email(
+                to_email=[school.email],
                 subject=email_subject,
                 message=email_body,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[school.email],
-                fail_silently=True,
+                recipient_name=school.name,
+                html=False,
             )
         for su in User.objects.filter(is_superuser=True):
             if su.email:
-                send_mail(
+                send_email(
+                    to_email=[su.email],
                     subject=email_subject,
                     message=email_body,
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=[su.email],
-                    fail_silently=True,
+                    recipient_name=su.get_full_name() or su.email,
+                    html=False,
                 )
     except Exception:
         pass
@@ -3227,12 +3227,12 @@ def register_school(request):
                 )
                 if settings.EMAIL_HOST_USER and su.email:
                     try:
-                        send_mail(
+                        send_email(
+                            to_email=[su.email],
                             subject=title,
                             message=message_text,
-                            from_email=settings.DEFAULT_FROM_EMAIL,
-                            recipient_list=[su.email],
-                            fail_silently=True,
+                            recipient_name=su.get_full_name() or su.email,
+                            html=False,
                         )
                     except Exception:
                         pass

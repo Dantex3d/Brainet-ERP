@@ -1,7 +1,7 @@
 # billing/signals.py
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from django.core.mail import send_mail
+from utils.email_service import send_email
 from .models import Subscription, BillingLog
 
 @receiver(post_save, sender=Subscription)
@@ -24,12 +24,12 @@ def notify_subscription(sender, instance, created, **kwargs):
             f"Days remaining: {instance.days_remaining()}.\n"
             f"Amount: {instance.amount}."
         )
-        send_mail(
-            subject,
-            message,
-            'noreply@brainet.com',
-            [instance.dos.email],
-            fail_silently=True
+        send_email(
+            to_email=[instance.dos.email],
+            subject=subject,
+            message=message,
+            recipient_name=None,
+            html=False,
         )
 
         # Step 3: Update BillingLog to delivered
