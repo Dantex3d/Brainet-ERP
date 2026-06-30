@@ -1,29 +1,86 @@
 import os
+import traceback
 
 import sib_api_v3_sdk
+from sib_api_v3_sdk.rest import ApiException
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 
 
+def _get_api_key():
+    return os.environ.get('BREVO_API_KEY') or os.environ.get('SENDINBLUE_API_KEY')
+
+
+def _get_from_email():
+    return getattr(settings, 'DEFAULT_FROM_EMAIL', None) or getattr(settings, 'EMAIL_HOST_USER', None)
+
+
+def _format_recipients(to_email):
+    return [to_email] if isinstance(to_email, str) else list(to_email)
+
+
+def _log_exception(context, exception):
+    print(f"{context} error type: {type(exception).__name__}")
+    print(f"{context} error: {repr(exception)}")
+    traceback.print_exc()
+
+    for attr in ('body', 'status', 'headers'):
+        if hasattr(exception, attr):
+            print(f"{context} {attr}:", getattr(exception, attr))
+
+
+def _extract_api_exception_message(exception):
+    if isinstance(exception, ApiException):
+        parts = []
+        status = getattr(exception, 'status', None)
+        body = getattr(exception, 'body', None)
+        if status is not None:
+            parts.append(f'Status {status}')
+        if body is not None:
+            if isinstance(body, (bytes, bytearray)):
+                try:
+                    body = body.decode('utf-8')
+                except Exception:
+                    body = repr(body)
+            try:
+                import json
+                parsed = json.loads(body)
+                if isinstance(parsed, dict):
+                    message_text = parsed.get('message') or parsed.get('error') or parsed.get('detail')
+                    if message_text:
+                        parts.append(f'Body: {message_text}')
+                    else:
+                        parts.append(f'Body: {body}')
+                else:
+                    parts.append(f'Body: {body}')
+            except Exception:
+                parts.append(f'Body: {body}')
+        if parts:
+            return '; '.join(parts)
+    text = str(exception)
+    return text if text else repr(exception)
+
+
 def send_email_with_brevo(to_email, subject, message, recipient_name=None, html=True):
     """Send transactional email via Brevo / SendinBlue API."""
-    api_key = os.environ.get('BREVO_API_KEY') or os.environ.get('SENDINBLUE_API_KEY')
-    if not api_key or not to_email:
-        return False
+    api_key = _get_api_key()
+    if not api_key:
+        raise ValueError('Missing BREVO_API_KEY or SENDINBLUE_API_KEY')
+
+    if not to_email:
+        raise ValueError('Missing recipient email address')
 
     configuration = sib_api_v3_sdk.Configuration()
     configuration.api_key['api-key'] = api_key
     api_client = sib_api_v3_sdk.ApiClient(configuration)
     api_instance = sib_api_v3_sdk.TransactionalEmailsApi(api_client)
 
-    from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', None) or getattr(settings, 'EMAIL_HOST_USER', None)
+    from_email = _get_from_email()
     if not from_email:
-        return False
+        raise ValueError('Missing DEFAULT_FROM_EMAIL or EMAIL_HOST_USER')
 
     sender_name = getattr(settings, 'SITE_NAME', 'Brainet')
-    from_payload = {'email': from_email, 'name': sender_name}
-
-    recipients = [to_email] if isinstance(to_email, str) else list(to_email)
+    recipients = _format_recipients(to_email)
     recipient_payload = [
         sib_api_v3_sdk.SendSmtpEmailTo(email=recipient, name=recipient_name or recipient)
         for recipient in recipients
@@ -40,103 +97,62 @@ def send_email_with_brevo(to_email, subject, message, recipient_name=None, html=
     )
 
     try:
-        api_instance.send_transac_email(email_payload)
+        print('Brevo sender:', from_email)
+        print('Brevo recipients:', recipients)
+        print('Brevo subject:', subject)
+        print('Brevo API key present:', bool(api_key))
+
+        response = api_instance.send_transac_email(email_payload)
+        print('Brevo success response:', response)
         return True
     except Exception as e:
-        print('Brevo send error:', e)
+        error_message = _extract_api_exception_message(e)
+        _log_exception('Brevo send', e)
+        raise RuntimeError(f'Brevo send failed: {error_message}')
+
+
+def send_email_with_django(to_email, subject, message, recipient_name=None, html=True):
+    """Send email via the Django email backend."""
+    if not to_email:
+        raise ValueError('Missing recipient email address')
+
+    from_email = _get_from_email()
+    if not from_email:
+        raise ValueError('Missing DEFAULT_FROM_EMAIL or EMAIL_HOST_USER')
+
+    sender_name = getattr(settings, 'SITE_NAME', 'Brainet')
+    from_header = f"{sender_name} <{from_email}>" if from_email else from_email
+    if from_header:
+        from_email = from_header
+
+    recipients = _format_recipients(to_email)
+    text_content = message.replace('<br>', '\n') if html and '<' in message else message
+
+    try:
+        if html:
+            msg = EmailMultiAlternatives(subject, text_content, from_email, recipients)
+            msg.attach_alternative(message, 'text/html')
+        else:
+            msg = EmailMultiAlternatives(subject, message, from_email, recipients)
+
+        support = getattr(settings, 'SUPPORT_EMAIL', None) or from_email
+        if support:
+            msg.extra_headers = {'Reply-To': support}
+
+        msg.send(fail_silently=False)
+        return True
+    except Exception as e:
+        _log_exception('Django email send', e)
+        if settings.DEBUG:
+            raise
         return False
 
 
 def send_email(to_email, subject, message, recipient_name=None, html=True):
-    """
-    Send an email using Brevo API when configured, otherwise use Django's email backend.
-
-    - `to_email`: recipient email address (string) or list
-    - `subject`: email subject
-    - `message`: plain text or HTML body
-    - `recipient_name`: optional recipient display name to personalize headers
-    - `html`: whether `message` contains HTML
-    """
-    if not to_email:
-        return False
-
-    if os.environ.get('BREVO_API_KEY') or os.environ.get('SENDINBLUE_API_KEY'):
+    """Send email using Brevo if configured, otherwise use Django backend."""
+    api_key = _get_api_key()
+    if api_key:
         return send_email_with_brevo(to_email, subject, message, recipient_name=recipient_name, html=html)
 
-    from_email = getattr(settings, "DEFAULT_FROM_EMAIL", None) or getattr(settings, "EMAIL_HOST_USER", None)
-
-    # Build a friendly "From" header
-    from_header = f"{getattr(settings, 'SITE_NAME', 'Brainet')} <{from_email}>" if from_email else None
-    if from_header:
-        from_email = from_header
-
-    # Ensure to_email is a list
-    recipients = [to_email] if isinstance(to_email, str) else list(to_email)
-
-    try:
-        if html:
-            text_content = message.replace("<br>", "\n") if "<" in message else message
-            msg = EmailMultiAlternatives(subject, text_content, from_email, recipients)
-            msg.attach_alternative(message, "text/html")
-        else:
-            msg = EmailMultiAlternatives(subject, message, from_email, recipients)
-
-        # Optional: set a Reply-To to the site support email
-        support = getattr(settings, 'SUPPORT_EMAIL', None) or from_email
-        if support:
-            msg.extra_headers = {'Reply-To': support}
-
-        msg.send(fail_silently=False)
-        return True
-    except Exception as e:
-        # Keep failures quiet but log for debugging during development
-        try:
-            print("Email send error:", str(e))
-        except Exception:
-            pass
-        return False
-    """
-    Send an email using Django's configured email backend (SMTP/Zoho).
-
-    - `to_email`: recipient email address (string) or list
-    - `subject`: email subject
-    - `message`: plain text or HTML body
-    - `recipient_name`: optional recipient display name to personalize headers
-    - `html`: whether `message` contains HTML
-    """
-    if not to_email:
-        return False
-
-    from_email = getattr(settings, "DEFAULT_FROM_EMAIL", None) or getattr(settings, "EMAIL_HOST_USER", None)
-
-    # Build a friendly "From" header
-    from_header = f"{getattr(settings, 'SITE_NAME', 'Brainet')} <{from_email}>" if from_email else None
-    if from_header:
-        from_email = from_header
-
-    # Ensure to_email is a list
-    recipients = [to_email] if isinstance(to_email, str) else list(to_email)
-
-    try:
-        if html:
-            text_content = message.replace("<br>", "\n") if "<" in message else message
-            msg = EmailMultiAlternatives(subject, text_content, from_email, recipients)
-            msg.attach_alternative(message, "text/html")
-        else:
-            msg = EmailMultiAlternatives(subject, message, from_email, recipients)
-
-        # Optional: set a Reply-To to the site support email
-        support = getattr(settings, 'SUPPORT_EMAIL', None) or from_email
-        if support:
-            msg.extra_headers = {'Reply-To': support}
-
-        msg.send(fail_silently=False)
-        return True
-    except Exception as e:
-        # Keep failures quiet but log for debugging during development
-        try:
-            print("Email send error:", str(e))
-        except Exception:
-            pass
-        return False
+    return send_email_with_django(to_email, subject, message, recipient_name=recipient_name, html=html)
       

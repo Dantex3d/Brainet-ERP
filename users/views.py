@@ -299,10 +299,13 @@ def resend_verification_code(request):
     
     # Regenerate and send code
     from schools.views import send_user_verification_email
-    if send_user_verification_email(user, request=request, role_name=user.get_role_display()):
-        messages.success(request, 'A new verification code has been sent to your email.')
-    else:
-        messages.error(request, f'The verification email could not be sent right now. {_verification_contact_message(request)}')
+    try:
+        if send_user_verification_email(user, request=request, role_name=user.get_role_display()):
+            messages.success(request, 'A new verification code has been sent to your email.')
+        else:
+            messages.error(request, f'The verification email could not be sent right now. {_verification_contact_message(request)}')
+    except Exception as e:
+        messages.error(request, f'Failed to send verification email: {str(e)}')
     return redirect(f"{reverse('verify_user_code')}?email={email}")
 
 
@@ -313,10 +316,13 @@ def resend_verification_email(request):
         messages.info(request, 'Your account is already verified.')
         return redirect('account_profile')
 
-    if send_verification_email(user, request=request):
-        messages.success(request, 'Verification email sent. Check your inbox.')
-    else:
-        messages.error(request, f'Verification email could not be sent right now. {_verification_contact_message(request)}')
+    try:
+        if send_verification_email(user, request=request):
+            messages.success(request, 'Verification email sent. Check your inbox.')
+        else:
+            messages.error(request, f'Verification email could not be sent right now. {_verification_contact_message(request)}')
+    except Exception as e:
+        messages.error(request, f'Failed to send verification email: {str(e)}')
     return redirect('account_profile')
 
 

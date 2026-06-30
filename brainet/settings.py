@@ -182,18 +182,13 @@ USE_TZ = True
 # EMAIL / NOTIFICATIONS
 # =========================================================
 
-SITE_NAME = os.environ.get('SITE_NAME', 'Brainet')
-SUPPORT_EMAIL = os.environ.get('SUPPORT_EMAIL', os.environ.get('DEFAULT_FROM_EMAIL', os.environ.get('EMAIL_HOST_USER', 'support@brainet.local')))
-
+SITE_NAME = os.environ.get('SITE_NAME', 'Brainet Analytics')
+SUPPORT_EMAIL = os.environ.get('SUPPORT_EMAIL', 'info@brainetanalytics.co.ke')
+DEFAULT_FROM_EMAIL = "info@brainetanalytics.co.ke"
+SERVER_EMAIL = "info@brainetanalytics.co.ke"
 EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
-EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.zoho.com')
-EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
-EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
-# Load sensitive email credentials from environment only (no hard-coded defaults)
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
-DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER or 'no-reply@brainet.local')
-EMAIL_TIMEOUT = int(os.environ.get('EMAIL_TIMEOUT', 10))
+
+
 
 # =========================================================
 # STATIC FILES

@@ -130,13 +130,15 @@ def send_user_verification_email(user, request=None, role_name=None):
 
     return send_email(to_email=user.email, subject=subject, message=html_body, recipient_name=display_name, html=True)
 
-
 def send_school_verification_email(school, request=None):
-    if not settings.EMAIL_HOST_USER or not school.email:
+    if not school.email:
         return
 
     token = school.generate_verification_token()
-    verify_link = request.build_absolute_uri(reverse('verify_school_via_token', args=[token])) if request else reverse('verify_school_via_token', args=[token])
+    verify_link = request.build_absolute_uri(
+        reverse('verify_school_via_token', args=[token])
+    ) if request else reverse('verify_school_via_token', args=[token])
+
     subject = "Verify your school registration on Brainet"
     body = (
         f"Hello {school.name},\n\n"
@@ -217,14 +219,13 @@ def contact_submit(request):
         return redirect('landing_page')
 
     try:
-        # Save to DB
         from .models import ContactMessage
         ContactMessage.objects.create(name=name, email=email, phone=phone, message=message_text)
 
-        # Send notification to support email
         support = getattr(settings, 'SUPPORT_EMAIL', None) or getattr(settings, 'DEFAULT_FROM_EMAIL', None)
         subject = f"Website contact from {name}"
         body = f"Name: {name}\nEmail: {email}\nPhone: {phone}\n\nMessage:\n{message_text}"
+
         if support:
             sent = send_email(to_email=support, subject=subject, message=body, html=False)
             if not sent:
