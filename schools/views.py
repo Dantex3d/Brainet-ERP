@@ -64,8 +64,9 @@ def _save_school_logo(school, logo):
         return
 
     try:
-        school.logo.storage = default_storage
-        school.logo.save(logo.name, logo, save=False)
+        relative_path = f"school_logos/{logo.name}"
+        saved_name = default_storage.save(relative_path, logo)
+        school.logo.name = saved_name
     except Exception:
         # Fallback to direct assignment so Django can still attempt to use default storage.
         school.logo = logo
