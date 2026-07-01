@@ -55,7 +55,20 @@ from django.urls import reverse
 from utils.email_service import send_email
 from django.views.decorators.http import require_POST
 from django.core.paginator import Paginator
+from django.core.files.storage import default_storage
 
+
+def _save_school_logo(school, logo):
+    """Save school logo using the configured default storage backend."""
+    if not logo:
+        return
+
+    try:
+        school.logo.storage = default_storage
+        school.logo.save(logo.name, logo, save=False)
+    except Exception:
+        # Fallback to direct assignment so Django can still attempt to use default storage.
+        school.logo = logo
 
 
 def send_user_verification_email(user, request=None, role_name=None):
@@ -1200,7 +1213,7 @@ def edit_school_info(request):
 
         logo = request.FILES.get('logo')
         if logo:
-            school.logo = logo
+            _save_school_logo(school, logo)
 
         school.save()
         messages.success(request, "School information updated successfully.")
@@ -1231,7 +1244,7 @@ def principal_school_manager(request):
 
             logo = request.FILES.get('logo')
             if logo:
-                school.logo = logo
+                _save_school_logo(school, logo)
 
             school.save()
             messages.success(request, "School information updated successfully.")
@@ -3148,15 +3161,18 @@ def add_school(request):
 
         logger = logging.getLogger(__name__)
         try:
-            School.objects.create(
+            school = School.objects.create(
                 name=name,
                 address=address,
                 phone=phone,
                 email=email,
                 subscription_balance=subscription_balance,
-                logo=logo,
                 is_active=False,
             )
+            if logo:
+                _save_school_logo(school, logo)
+                school.save(update_fields=['logo'])
+
             messages.success(request, "School added successfully.")
             messages.warning(
                 request,
