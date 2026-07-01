@@ -541,7 +541,7 @@ def _process_school_submission(request):
         school.subscription_balance = subscription_balance
 
         if logo:
-            school.logo = logo
+            _save_school_logo(school, logo)
 
         school.save()
         messages.success(request, f"{school.name} updated successfully.")
@@ -2707,7 +2707,9 @@ def edit_school(request, school_id):
         school.address = request.POST.get("address")
         school.phone = request.POST.get("phone")
         school.email = request.POST.get("email")
-        school.logo  = request.FILES.get("logo") or school.logo
+        logo = request.FILES.get("logo")
+        if logo:
+            _save_school_logo(school, logo)
         
         school.save()
 
