@@ -65,7 +65,7 @@
             <div class="row g-3">
 
                 <!-- CLASS -->
-                <div class="col-md-4">
+                <div class="col-md-3">
 
                     <label class="form-label fw-bold">
                         Class
@@ -96,8 +96,68 @@
 
                 </div>
 
+                <!-- OPTION -->
+                <div class="col-md-3">
+
+                    <label class="form-label fw-bold">
+                        Subject Type
+                    </label>
+
+                    <select name="option"
+                            class="form-select"
+                            onchange="this.form.submit()">
+
+                        <option value="all"
+                            {% if selected_option == "all" %}selected{% endif %}>
+                            All Subjects
+                        </option>
+                        <option value="core"
+                            {% if selected_option == "core" %}selected{% endif %}>
+                            Core Subjects
+                        </option>
+                        <option value="optional"
+                            {% if selected_option == "optional" %}selected{% endif %}>
+                            Optional Subjects
+                        </option>
+
+                    </select>
+
+                </div>
+
+                <!-- STREAM -->
+                <div class="col-md-3">
+
+                    <label class="form-label fw-bold">
+                        Stream / Division
+                    </label>
+
+                    <select name="stream"
+                            class="form-select"
+                            onchange="this.form.submit()">
+
+                        <option value="">
+                            All Streams
+                        </option>
+
+                        {% for s in streams %}
+
+                            <option value="{{ s.id }}"
+                                {% if selected_stream == s.id|stringformat:"s" %}
+                                    selected
+                                {% endif %}>
+
+                                {{ s.name }}
+
+                            </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
                 <!-- SUBJECT -->
-                <div class="col-md-4">
+                <div class="col-md-3">
 
                     <label class="form-label fw-bold">
                         Subject
@@ -129,7 +189,7 @@
                 </div>
 
                 <!-- TERM -->
-                <div class="col-md-4">
+                <div class="col-md-3">
 
                     <label class="form-label fw-bold">
                         Term
@@ -160,6 +220,36 @@
 
                 </div>
 
+                <!-- EXAM -->
+                <div class="col-md-3">
+
+                    <label class="form-label fw-bold">
+                        Exam
+                    </label>
+
+                    <select name="exam"
+                            class="form-select"
+                            onchange="this.form.submit()">
+
+                        <option value="">
+                            Select Exam
+                        </option>
+
+                        {% for e in exams %}
+
+                            <option value="{{ e.id }}"
+                                {% if selected_exam == e.id|stringformat:"s" %}
+                                    selected
+                                {% endif %}>
+
+                                {{ e.name }}
+                            </option>
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
             </div>
 
         </div>
@@ -176,8 +266,20 @@
                value="{{ selected_class }}">
 
         <input type="hidden"
+               name="option"
+               value="{{ selected_option }}">
+
+        <input type="hidden"
+               name="stream"
+               value="{{ selected_stream }}">
+
+        <input type="hidden"
                name="subject"
                value="{{ selected_subject }}">
+
+        <input type="hidden"
+               name="exam"
+               value="{{ selected_exam }}">
 
         <input type="hidden"
                name="term"

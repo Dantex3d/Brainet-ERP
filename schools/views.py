@@ -2216,6 +2216,9 @@ def print_class_list(request, class_id):
         "students": students
     })
 import os
+from io import BytesIO
+from urllib.error import HTTPError, URLError
+from urllib.request import urlopen
 from django.conf import settings
 from django.http import HttpResponse
 from reportlab.platypus import PageBreak, SimpleDocTemplate, Table, TableStyle, Spacer, Paragraph, Image
@@ -2224,7 +2227,29 @@ from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import cm
 import datetime
-import os
+
+
+def _load_reportlab_image(image_field, width, height):
+    if not image_field:
+        return None
+
+    if hasattr(image_field, "path"):
+        try:
+            if os.path.exists(image_field.path):
+                return Image(image_field.path, width=width, height=height)
+        except Exception:
+            pass
+
+    if hasattr(image_field, "url"):
+        try:
+            with urlopen(image_field.url) as image_file:
+                image_bytes = image_file.read()
+            return Image(BytesIO(image_bytes), width=width, height=height)
+        except (URLError, HTTPError, Exception):
+            pass
+
+    return None
+
 
 @login_required
 def download_class_list_pdf(request, class_id):
@@ -2308,21 +2333,11 @@ def download_class_list_pdf(request, class_id):
         filename = f"{class_name_clean}_ClassList_General_{year}.pdf"
         display_title = f"{class_obj.name}"
 
-    folder_path = os.path.join(
-        settings.MEDIA_ROOT,
-        "class_lists"
-    )
-
-    os.makedirs(folder_path, exist_ok=True)
-    file_path = os.path.join(folder_path, filename)
-
-    # =========================
-    # CREATE PDF DOCUMENT
-    # =========================
     pagesize = landscape(A4) if term_id else A4
-    
+    buffer = BytesIO()
+
     doc = SimpleDocTemplate(
-        file_path,
+        buffer,
         pagesize=pagesize,
         rightMargin=25,
         leftMargin=25,
@@ -2338,18 +2353,7 @@ def download_class_list_pdf(request, class_id):
     # HEADER WITH LOGO & SCHOOL INFO
     # =========================
     header_data = []
-    logo_image = None
-
-    # Add logo if available
-    if school.logo and os.path.exists(school.logo.path):
-        try:
-            logo_image = Image(
-                school.logo.path,
-                width=2.5 * cm,
-                height=2.5 * cm
-            )
-        except Exception:
-            pass
+    logo_image = _load_reportlab_image(school.logo, 2.5 * cm, 2.5 * cm)
 
     # Build header content with school name underlined
     stream_info = f"<b>Stream:</b> {selected_stream.name}" if selected_stream else ""
@@ -2549,17 +2553,17 @@ def download_class_list_pdf(request, class_id):
     # BUILD PDF
     # =========================
     doc.build(elements)
+    buffer.seek(0)
 
     # =========================
     # RETURN DOWNLOAD RESPONSE
     # =========================
-    with open(file_path, "rb") as pdf_file:
-        response = HttpResponse(
-            pdf_file.read(),
-            content_type="application/pdf"
-        )
-        response["Content-Disposition"] = f'attachment; filename="{filename}"'
-        return response
+    response = HttpResponse(
+        buffer.getvalue(),
+        content_type="application/pdf"
+    )
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
 from django.shortcuts import get_object_or_404, render
 from students.models import Student
 
@@ -3424,25 +3428,48 @@ def enter_marks(request):
     # LOAD DATA (SCHOOL SAFE)
     # =========================
     classes = Class.objects.filter(school=school).order_by("name")
-    subjects = Subject.objects.filter(school=school).order_by("name")
     terms = Term.objects.filter(school=school).order_by("name")
+    exams = Exam.objects.filter(school=school).order_by("name")
 
     # =========================
     # GET FILTERS
     # =========================
     selected_class = request.GET.get("class")
+    selected_option = request.GET.get("option", "all")
+    selected_stream = request.GET.get("stream")
     selected_subject = request.GET.get("subject")
+    selected_exam = request.GET.get("exam")
     selected_term = request.GET.get("term")
 
     students = Student.objects.none()
+    streams = Stream.objects.none()
+    subjects = Subject.objects.filter(school=school).order_by("name")
 
     # =========================
-    # LOAD STUDENTS SAFELY
+    # LOAD STREAMS AND STUDENTS SAFELY
     # =========================
     if selected_class:
+        streams = Stream.objects.filter(class_group_id=selected_class).order_by("name")
         students = Student.objects.filter(
             school=school,
             current_class_id=selected_class
+        )
+
+        if selected_stream:
+            students = students.filter(stream_id=selected_stream)
+
+        students = students.order_by("name")
+
+        # Filter subjects by class + option selection
+        class_subjects = ClassSubject.objects.filter(class_name_id=selected_class)
+
+        if selected_option == "optional":
+            class_subjects = class_subjects.filter(is_optional=True)
+        elif selected_option == "core":
+            class_subjects = class_subjects.filter(is_optional=False)
+
+        subjects = Subject.objects.filter(
+            id__in=class_subjects.values_list("subject_id", flat=True)
         ).order_by("name")
 
     # =========================
@@ -3451,7 +3478,10 @@ def enter_marks(request):
     if request.method == "POST":
 
         class_id = request.POST.get("class")
+        option = request.POST.get("option", "all")
+        stream_id = request.POST.get("stream")
         subject_id = request.POST.get("subject")
+        exam_id = request.POST.get("exam")
         term_id = request.POST.get("term")
 
         # -------------------------
@@ -3466,6 +3496,7 @@ def enter_marks(request):
         # -------------------------
         subject = Subject.objects.filter(id=subject_id, school=school).first()
         term = Term.objects.filter(id=term_id, school=school).first()
+        exam = Exam.objects.filter(id=exam_id, school=school).first() if exam_id else None
 
         if not subject or not term:
             messages.error(request, "Invalid subject or term selected")
@@ -3509,6 +3540,7 @@ def enter_marks(request):
                     student=student,
                     subject=subject,
                     term=term,
+                    exam=exam,
                     defaults={
                         "marks": marks,
                         "grade": grade_obj.grade_letter if grade_obj else "",
@@ -3520,9 +3552,16 @@ def enter_marks(request):
 
         messages.success(request, f"{saved_count} marks saved successfully")
 
-        return redirect(
-            f"/schools/principal/enter-marks/?class={class_id}&subject={subject_id}&term={term_id}"
-        )
+        redirect_url = f"/schools/principal/enter-marks/?class={class_id}&subject={subject_id}&term={term_id}"
+
+        if stream_id:
+            redirect_url += f"&stream={stream_id}"
+        if exam_id:
+            redirect_url += f"&exam={exam_id}"
+        if option and option != "all":
+            redirect_url += f"&option={option}"
+
+        return redirect(redirect_url)
 
     # =========================
     # RENDER
@@ -3531,9 +3570,14 @@ def enter_marks(request):
         "classes": classes,
         "subjects": subjects,
         "terms": terms,
+        "exams": exams,
+        "streams": streams,
         "students": students,
         "selected_class": selected_class,
+        "selected_option": selected_option,
+        "selected_stream": selected_stream,
         "selected_subject": selected_subject,
+        "selected_exam": selected_exam,
         "selected_term": selected_term,
     })
 
@@ -3869,14 +3913,7 @@ def export_marksheet_pdf(request):
     logo = ""
 
     if school.logo:
-        try:
-            logo = Image(
-                school.logo.path,
-                width=0.8 * inch,
-                height=0.8 * inch
-            )
-        except:
-            logo = ""
+        logo = _load_reportlab_image(school.logo, 0.8 * inch, 0.8 * inch) or ""
 
     # Logo on left, school info on right
     header_table = Table(
@@ -4913,10 +4950,7 @@ def export_class_report(request, class_id, term_id, exam_id):
         # ================= HEADER =================
         logo = ""
         if school.logo:
-            try:
-                logo = RLImage(school.logo.path, 0.8*inch, 0.8*inch)
-            except:
-                logo = ""
+            logo = _load_reportlab_image(school.logo, 0.8*inch, 0.8*inch) or ""
 
         stream_display = f" | Stream: {student.stream.name}" if student.stream else ""
         dorm_display = f" | Dorm: {student.dormitory.name}" if student.dormitory else ""

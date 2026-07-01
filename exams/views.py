@@ -2,6 +2,8 @@
 
 from io import BytesIO
 from datetime import date
+from urllib.error import HTTPError, URLError
+from urllib.request import urlopen
 
 import qrcode
 
@@ -11,7 +13,7 @@ from django.contrib.auth.decorators import login_required
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.units import cm
+from reportlab.lib.units import cm, inch
 from reportlab.platypus import (
     SimpleDocTemplate,
     Paragraph,
@@ -21,6 +23,28 @@ from reportlab.platypus import (
     Image
 )
 from reportlab.lib.styles import getSampleStyleSheet
+
+
+def _load_reportlab_image(image_field, width, height):
+    if not image_field:
+        return None
+
+    if hasattr(image_field, "path"):
+        try:
+            if os.path.exists(image_field.path):
+                return Image(image_field.path, width=width, height=height)
+        except Exception:
+            pass
+
+    if hasattr(image_field, "url"):
+        try:
+            with urlopen(image_field.url) as image_file:
+                image_bytes = image_file.read()
+            return Image(BytesIO(image_bytes), width=width, height=height)
+        except (URLError, HTTPError, Exception):
+            pass
+
+    return None
 
 from exams.models import Exam
 from students.models import Student
@@ -77,14 +101,9 @@ def generate_class_list_pdf(request, class_id):
 
     if school.logo:
         try:
-            logo = Image(
-                school.logo.path,
-                width=2.5 * cm,
-                height=2.5 * cm
-            )
-
-            elements.append(logo)
-
+            logo = _load_reportlab_image(school.logo, 0.8 * inch, 0.8 * inch)
+            if logo:
+                elements.append(logo)
         except Exception:
             pass
 

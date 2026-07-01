@@ -94,7 +94,7 @@
                                     <small class="text-muted">{{ participant.student.admission_number }}</small>
                                 </div>
                                 <div class="text-end">
-                                    <span class="badge bg-{{ participant.status == 'joined'|yesno:'success,warning' }} text-capitalize">
+                                    <span class="badge bg-{{ participant.status|yesno:'success,warning' }} text-capitalize">
                                         {{ participant.status|cut:"_"|title }}
                                     </span>
                                     {% if participant.mic_enabled %}

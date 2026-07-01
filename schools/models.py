@@ -214,16 +214,24 @@ class StudentMark(models.Model):
     blank=True
 )
     term = models.ForeignKey(Term, on_delete=models.CASCADE)
+    exam = models.ForeignKey(
+        "exams.Exam",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True
+    )
 
     marks = models.DecimalField(max_digits=5, decimal_places=2)
 
-    grade = models.CharField(max_length=5, blank=True)
+    grade = models.CharField(max_length=100, blank=True)
     points = models.DecimalField(max_digits=4, decimal_places=1, default=0)
 
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.student} - {self.class_subject}"
+        subject_name = self.subject.name if self.subject else "No Subject"
+        exam_name = self.exam.name if self.exam else "No Exam"
+        return f"{self.student} - {subject_name} ({self.term}) [{exam_name}]"
 
 
 # =========================================================

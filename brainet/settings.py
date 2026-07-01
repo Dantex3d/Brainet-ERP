@@ -219,8 +219,23 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # provide AWS_STORAGE_BUCKET_NAME and related env vars. Install
 # `django-storages[boto3]` and `boto3` and configure the environment variables.
 # =========================================================
+USE_CLOUDINARY = os.environ.get('USE_CLOUDINARY', 'False') == 'True'
 USE_S3 = os.environ.get('USE_S3', 'False') == 'True' or bool(os.environ.get('AWS_STORAGE_BUCKET_NAME'))
-if USE_S3:
+
+if USE_CLOUDINARY:
+    INSTALLED_APPS.extend(['cloudinary', 'cloudinary_storage'])
+    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+    CLOUDINARY_STORAGE = {
+        'CLOUD_NAME': os.environ.get('CLOUDINARY_CLOUD_NAME'),
+        'API_KEY': os.environ.get('CLOUDINARY_API_KEY'),
+        'API_SECRET': os.environ.get('CLOUDINARY_API_SECRET'),
+        'SECURE': True,
+    }
+    MEDIA_URL = os.environ.get('MEDIA_URL') or (
+        f"https://res.cloudinary.com/{CLOUDINARY_STORAGE['CLOUD_NAME']}/image/upload/"
+        if CLOUDINARY_STORAGE['CLOUD_NAME'] else '/media/'
+    )
+elif USE_S3:
     # Only add 'storages' app when S3 is enabled to avoid import errors when not installed
     INSTALLED_APPS.append('storages')
     DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
