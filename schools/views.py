@@ -58,18 +58,27 @@ from django.core.paginator import Paginator
 from django.core.files.storage import default_storage
 
 
-def _save_school_logo(school, logo):
-    """Save school logo using the configured default storage backend."""
+def save_school_logo(school, logo):
+    """Save school logo using the configured storage backend."""
     if not logo:
-        return
+        return None
 
     try:
-        relative_path = f"school_logos/{logo.name}"
-        saved_name = default_storage.save(relative_path, logo)
-        school.logo.name = saved_name
-    except Exception:
-        # Fallback to direct assignment so Django can still attempt to use default storage.
-        school.logo = logo
+        school.logo.save(logo.name, logo, save=False)
+        school.save(update_fields=['logo'])
+
+        print("Saved name:", school.logo.name)
+        print("Saved URL :", school.logo.url)
+        return school.logo.name
+    except Exception as exc:
+        logger = logging.getLogger(__name__)
+        logger.exception("Failed to save school logo for %s: %s", getattr(school, 'id', None), exc)
+        return None
+
+
+def _save_school_logo(school, logo):
+    """Alias for save_school_logo to preserve existing upload handler names."""
+    return save_school_logo(school, logo)
 
 
 def send_user_verification_email(user, request=None, role_name=None):
@@ -542,7 +551,9 @@ def _process_school_submission(request):
         school.subscription_balance = subscription_balance
 
         if logo:
-            _save_school_logo(school, logo)
+            logo_saved = _save_school_logo(school, logo)
+            if not logo_saved:
+                messages.error(request, "Logo upload failed. Please check your storage configuration.")
 
         school.save()
         messages.success(request, f"{school.name} updated successfully.")
@@ -1214,7 +1225,11 @@ def edit_school_info(request):
 
         logo = request.FILES.get('logo')
         if logo:
-            _save_school_logo(school, logo)
+            saved_logo_name = _save_school_logo(school, logo)
+            if saved_logo_name:
+                messages.success(request, f"Logo '{saved_logo_name}' uploaded successfully.")
+            else:
+                messages.error(request, "Logo upload failed. Please check your storage configuration.")
 
         school.save()
         messages.success(request, "School information updated successfully.")
@@ -1245,7 +1260,11 @@ def principal_school_manager(request):
 
             logo = request.FILES.get('logo')
             if logo:
-                _save_school_logo(school, logo)
+                saved_logo_name = _save_school_logo(school, logo)
+                if saved_logo_name:
+                    messages.success(request, f"Logo '{saved_logo_name}' uploaded successfully.")
+                else:
+                    messages.error(request, "Logo upload failed. Please check your storage configuration.")
 
             school.save()
             messages.success(request, "School information updated successfully.")
@@ -2247,10 +2266,23 @@ def _load_reportlab_image(image_field, width, height):
     if not image_field:
         return None
 
-    if hasattr(image_field, "path"):
+    image_path = None
+    try:
+        image_path = image_field.path
+    except (AttributeError, NotImplementedError, ValueError, OSError):
+        image_path = None
+
+    if image_path:
         try:
-            if os.path.exists(image_field.path):
-                return Image(image_field.path, width=width, height=height)
+            if os.path.exists(image_path):
+                return Image(image_path, width=width, height=height)
+        except Exception:
+            pass
+
+    if hasattr(image_field, "file"):
+        try:
+            image_field.open()
+            return Image(BytesIO(image_field.file.read()), width=width, height=height)
         except Exception:
             pass
 
@@ -3173,8 +3205,9 @@ def add_school(request):
                 is_active=False,
             )
             if logo:
-                _save_school_logo(school, logo)
-                school.save(update_fields=['logo'])
+                logo_saved = _save_school_logo(school, logo)
+                if not logo_saved:
+                    messages.error(request, "Logo upload failed. Please check your storage configuration.")
 
             messages.success(request, "School added successfully.")
             messages.warning(

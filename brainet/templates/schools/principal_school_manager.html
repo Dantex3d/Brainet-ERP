@@ -35,7 +35,8 @@
                         <input type="hidden" name="section" value="school">
                         <div class="mb-3 text-center">
                             {% if school.logo %}
-                            <img src="{{ school.logo.url }}" alt="School Logo" class="rounded-circle mb-3" style="width: 110px; height: 110px; object-fit: cover;">
+                            <img src="{{ school.logo.url }}" alt="School Logo" title="{{ school.logo.name }}" class="rounded-circle mb-3" style="width: 110px; height: 110px; object-fit: cover;">
+                            <p class="small text-muted mb-2">Current logo file: {{ school.logo.name }}</p>
                             {% endif %}
                             <input type="file" name="logo" class="form-control rounded-3">
                         </div>

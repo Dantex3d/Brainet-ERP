@@ -2,6 +2,7 @@
 
 from io import BytesIO
 from datetime import date
+import os
 from urllib.error import HTTPError, URLError
 from urllib.request import urlopen
 
@@ -29,10 +30,23 @@ def _load_reportlab_image(image_field, width, height):
     if not image_field:
         return None
 
-    if hasattr(image_field, "path"):
+    image_path = None
+    try:
+        image_path = image_field.path
+    except (AttributeError, NotImplementedError, ValueError, OSError):
+        image_path = None
+
+    if image_path:
         try:
-            if os.path.exists(image_field.path):
-                return Image(image_field.path, width=width, height=height)
+            if os.path.exists(image_path):
+                return Image(image_path, width=width, height=height)
+        except Exception:
+            pass
+
+    if hasattr(image_field, "file"):
+        try:
+            image_field.open()
+            return Image(BytesIO(image_field.file.read()), width=width, height=height)
         except Exception:
             pass
 
@@ -372,17 +386,9 @@ def generate_dorm_list_pdf(request, dorm_id):
     # =====================================================
 
     if school.logo:
-        try:
-            logo = Image(
-                school.logo.path,
-                width=2.5 * cm,
-                height=2.5 * cm
-            )
-
-            elements.append(logo)
-
-        except Exception:
-            pass
+        logo_image = _load_reportlab_image(school.logo, 2.5 * cm, 2.5 * cm)
+        if logo_image:
+            elements.append(logo_image)
 
     # =====================================================
     # HEADER
