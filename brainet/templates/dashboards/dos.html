@@ -1,6 +1,6 @@
 
 {% extends 'dashboards/base.html' %}
-{% load static %}
+{% load static text_filters %}
 
 {% block content %}
 
@@ -17,11 +17,13 @@
                 <div class="d-flex align-items-center gap-3">
 
                     {% if school.logo %}
-                        <img src="{{ school.logo.url }}"
+                        {% with logo_url=school|get_school_logo_url %}
+                        <img src="{{ logo_url }}"
                              title="{{ school.logo.name }}"
                              width="60"
                              height="60"
                              class="rounded-circle shadow">
+                        {% endwith %}
                     {% else %}
                         <img src="{% static 'images/school.png' %}"
                              width="60"

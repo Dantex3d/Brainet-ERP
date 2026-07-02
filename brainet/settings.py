@@ -45,6 +45,7 @@ CSRF_TRUSTED_ORIGINS = [
 
 INSTALLED_APPS = [
     # Django Apps
+    'brainet',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',

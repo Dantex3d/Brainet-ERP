@@ -1,5 +1,5 @@
 {% extends 'dashboards/base.html' %}
-{% load static %}
+{% load static text_filters %}
 
 {% block content %}
 
@@ -299,7 +299,9 @@
                                 <td class="ps-4">
                                     <div class="d-flex align-items-center">
                                         {% if school.logo %}
-                                        <img src="{{ school.logo.url }}" width="40" height="40" class="rounded-circle me-3" alt="{{ school.name }}">
+                                        {% with logo_url=school|get_school_logo_url %}
+                                        <img src="{{ logo_url }}" width="40" height="40" class="rounded-circle me-3" alt="{{ school.name }}">
+                                        {% endwith %}
                                         {% else %}
                                         <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">{{ school.name|first }}</div>
                                         {% endif %}

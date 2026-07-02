@@ -1,5 +1,5 @@
 {% extends 'dashboards/base.html' %}
-{% load static %}
+{% load static text_filters %}
 
 {% block content %}
 
@@ -55,10 +55,12 @@
         <div class="card-body text-center">
 
             {% if school.logo %}
-                <img src="{{ school.logo.url }}"
+                {% with logo_url=school|get_school_logo_url %}
+                <img src="{{ logo_url }}"
                      width="80"
                      height="80"
                      class="rounded-circle shadow mb-3">
+                {% endwith %}
             {% else %}
                 <img src="{% static 'images/school.png' %}"
                      width="80"

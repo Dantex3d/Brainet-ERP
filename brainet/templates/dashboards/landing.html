@@ -1,4 +1,4 @@
-{% load static %}
+{% load static text_filters %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1025,7 +1025,9 @@
                 {% for school in schools_list %}
                 <div class="school-pill">
                     {% if school.logo %}
-                    <img src="{{ school.logo.url }}" alt="{{ school.name }} logo">
+                    {% with logo_url=school|get_school_logo_url %}
+                    <img src="{{ logo_url }}" alt="{{ school.name }} logo">
+                    {% endwith %}
                     {% endif %}
                     <div>
                         <h5>{{ school.name }}</h5>
@@ -1036,7 +1038,9 @@
                 {% for school in schools_list %}
                 <div class="school-pill">
                     {% if school.logo %}
-                    <img src="{{ school.logo.url }}" alt="{{ school.name }} logo">
+                    {% with logo_url=school|get_school_logo_url %}
+                    <img src="{{ logo_url }}" alt="{{ school.name }} logo">
+                    {% endwith %}
                     {% endif %}
                     <div>
                         <h5>{{ school.name }}</h5>

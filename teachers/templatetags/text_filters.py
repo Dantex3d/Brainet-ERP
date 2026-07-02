@@ -10,3 +10,10 @@ def replace(value, old, new):
         return str(value).replace(old, new)
     except Exception:
         return value
+
+
+@register.filter(name='get_school_logo_url')
+def get_school_logo_url_filter(school):
+    from schools.views import get_school_logo_url
+
+    return get_school_logo_url(school)

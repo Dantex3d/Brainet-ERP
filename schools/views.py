@@ -58,13 +58,116 @@ from django.core.paginator import Paginator
 from django.core.files.storage import default_storage
 
 
+def normalize_storage_name(name):
+    """Normalize uploaded storage names so Cloudinary URLs are not double-prefixed."""
+    if not name:
+        return None
+
+    text = str(name).strip()
+    if not text:
+        return None
+
+    if text.startswith(("http://", "https://", "http:/", "https:/")):
+        normalized = text.replace("http:/", "http://", 1).replace("https:/", "https://", 1)
+        if "/image/upload/" in normalized:
+            parts = normalized.split("/image/upload/", 1)
+            candidate = parts[-1].strip("/") if len(parts) > 1 else ""
+            if candidate and candidate != "upload":
+                return f"school_logos/{candidate}" if not candidate.startswith("school_logos/") else candidate
+
+        cleaned = normalized.rsplit("/", 1)[-1]
+        if cleaned and cleaned != "upload":
+            return f"school_logos/{cleaned}" if not cleaned.startswith("school_logos/") else cleaned
+
+    if text.startswith("school_logos/"):
+        return text
+
+    return text
+
+
+def normalize_school_logo_field(school):
+    """Repair a malformed school logo field value so Cloudinary URLs resolve correctly."""
+    if not school:
+        return None
+
+    current_value = getattr(getattr(school, "logo", None), "name", None)
+    if not current_value:
+        return None
+
+    normalized_value = normalize_storage_name(current_value)
+    if normalized_value and normalized_value != current_value:
+        school.logo = normalized_value
+        school.save(update_fields=["logo"])
+        return normalized_value
+
+    return current_value
+
+
+def get_school_logo_url(school):
+    """Return a usable public URL for the school logo across local and Cloudinary storage."""
+    if not school:
+        return None
+
+    logo_field = getattr(school, "logo", None)
+    if not logo_field:
+        return None
+
+    try:
+        if getattr(logo_field, "url", None):
+            url_value = logo_field.url
+            if isinstance(url_value, str) and url_value.startswith("https:/"):
+                return url_value.replace("https:/", "https://", 1)
+            if isinstance(url_value, str) and url_value.startswith("http:/"):
+                return url_value.replace("http:/", "http://", 1)
+            return url_value
+    except Exception:
+        pass
+
+    try:
+        name_value = getattr(logo_field, "name", None)
+        if name_value:
+            normalized = normalize_storage_name(name_value)
+            if normalized:
+                return f"{settings.MEDIA_URL}{normalized}"
+    except Exception:
+        pass
+
+    return None
+
+
+def format_position_display(value):
+    """Render ranking positions without dash placeholders."""
+    if value is None:
+        return ""
+
+    if isinstance(value, str):
+        value = value.strip()
+        if not value or value in {"-", "—", "None", "none"}:
+            return ""
+        return value
+
+    if isinstance(value, (int, float)):
+        return str(int(value)) if float(value).is_integer() else str(value)
+
+    return str(value)
+
+
 def save_school_logo(school, logo):
     """Save school logo using the configured storage backend."""
     if not logo:
         return None
 
     try:
-        school.logo.save(logo.name, logo, save=False)
+        normalized_name = normalize_storage_name(logo.name)
+        if normalized_name:
+            school.logo.save(normalized_name, logo, save=False)
+        else:
+            school.logo.save(logo.name, logo, save=False)
+
+        saved_name = getattr(school.logo, "name", None)
+        cleaned_name = normalize_storage_name(saved_name) or normalized_name
+        if cleaned_name:
+            school.logo = cleaned_name
         school.save(update_fields=['logo'])
 
         print("Saved name:", school.logo.name)
@@ -1216,6 +1319,8 @@ def edit_school_info(request):
         messages.error(request, "You are not assigned to a school.")
         return redirect('landing_page')
 
+    normalize_school_logo_field(school)
+
     if request.method == 'POST':
         school.name = request.POST.get('name', school.name)
         school.motto = request.POST.get('motto', school.motto)
@@ -1247,6 +1352,7 @@ def principal_school_manager(request):
         return redirect('landing_page')
 
     dos = getattr(school, 'dos', None)
+    normalize_school_logo_field(school)
 
     if request.method == 'POST':
         section = request.POST.get('section')
@@ -2279,16 +2385,43 @@ def _load_reportlab_image(image_field, width, height):
         except Exception:
             pass
 
-    if hasattr(image_field, "file"):
+    # Safely check for file attribute — avoid attribute access that may raise OSError
+    has_file = False
+    try:
+        has_file = hasattr(image_field, "file")
+    except Exception:
+        has_file = False
+
+    if has_file:
         try:
             image_field.open()
             return Image(BytesIO(image_field.file.read()), width=width, height=height)
         except Exception:
             pass
 
-    if hasattr(image_field, "url"):
+    url = None
+    try:
+        url = image_field.url
+    except Exception:
+        url = None
+
+    if not url and hasattr(image_field, "name"):
         try:
-            with urlopen(image_field.url) as image_file:
+            name_value = getattr(image_field, "name", None)
+            if name_value:
+                normalized_name = normalize_storage_name(name_value)
+                if normalized_name:
+                    url = f"{settings.MEDIA_URL}{normalized_name}"
+        except Exception:
+            url = None
+
+    if url:
+        try:
+            if isinstance(url, str) and url.startswith("https:/"):
+                url = url.replace("https:/", "https://", 1)
+            if isinstance(url, str) and url.startswith("http:/"):
+                url = url.replace("http:/", "http://", 1)
+            with urlopen(url) as image_file:
                 image_bytes = image_file.read()
             return Image(BytesIO(image_bytes), width=width, height=height)
         except (URLError, HTTPError, Exception):
@@ -4920,17 +5053,19 @@ def export_class_report(request, class_id, term_id, exam_id):
         term=term_obj
     ).exclude(id=exam_id).order_by('-created_at').first()
 
-    # Extract year from term name if possible
-    year = "2024"
-    try:
-        year = term_obj.name.split()[-1] if term_obj.name else "2024"
-    except:
-        pass
+    # Use the current calendar year for the report filename
+    year = datetime.date.today().year
 
     response = HttpResponse(content_type="application/pdf")
-    
-    # Enhanced filename: Grade{grade}_Report_forms_{term}_{year}
-    filename = f"Grade_Report_forms_{term_obj.name}_{year}.pdf"
+
+    class_label = str(class_obj.name or "Class").strip()
+    if selected_stream:
+        class_label = f"{class_label} {selected_stream.name}".strip()
+
+    term_label = re.sub(r"\s+", " ", str(term_obj.name or "Term")).strip()
+    term_label = re.sub(r"^term\s*", "", term_label, flags=re.IGNORECASE)
+    filename = f"{class_label} Report forms term {term_label} {year}.pdf"
+    filename = re.sub(r"[\\/:*?\"<>|]+", "-", filename)
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
 
     doc = SimpleDocTemplate(
@@ -4966,8 +5101,8 @@ def export_class_report(request, class_id, term_id, exam_id):
 
         totals[student.id] = total
 
-    ranking = sorted(totals.items(), key=lambda x: x[1], reverse=True)
-    ranks = {sid: i + 1 for i, (sid, _) in enumerate(ranking)}
+    ranked_students = sorted(students, key=lambda student: totals.get(student.id, 0), reverse=True)
+    ranks = {student.id: i + 1 for i, student in enumerate(ranked_students)}
 
 # ======================
 # SUBJECT POSITIONS (current exam only)
@@ -5029,11 +5164,12 @@ def export_class_report(request, class_id, term_id, exam_id):
         elements.append(Spacer(1, 8))
 
         # ================= STUDENT INFO =================
-        overall_pos = ranks.get(student.id, '-')
+        overall_pos = format_position_display(ranks.get(student.id))
+        overall_pos_display = f"{overall_pos}/{len(students)}" if overall_pos else f"{len(students)}"
         info = f"""
         <b>Student Name:</b> {student.name} &nbsp;&nbsp;
         <b>Adm No:</b> {student.admission_number} &nbsp;&nbsp;
-        <b>Position:</b> {overall_pos}/{len(students)}{dorm_display}
+        <b>Position:</b> {overall_pos_display}{dorm_display}
         """
 
         elements.append(Paragraph(info, styles["ReportInfo"]))
@@ -5065,9 +5201,10 @@ def export_class_report(request, class_id, term_id, exam_id):
                 teacher_name = subject_teacher.teacher.name[:15]  # Abbreviate for space
 
             # Subject positioning indicator
-            subject_position = (subject_positions.get(subject.id, {}).get(student.id, "-")
-            if subject_positions.get(subject.id) else "-"
-            )
+            subject_position = ""
+            if subject_positions.get(student.id):
+                subject_position = subject_positions[student.id].get(subject.id)
+            subject_position_display = format_position_display(subject_position)
             if mark:
                 m = int(round(mark.marks))
                 grade, points, remarks = get_grade_points_and_remarks(school, m)
@@ -5081,7 +5218,7 @@ def export_class_report(request, class_id, term_id, exam_id):
                 grade,
                     points,
                     Paragraph(teacher_name, styles["ReportSmall"]),
-                    subject_position,
+                    subject_position_display,
                     Paragraph(remarks, styles["ReportSmall"])
                 ])
             else:
@@ -5089,7 +5226,7 @@ def export_class_report(request, class_id, term_id, exam_id):
                     Paragraph(subject.name, styles["ReportSmall"]),
                     "-", "-", "-",
                     Paragraph(teacher_name, styles["ReportSmall"]),
-                    subject_position,
+                    subject_position_display,
                     "-"
                 ])
 
