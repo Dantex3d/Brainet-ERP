@@ -27,10 +27,7 @@
                         <div class="mb-4 text-center">
                             <div class="mb-3">
                                 {% if school.logo %}
-                                    {% with logo_url=school|get_school_logo_url %}
-                                        <img src="{{ logo_url }}" alt="School Logo" title="{{ school.logo.name }}" class="rounded-circle" style="width: 120px; height: 120px; object-fit: cover;">
-                                        <p class="small text-muted mb-2">Current logo file: {{ school.logo.name }}</p>
-                                    {% endwith %}
+                                    <img src="{{ school.logo.url }}" alt="School Logo" class="rounded-circle" style="width: 120px; height: 120px; object-fit: cover;">
                                 {% else %}
                                     <div class="rounded-circle bg-light d-flex align-items-center justify-content-center" style="width: 120px; height: 120px; margin: 0 auto;">
                                         <i class="bi bi-image" style="font-size: 3rem; color: #ccc;"></i>

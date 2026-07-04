@@ -1,4 +1,5 @@
 import uuid
+
 from django.db import models
 from django.conf import settings
 from django.core.validators import RegexValidator
@@ -7,6 +8,7 @@ from django.contrib.auth import get_user_model
 from users.models import CustomUser
 from classes.models import Class
 from subjects.models import Subject
+from cloudinary.models import CloudinaryField
 
 User = get_user_model()
 
@@ -34,6 +36,7 @@ phone_regex = RegexValidator(
     message="Phone number must be either 07xxxxxxxx (10 digits), 011xxxxxxx (10 digits), or +2547xxxxxxx / +2541xxxxxxx (13 digits)."
 )
 
+
 class School(models.Model):
     LICENSE_STATUS = [
         ('active', 'Active'),
@@ -48,7 +51,7 @@ class School(models.Model):
     phone = models.CharField(max_length=17, validators=[phone_regex], unique=True)
     email = models.EmailField(unique=True)
 
-    logo = models.ImageField(upload_to="school_logos/", null=True, blank=True)
+    logo = CloudinaryField('image', blank=True, null=True)
 
     subscription_balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     is_active = models.BooleanField(default=False)

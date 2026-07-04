@@ -57,84 +57,6 @@ from django.views.decorators.http import require_POST
 from django.core.paginator import Paginator
 from django.core.files.storage import default_storage
 
-
-def normalize_storage_name(name):
-    """Normalize uploaded storage names so Cloudinary URLs are not double-prefixed."""
-    if not name:
-        return None
-
-    text = str(name).strip()
-    if not text:
-        return None
-
-    if text.startswith(("http://", "https://", "http:/", "https:/")):
-        normalized = text.replace("http:/", "http://", 1).replace("https:/", "https://", 1)
-        if "/image/upload/" in normalized:
-            parts = normalized.split("/image/upload/", 1)
-            candidate = parts[-1].strip("/") if len(parts) > 1 else ""
-            if candidate and candidate != "upload":
-                return f"school_logos/{candidate}" if not candidate.startswith("school_logos/") else candidate
-
-        cleaned = normalized.rsplit("/", 1)[-1]
-        if cleaned and cleaned != "upload":
-            return f"school_logos/{cleaned}" if not cleaned.startswith("school_logos/") else cleaned
-
-    if text.startswith("school_logos/"):
-        return text
-
-    return text
-
-
-def normalize_school_logo_field(school):
-    """Repair a malformed school logo field value so Cloudinary URLs resolve correctly."""
-    if not school:
-        return None
-
-    current_value = getattr(getattr(school, "logo", None), "name", None)
-    if not current_value:
-        return None
-
-    normalized_value = normalize_storage_name(current_value)
-    if normalized_value and normalized_value != current_value:
-        school.logo = normalized_value
-        school.save(update_fields=["logo"])
-        return normalized_value
-
-    return current_value
-
-
-def get_school_logo_url(school):
-    """Return a usable public URL for the school logo across local and Cloudinary storage."""
-    if not school:
-        return None
-
-    logo_field = getattr(school, "logo", None)
-    if not logo_field:
-        return None
-
-    try:
-        if getattr(logo_field, "url", None):
-            url_value = logo_field.url
-            if isinstance(url_value, str) and url_value.startswith("https:/"):
-                return url_value.replace("https:/", "https://", 1)
-            if isinstance(url_value, str) and url_value.startswith("http:/"):
-                return url_value.replace("http:/", "http://", 1)
-            return url_value
-    except Exception:
-        pass
-
-    try:
-        name_value = getattr(logo_field, "name", None)
-        if name_value:
-            normalized = normalize_storage_name(name_value)
-            if normalized:
-                return f"{settings.MEDIA_URL}{normalized}"
-    except Exception:
-        pass
-
-    return None
-
-
 def format_position_display(value):
     """Render ranking positions without dash placeholders."""
     if value is None:
@@ -152,36 +74,7 @@ def format_position_display(value):
     return str(value)
 
 
-def save_school_logo(school, logo):
-    """Save school logo using the configured storage backend."""
-    if not logo:
-        return None
 
-    try:
-        normalized_name = normalize_storage_name(logo.name)
-        if normalized_name:
-            school.logo.save(normalized_name, logo, save=False)
-        else:
-            school.logo.save(logo.name, logo, save=False)
-
-        saved_name = getattr(school.logo, "name", None)
-        cleaned_name = normalize_storage_name(saved_name) or normalized_name
-        if cleaned_name:
-            school.logo = cleaned_name
-        school.save(update_fields=['logo'])
-
-        print("Saved name:", school.logo.name)
-        print("Saved URL :", school.logo.url)
-        return school.logo.name
-    except Exception as exc:
-        logger = logging.getLogger(__name__)
-        logger.exception("Failed to save school logo for %s: %s", getattr(school, 'id', None), exc)
-        return None
-
-
-def _save_school_logo(school, logo):
-    """Alias for save_school_logo to preserve existing upload handler names."""
-    return save_school_logo(school, logo)
 
 
 def send_user_verification_email(user, request=None, role_name=None):
@@ -654,9 +547,7 @@ def _process_school_submission(request):
         school.subscription_balance = subscription_balance
 
         if logo:
-            logo_saved = _save_school_logo(school, logo)
-            if not logo_saved:
-                messages.error(request, "Logo upload failed. Please check your storage configuration.")
+            school.logo = logo
 
         school.save()
         messages.success(request, f"{school.name} updated successfully.")
@@ -1313,13 +1204,13 @@ def send_school_notice(request):
 
 @login_required
 def edit_school_info(request):
-    """Edit the current school information."""
+    print(">>> edit_school_info() CALLED <<<")
     school = getattr(request.user, 'school', None)
     if school is None:
         messages.error(request, "You are not assigned to a school.")
         return redirect('landing_page')
 
-    normalize_school_logo_field(school)
+    #normalize_school_logo_field(school)# type: ignore
 
     if request.method == 'POST':
         school.name = request.POST.get('name', school.name)
@@ -1328,13 +1219,44 @@ def edit_school_info(request):
         school.email = request.POST.get('email', school.email)
         school.phone = request.POST.get('phone', school.phone)
 
-        logo = request.FILES.get('logo')
+        logo = request.FILES.get("logo")
         if logo:
-            saved_logo_name = _save_school_logo(school, logo)
-            if saved_logo_name:
-                messages.success(request, f"Logo '{saved_logo_name}' uploaded successfully.")
-            else:
-                messages.error(request, "Logo upload failed. Please check your storage configuration.")
+            print("=" * 60)
+            print("UPLOADED FILE")
+            print("Uploaded filename :", logo.name)
+            print("Uploaded file type:", type(logo))
+
+            school.logo = logo
+
+            print("\nAFTER ASSIGNMENT")
+            print("school.logo      :", school.logo)
+            print("school.logo.name :", getattr(school.logo, 'name', None))
+            print("school.logo.public_id :", getattr(school.logo, 'public_id', None))
+            try:
+                print("school.logo.url  :", school.logo.url)
+            except Exception as e:
+                print("URL not available:", e)
+
+        print("\nCALLING school.save()...")
+        school.save()
+
+        print("\nAFTER school.save()")
+        print("school.logo      :", school.logo)
+        print("school.logo.name :", getattr(school.logo, 'name', None))
+        print("school.logo.public_id :", getattr(school.logo, 'public_id', None))
+        try:
+            print("school.logo.url  :", school.logo.url)
+        except Exception as e:
+            print("URL error:", e)
+
+        print("=" * 60)
+
+        try:
+            print("school.logo.url  :", school.logo.url)
+        except Exception as e:
+            print("URL error:", e)
+
+        print("=" * 60)
 
         school.save()
         messages.success(request, "School information updated successfully.")
@@ -1352,7 +1274,7 @@ def principal_school_manager(request):
         return redirect('landing_page')
 
     dos = getattr(school, 'dos', None)
-    normalize_school_logo_field(school)
+    #normalize_school_logo_field(school) # type: ignore
 
     if request.method == 'POST':
         section = request.POST.get('section')
@@ -1365,14 +1287,39 @@ def principal_school_manager(request):
             school.phone = request.POST.get('phone', school.phone)
 
             logo = request.FILES.get('logo')
-            if logo:
-                saved_logo_name = _save_school_logo(school, logo)
-                if saved_logo_name:
-                    messages.success(request, f"Logo '{saved_logo_name}' uploaded successfully.")
-                else:
-                    messages.error(request, "Logo upload failed. Please check your storage configuration.")
 
+            if logo:
+                print("UPLOADED FILE")
+                print("Uploaded filename :", logo.name)
+                print("Uploaded file type:", type(logo))
+
+                school.logo = logo
+
+                print("\nAFTER ASSIGNMENT")
+                print("school.logo      :", school.logo)
+                print("school.logo.name :", getattr(school.logo, 'name', None))
+                print("school.logo.public_id :", getattr(school.logo, 'public_id', None))
+
+                try:
+                    print("school.logo.url  :", school.logo.url)
+                except Exception as e:
+                    print("URL not available:", e)
+
+            print("\nCALLING school.save()...")
             school.save()
+
+            print("\nAFTER school.save()")
+            print("school.logo      :", school.logo)
+            print("school.logo.name :", getattr(school.logo, 'name', None))
+            print("school.logo.public_id :", getattr(school.logo, 'public_id', None))
+
+            try:
+                print("school.logo.url  :", school.logo.url)
+            except Exception as e:
+                print("URL error:", e)
+
+            print("=" * 60)
+
             messages.success(request, "School information updated successfully.")
             return redirect('principal_school_manager')
 
@@ -1473,6 +1420,7 @@ def reset_notification_count(request):
 def landing_page(request):
     # Show verified schools carousel and testimonials on landing
     schools_list = School.objects.filter(is_verified=True).order_by('-created_at')[:12]
+    
     # Simple static testimonials; could be replaced by a model later
     testimonials = [
         {"author": "St. Mary's High", "text": "Brainet transformed our reporting and saved hours each week."},
@@ -2372,10 +2320,44 @@ def _load_reportlab_image(image_field, width, height):
     if not image_field:
         return None
 
+    # Helper to fetch bytes from a URL
+    def _image_from_url(url):
+        try:
+            if isinstance(url, str) and url.startswith("https:/"):
+                url = url.replace("https:/", "https://", 1)
+            if isinstance(url, str) and url.startswith("http:/"):
+                url = url.replace("http:/", "http://", 1)
+            with urlopen(url) as image_file:
+                image_bytes = image_file.read()
+            return Image(BytesIO(image_bytes), width=width, height=height)
+        except Exception:
+            return None
+
+    # 1) If image_field is a plain string it may be a URL or a Cloudinary public id
+    if isinstance(image_field, str):
+        # If looks like a URL, try fetching directly
+        if image_field.lower().startswith("http"):
+            img = _image_from_url(image_field)
+            if img:
+                return img
+
+        # Try building Cloudinary URL if configured
+        try:
+            cloud_conf = getattr(settings, "CLOUDINARY_STORAGE", None) or {}
+            cloud_name = cloud_conf.get("CLOUD_NAME") if isinstance(cloud_conf, dict) else None
+            if cloud_name:
+                cloud_url = f"https://res.cloudinary.com/{cloud_name}/image/upload/{image_field}"
+                img = _image_from_url(cloud_url)
+                if img:
+                    return img
+        except Exception:
+            pass
+
+    # 2) Try filesystem path attribute (ImageField local files)
     image_path = None
     try:
         image_path = image_field.path
-    except (AttributeError, NotImplementedError, ValueError, OSError):
+    except Exception:
         image_path = None
 
     if image_path:
@@ -2385,47 +2367,59 @@ def _load_reportlab_image(image_field, width, height):
         except Exception:
             pass
 
-    # Safely check for file attribute — avoid attribute access that may raise OSError
-    has_file = False
+    # 3) Try file-like attribute
     try:
-        has_file = hasattr(image_field, "file")
+        if hasattr(image_field, "file") and image_field.file:
+            try:
+                image_field.open()
+                return Image(BytesIO(image_field.file.read()), width=width, height=height)
+            except Exception:
+                pass
     except Exception:
-        has_file = False
+        pass
 
-    if has_file:
-        try:
-            image_field.open()
-            return Image(BytesIO(image_field.file.read()), width=width, height=height)
-        except Exception:
-            pass
-
-    url = None
+    # 4) If object exposes a Cloudinary public id, try to build URL via cloudinary.utils
+    public_id = None
     try:
-        url = image_field.url
+        public_id = getattr(image_field, "public_id", None) or getattr(image_field, "publicId", None)
+    except Exception:
+        public_id = None
+
+    if public_id:
+        # Prefer cloudinary.utils if available
+        try:
+            from cloudinary.utils import cloudinary_url
+
+            try:
+                url, _ = cloudinary_url(public_id, secure=True)
+                img = _image_from_url(url)
+                if img:
+                    return img
+            except Exception:
+                pass
+        except Exception:
+            # Fallback to manual URL build if CLOUDINARY_STORAGE configured
+            try:
+                cloud_conf = getattr(settings, "CLOUDINARY_STORAGE", None) or {}
+                cloud_name = cloud_conf.get("CLOUD_NAME") if isinstance(cloud_conf, dict) else None
+                if cloud_name:
+                    cloud_url = f"https://res.cloudinary.com/{cloud_name}/image/upload/{public_id}"
+                    img = _image_from_url(cloud_url)
+                    if img:
+                        return img
+            except Exception:
+                pass
+
+    # 5) Try url attribute (this covers storages that provide .url)
+    try:
+        url = getattr(image_field, "url", None)
     except Exception:
         url = None
 
-    if not url and hasattr(image_field, "name"):
-        try:
-            name_value = getattr(image_field, "name", None)
-            if name_value:
-                normalized_name = normalize_storage_name(name_value)
-                if normalized_name:
-                    url = f"{settings.MEDIA_URL}{normalized_name}"
-        except Exception:
-            url = None
-
     if url:
-        try:
-            if isinstance(url, str) and url.startswith("https:/"):
-                url = url.replace("https:/", "https://", 1)
-            if isinstance(url, str) and url.startswith("http:/"):
-                url = url.replace("http:/", "http://", 1)
-            with urlopen(url) as image_file:
-                image_bytes = image_file.read()
-            return Image(BytesIO(image_bytes), width=width, height=height)
-        except (URLError, HTTPError, Exception):
-            pass
+        img = _image_from_url(url)
+        if img:
+            return img
 
     return None
 
@@ -2532,7 +2526,7 @@ def download_class_list_pdf(request, class_id):
     # HEADER WITH LOGO & SCHOOL INFO
     # =========================
     header_data = []
-    logo_image = _load_reportlab_image(school.logo, 2.5 * cm, 2.5 * cm)
+    logo_image = _load_reportlab_image(getattr(school.logo, 'url', school.logo), 2.5 * cm, 2.5 * cm)
 
     # Build header content with school name underlined
     stream_info = f"<b>Stream:</b> {selected_stream.name}" if selected_stream else ""
@@ -2865,27 +2859,7 @@ def class_list_preview(request, class_id):
         "term_id": term_id,
     })
     
-def edit_school(request, school_id):
-    school = get_object_or_404(School, id=school_id)
 
-    if request.method == "POST":
-        school.name = request.POST.get("name")
-        school.address = request.POST.get("address")
-        school.phone = request.POST.get("phone")
-        school.email = request.POST.get("email")
-        logo = request.FILES.get("logo")
-        if logo:
-            _save_school_logo(school, logo)
-        
-        school.save()
-
-        messages.success(request, "School details updated successfully.")
-        return redirect("view_school", school_id=school.id)
-
-    return render(request, "dos/edit_school.html", {
-        "school": school
-    })
-    
 def view_school(request, school_id):
     school = get_object_or_404(School, id=school_id)
 
@@ -3338,9 +3312,7 @@ def add_school(request):
                 is_active=False,
             )
             if logo:
-                logo_saved = _save_school_logo(school, logo)
-                if not logo_saved:
-                    messages.error(request, "Logo upload failed. Please check your storage configuration.")
+                school.logo = logo
 
             messages.success(request, "School added successfully.")
             messages.warning(
@@ -4141,6 +4113,7 @@ def export_marksheet_pdf(request):
     header = [
         "ADM NO",
         "NAME",
+        "STREAM",
         "GENDER"
     ]
 
@@ -4150,8 +4123,9 @@ def export_marksheet_pdf(request):
     header += [
         "TOTAL",
         "AVG",
-        "GRADE",
-        "POINTS",
+        "M.GRADE",
+        "T.POINTS",
+        "M.POINTS",
         "RANK"
     ]
 
@@ -4167,7 +4141,8 @@ def export_marksheet_pdf(request):
         row = [
             student.admission_number,
             student.name,
-            student.gender
+            student.stream.name if getattr(student, 'stream', None) else '',
+            student.gender[0].upper() if getattr(student, 'gender', None) else ''
         ]
 
         total_marks = 0
@@ -4243,6 +4218,7 @@ def export_marksheet_pdf(request):
             round(item["average"], 1),
             item["grade"],
             int(item["points"]),
+            round(item["points"] / len(subjects), 2) if len(subjects) > 0 else 0,
             current_rank
         ]
 
@@ -5286,9 +5262,10 @@ def export_class_report(request, class_id, term_id, exam_id):
         teacher_block.append(Paragraph("Signature: ________________________", styles["ReportSmall"]))
         teacher_block.append(Spacer(1, 6))
 
-        # QR code for student
+        # QR code for student login page
         try:
-            qr_img = generate_qr_image(f"{school.name} - {student.admission_number}")
+            login_url = request.build_absolute_uri(reverse("student_login"))
+            qr_img = generate_qr_image(login_url)
         except Exception:
             qr_img = None
 
@@ -5313,6 +5290,19 @@ def export_class_report(request, class_id, term_id, exam_id):
         if qr_img:
             left_flowables.append(Spacer(1, 4))
             left_flowables.append(qr_img)
+            login_email = (
+                student.user.email
+                if hasattr(student, 'user') and getattr(student.user, 'email', None)
+                else f"{student.admission_number}@{school.name.lower().replace(' ', '')}.school"
+            )
+            login_text = (
+                f"<b>Student Login:</b><br/>"
+                f"{login_url}<br/>"
+                f"<b>Username:</b> {login_email}<br/>"
+                f"<b>Password:</b> {student.admission_number}"
+            )
+            left_flowables.append(Spacer(1, 4))
+            left_flowables.append(Paragraph(login_text, styles["ReportSmall"]))
 
         right_flowables = []
         if progress_img:

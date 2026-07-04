@@ -115,7 +115,8 @@ def generate_class_list_pdf(request, class_id):
 
     if school.logo:
         try:
-            logo = _load_reportlab_image(school.logo, 0.8 * inch, 0.8 * inch)
+            logo_source = getattr(school.logo, 'url', school.logo)
+            logo = _load_reportlab_image(logo_source, 0.8 * inch, 0.8 * inch)
             if logo:
                 elements.append(logo)
         except Exception:

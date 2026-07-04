@@ -630,11 +630,6 @@
                 analytics, reporting, finance and academic operations.
 
             </p>
-
-            <p class="hero-donate">
-                Support Brainet with a small appreciation via Safaricom / M-Pesa <strong>0736645038</strong>. Every contribution helps keep schools connected.
-            </p>
-
             <div class="hero-buttons">
 
                 <a href="{% url 'features_demo' %}"
@@ -943,20 +938,7 @@
                         </div>
                     </div>
 
-                    <!-- Desktop App -->
-                    <div class="col-md-4">
-                        <div class="card bg-dark border-success h-100">
-                            <div class="card-body text-center">
-                                <i class="bi bi-window text-success" style="font-size: 2.5rem; margin-bottom: 15px; display: block;"></i>
-                                <h5 class="card-title text-white">Desktop App</h5>
-                                <p class="card-text text-muted small">Windows standalone application</p>
-                                <a href="https://github.com/merkoudaniel/Brainet-ERP/tree/main/desktop-app" class="btn btn-outline-light btn-sm" target="_blank">
-                                    <i class="bi bi-info-circle me-2"></i>Desktop App Info
-                                </a>
-                                <small class="d-block text-warning mt-2">Not published — build instructions</small>
-                            </div>
-                        </div>
-                    </div>
+                
 
                     <!-- Mobile App -->
                     <div class="col-md-4">
@@ -983,7 +965,7 @@
                 Open Web App
             </a>
 
-            <a href="https://play.google.com/store/apps/details?id=com.brainet.erp"
+            <a href="https://www.brainetanalytics.co.ke"
                target="_blank"
                class="btn btn-primary btn-lg shadow-lg">
                 <i class="bi bi-phone me-2"></i>
@@ -1000,7 +982,7 @@
                     </p>
                 </div>
             </div>
-        </div>
+        </div>/*
 
         <a href="{% url 'register_school' %}"
            class="btn btn-outline-light btn-lg shadow-lg mt-4">
@@ -1025,24 +1007,12 @@
                 {% for school in schools_list %}
                 <div class="school-pill">
                     {% if school.logo %}
-                    {% with logo_url=school|get_school_logo_url %}
-                    <img src="{{ logo_url }}" alt="{{ school.name }} logo">
-                    {% endwith %}
+                    <img src="{{ school.logo.url }}" alt="{{ school.name }} logo">
+                
                     {% endif %}
                     <div>
-                        <h5>{{ school.name }}</h5>
-                        <small>{{ school.motto|default:'Trusted partner in school management' }}</small>
-                    </div>
-                </div>
-                {% endfor %}
-                {% for school in schools_list %}
-                <div class="school-pill">
-                    {% if school.logo %}
-                    {% with logo_url=school|get_school_logo_url %}
-                    <img src="{{ logo_url }}" alt="{{ school.name }} logo">
-                    {% endwith %}
-                    {% endif %}
-                    <div>
+                
+                    
                         <h5>{{ school.name }}</h5>
                         <small>{{ school.motto|default:'Trusted partner in school management' }}</small>
                     </div>

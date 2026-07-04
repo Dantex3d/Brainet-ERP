@@ -1,4 +1,6 @@
 from django import template
+from django.utils.safestring import mark_safe
+from django.utils.html import escape
 
 register = template.Library()
 
@@ -12,8 +14,22 @@ def replace(value, old, new):
         return value
 
 
-@register.filter(name='get_school_logo_url')
-def get_school_logo_url_filter(school):
-    from schools.views import get_school_logo_url
+@register.filter(name="get_school_logo_url", is_safe=False)
+def get_school_logo_url(school):
+    """Return the URL for the school's logo.
 
-    return get_school_logo_url(school)
+    If no logo is available, return an empty string.
+    """
+    if not school:
+        return ""
+
+    logo = getattr(school, "logo", None)
+
+    if not logo:
+        return ""
+
+    try:
+        url = logo.url
+        return url
+    except Exception:
+        return ""

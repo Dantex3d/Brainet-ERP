@@ -17,13 +17,11 @@
                 <div class="d-flex align-items-center gap-3">
 
                     {% if school.logo %}
-                        {% with logo_url=school|get_school_logo_url %}
-                        <img src="{{ logo_url }}"
-                             title="{{ school.logo.name }}"
+                        <img src="{{ school.logo.url }}"
+                             alt="{{ school.name }} logo"
                              width="60"
                              height="60"
                              class="rounded-circle shadow">
-                        {% endwith %}
                     {% else %}
                         <img src="{% static 'images/school.png' %}"
                              width="60"

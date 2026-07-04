@@ -33,15 +33,18 @@
                     <form method="post" enctype="multipart/form-data">
                         {% csrf_token %}
                         <input type="hidden" name="section" value="school">
-                        <div class="mb-3 text-center">
-                            {% if school.logo %}
-                            {% with logo_url=school|get_school_logo_url %}
-                            <img src="{{ logo_url }}" alt="School Logo" title="{{ school.logo.name }}" class="rounded-circle mb-3" style="width: 110px; height: 110px; object-fit: cover;">
-                            <p class="small text-muted mb-2">Current logo file: {{ school.logo.name }}</p>
-                            {% endwith %}
-                            {% endif %}
-                            <input type="file" name="logo" class="form-control rounded-3">
-                        </div>
+                       <div class="mb-3 text-center">
+    {% if school.logo %}
+        <img
+            src="{{ school.logo.url }}"
+            alt="{{ school.name }} Logo"
+            class="rounded-circle mb-3"
+            style="width:110px;height:110px;object-fit:cover;"
+            onerror="this.style.display='none';">
+    {% endif %}
+
+    <input type="file" name="logo" class="form-control rounded-3">
+</div>
                         <div class="mb-3">
                             <label class="form-label fw-bold">School Name</label>
                             <input type="text" name="name" class="form-control rounded-3" value="{{ school.name }}" required>
