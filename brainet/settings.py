@@ -22,7 +22,7 @@ SECRET_KEY = os.environ.get(
     "django-insecure-development-key"
 )
 
-DEBUG = os.environ.get("DEBUG", "False").lower() in ("1", "true", "yes")
+DEBUG = os.environ.get("DEBUG", "False")
 
 ALLOWED_HOSTS = [
     "brainetanalytics.co.ke",

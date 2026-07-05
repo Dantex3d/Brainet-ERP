@@ -74,6 +74,29 @@ def format_position_display(value):
     return str(value)
 
 
+def assign_competition_ranks(items, score_getter, rank_attr="rank"):
+    """Assign competition-style ranks where ties share the same position and the next rank skips."""
+    ranked_items = sorted(items, key=lambda item: score_getter(item), reverse=True)
+
+    prev_score = None
+    prev_rank = None
+    for index, item in enumerate(ranked_items, start=1):
+        score = score_getter(item)
+        if prev_score is not None and score == prev_score:
+            rank = prev_rank
+        else:
+            rank = index
+            prev_rank = rank
+        prev_score = score
+
+        if isinstance(item, dict):
+            item[rank_attr] = rank
+        else:
+            setattr(item, rank_attr, rank)
+
+    return ranked_items
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -4189,34 +4212,22 @@ def export_marksheet_pdf(request):
             "subject_count": subject_count,
         })
 
-    # Rank by total points desc, tiebreaker by total marks desc
-    ranked_data = sorted(
+    ranked_data = assign_competition_ranks(
         [item for item in ranking_data if item["subject_count"] > 0],
-        key=lambda x: (-x["points"], -x["total"]) 
+        lambda item: (item["points"], item["total"]),
+        rank_attr="position",
     )
     unranked_data = [item for item in ranking_data if item["subject_count"] == 0]
 
-    prev_points = None
-    prev_total = None
-    for idx, item in enumerate(ranked_data, start=1):
+    for item in ranked_data:
         row = item["row"]
-
-        # determine position with tie handling (skip numbers for ties)
-        if prev_points is not None and item["points"] == prev_points and item["total"] == prev_total:
-            position = prev_position
-        else:
-            position = idx
-            prev_position = position
-            prev_points = item["points"]
-            prev_total = item["total"]
-
         row += [
             int(item["total"]),
             round(item["average"], 1),
             item["grade"],
             int(item["points"]),
             round(item["points"] / len(subjects), 2) if len(subjects) > 0 else 0,
-            position
+            item["position"],
         ]
 
         table_data.append(row)
@@ -4518,39 +4529,22 @@ def view_full_marksheet(request):
             "points": total_points,
         })
 
-    # Ranking by points then marks
-    report_rows.sort(key=lambda x: (-x["points"], -x["total"]))
+    report_rows = assign_competition_ranks(
+        report_rows,
+        lambda row: (row["points"], row["total"]),
+        rank_attr="position",
+    )
 
-    prev_points = None
-    prev_total = None
-    prev_position = None
-    for idx, row in enumerate(report_rows, start=1):
-        if prev_points is not None and row["points"] == prev_points and row["total"] == prev_total:
-            row["position"] = prev_position
-        else:
-            row["position"] = idx
-            prev_position = idx
-            prev_points = row["points"]
-            prev_total = row["total"]
-
-    # stream ranks
     streams_by_rank = defaultdict(list)
     for row in report_rows:
         streams_by_rank[row["stream_name"]].append(row)
 
     for stream_rows in streams_by_rank.values():
-        stream_rows.sort(key=lambda x: (-x["points"], -x["total"]))
-        prev_points = None
-        prev_total = None
-        prev_pos = None
-        for idx, row in enumerate(stream_rows, start=1):
-            if prev_points is not None and row["points"] == prev_points and row["total"] == prev_total:
-                row["stream_rank"] = prev_pos
-            else:
-                row["stream_rank"] = idx
-                prev_pos = idx
-                prev_points = row["points"]
-                prev_total = row["total"]
+        assign_competition_ranks(
+            stream_rows,
+            lambda row: (row["points"], row["total"]),
+            rank_attr="stream_rank",
+        )
 
     # analysis: top performers, grade distribution
     ranking_data = report_rows
@@ -4734,17 +4728,11 @@ def marksheet_center(request):
         # ===============================================
         # RANKING
         # ===============================================
-        ranked_students = sorted(
+        ranked_students = assign_competition_ranks(
             [student for student in students if student.has_marks],
-            key=lambda x: x.total_marks,
-            reverse=True
+            lambda student: student.total_marks,
+            rank_attr="rank",
         )
-
-        rank = 1
-
-        for student in ranked_students:
-            student.rank = rank
-            rank += 1
 
         unranked_students = [student for student in students if not student.has_marks]
         for student in unranked_students:
@@ -4915,18 +4903,13 @@ def marks_hub(request):
         # =================================================
         # RANKING
         # =================================================
-        ranked = sorted(
+        ranked = assign_competition_ranks(
             [p for p in processed_students if p["total_marks"] > 0],
-            key=lambda x: x["total_marks"],
-            reverse=True
+            lambda item: item["total_marks"],
+            rank_attr="rank",
         )
 
         unranked = [p for p in processed_students if p["total_marks"] == 0]
-
-        rank = 1
-        for item in ranked:
-            item["rank"] = rank
-            rank += 1
 
         for item in unranked:
             item["rank"] = None
@@ -5266,8 +5249,12 @@ def export_class_report(request, class_id, term_id, exam_id):
         for student in students
     }
 
-    ranked_students = sorted(students, key=lambda student: totals.get(student.id, 0), reverse=True)
-    ranks = {student.id: i + 1 for i, student in enumerate(ranked_students)}
+    ranked_students = assign_competition_ranks(
+        list(students),
+        lambda student: totals.get(student.id, 0),
+        rank_attr="rank",
+    )
+    ranks = {student.id: getattr(student, "rank", None) for student in ranked_students}
 
 # ======================
 # SUBJECT POSITIONS (current exam only)
@@ -5277,23 +5264,22 @@ def export_class_report(request, class_id, term_id, exam_id):
     for student in students:
         subject_positions[student.id] = {}
         for subject in subjects:
-            # Get all marks for this subject in the current term
             marks_qs = StudentMark.objects.filter(
                 subject=subject,
                 term=term_obj
             )
             if exam_obj:
                 marks_qs = marks_qs.filter(exam=exam_obj)
-            marks_qs = marks_qs.order_by('-marks')
 
-            # Build ranking list
-            ranking = list(marks_qs)
-            student_mark = marks_qs.filter(student=student).first()
+            ranking = assign_competition_ranks(
+                list(marks_qs.order_by('-marks')),
+                lambda mark: float(mark.marks),
+                rank_attr="position",
+            )
+            student_mark = next((mark for mark in ranking if mark.student_id == student.id), None)
 
             if student_mark:
-                # Find position in ranking
-                pos = next((i + 1 for i, m in enumerate(ranking) if m.student_id == student.id), None)
-                subject_positions[student.id][subject.id] = pos
+                subject_positions[student.id][subject.id] = getattr(student_mark, "position", None)
             else:
                 subject_positions[student.id][subject.id] = None
     # =========================
