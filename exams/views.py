@@ -28,36 +28,46 @@ from reportlab.lib.styles import getSampleStyleSheet
 
 def _load_reportlab_image(image_field, width, height):
     if not image_field:
+        print("[logo debug] No image_field provided")
         return None
+
+    print(f"[logo debug] Loading image_field type={type(image_field)}")
 
     image_path = None
     try:
         image_path = image_field.path
-    except (AttributeError, NotImplementedError, ValueError, OSError):
+        print(f"[logo debug] image_field.path = {image_path}")
+    except (AttributeError, NotImplementedError, ValueError, OSError) as exc:
+        print(f"[logo debug] image_field.path unavailable: {exc}")
         image_path = None
 
     if image_path:
         try:
             if os.path.exists(image_path):
+                print("[logo debug] Loaded image from local path")
                 return Image(image_path, width=width, height=height)
-        except Exception:
-            pass
+        except Exception as exc:
+            print(f"[logo debug] Local path load failed: {exc}")
 
     if hasattr(image_field, "file"):
         try:
+            print("[logo debug] Attempting to load from file object")
             image_field.open()
             return Image(BytesIO(image_field.file.read()), width=width, height=height)
-        except Exception:
-            pass
+        except Exception as exc:
+            print(f"[logo debug] File object load failed: {exc}")
 
     if hasattr(image_field, "url"):
         try:
+            print(f"[logo debug] Attempting to load from URL: {image_field.url}")
             with urlopen(image_field.url) as image_file:
                 image_bytes = image_file.read()
+            print("[logo debug] Loaded image from URL")
             return Image(BytesIO(image_bytes), width=width, height=height)
-        except (URLError, HTTPError, Exception):
-            pass
+        except (URLError, HTTPError, Exception) as exc:
+            print(f"[logo debug] URL load failed: {exc}")
 
+    print("[logo debug] All image load attempts failed")
     return None
 
 from exams.models import Exam
@@ -110,21 +120,16 @@ def generate_class_list_pdf(request, class_id):
     styles = getSampleStyleSheet()
 
     # =====================================================
-    # SCHOOL LOGO
+    # SCHOOL HEADER WITH LOGO
     # =====================================================
 
+    logo = None
     if school.logo:
         try:
             logo_source = getattr(school.logo, 'url', school.logo)
             logo = _load_reportlab_image(logo_source, 0.8 * inch, 0.8 * inch)
-            if logo:
-                elements.append(logo)
         except Exception:
-            pass
-
-    # =====================================================
-    # SCHOOL HEADER
-    # =====================================================
+            logo = None
 
     title = Paragraph(
         f"""
@@ -135,7 +140,22 @@ def generate_class_list_pdf(request, class_id):
         styles["Title"]
     )
 
-    elements.append(title)
+    if logo:
+        header = Table(
+            [[logo, title]],
+            colWidths=[0.8 * inch, None]
+        )
+        header.setStyle(TableStyle([
+            ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+            ("TOPPADDING", (0, 0), (-1, -1), 0),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+        ]))
+        elements.append(header)
+    else:
+        elements.append(title)
 
     elements.append(
         Spacer(1, 0.2 * cm)
@@ -383,17 +403,12 @@ def generate_dorm_list_pdf(request, dorm_id):
     styles = getSampleStyleSheet()
 
     # =====================================================
-    # SCHOOL LOGO
+    # SCHOOL HEADER WITH LOGO
     # =====================================================
 
+    logo_image = None
     if school.logo:
         logo_image = _load_reportlab_image(school.logo, 2.5 * cm, 2.5 * cm)
-        if logo_image:
-            elements.append(logo_image)
-
-    # =====================================================
-    # HEADER
-    # =====================================================
 
     title = Paragraph(
         f"""
@@ -404,7 +419,22 @@ def generate_dorm_list_pdf(request, dorm_id):
         styles["Title"]
     )
 
-    elements.append(title)
+    if logo_image:
+        header = Table(
+            [[logo_image, title]],
+            colWidths=[2.5 * cm, None]
+        )
+        header.setStyle(TableStyle([
+            ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+            ("TOPPADDING", (0, 0), (-1, -1), 0),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+        ]))
+        elements.append(header)
+    else:
+        elements.append(title)
 
     elements.append(
         Spacer(1, 0.2 * cm)

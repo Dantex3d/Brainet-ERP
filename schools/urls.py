@@ -121,7 +121,7 @@ urlpatterns = [
     path("exams/", views.manage_exams, name="manage_exams"),
     path("exams/enter-marks/", views.enter_marks, name="enter_marks"),
 
-    path("marksheet/preview/", views.marksheet_preview, name="marksheet_preview"),
+    path("marksheet/full/", views.view_full_marksheet, name="view_full_marksheet"),
     path("marksheet/pdf/", views.export_marksheet_pdf, name="export_marksheet_pdf"),
     path("marksheet-center/", views.marksheet_center, name="marksheet_center"),
     path("dos/marks-hub/", views.marks_hub, name="marks_hub"),

@@ -184,10 +184,10 @@
 
                 <div class="col-lg-3">
 
-                    <a href="{% url 'marksheet_preview' %}?class={{ selected_class }}&exam={{ selected_exam }}&term={{ selected_term }}"
+                    <a href="{% url 'view_full_marksheet' %}?class={{ selected_class }}&exam={{ selected_exam }}&term={{ selected_term }}{% if selected_stream %}&stream={{ selected_stream }}{% endif %}"
                        class="btn btn-warning w-100 py-2">
 
-                        📊 Preview Marksheet
+                        📊 View Full Marksheet
                     </a>
 
                 </div>

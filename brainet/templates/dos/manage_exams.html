@@ -59,6 +59,10 @@
 
                 {% csrf_token %}
 
+                {% if edit_exam %}
+                    <input type="hidden" name="exam_id" value="{{ edit_exam.id }}">
+                {% endif %}
+
                 <div class="row">
 
                     <!-- NAME -->
@@ -69,10 +73,11 @@
                             Exam Name
                         </label>
 
-                        <input type="text"
+                           <input type="text"
                                name="name"
                                class="form-control"
                                placeholder="e.g Midterm Exam"
+                               value="{% if edit_exam %}{{ edit_exam.name }}{% endif %}"
                                required>
 
                     </div>
@@ -91,7 +96,8 @@
 
                             {% for term in terms %}
 
-                            <option value="{{ term.id }}">
+                            <option value="{{ term.id }}"
+                                {% if edit_exam and edit_exam.term_id == term.id %}selected{% endif %}>
                                 {{ term.name }}
                             </option>
 
@@ -113,19 +119,15 @@
                                 class="form-select"
                                 required>
 
-                            <option value="CAT">
+                            <option value="CAT" {% if edit_exam and edit_exam.exam_type == 'CAT' %}selected{% endif %}>
                                 CAT
                             </option>
 
-                            <option value="MIDTERM">
+                            <option value="MIDTERM" {% if edit_exam and edit_exam.exam_type == 'MIDTERM' %}selected{% endif %}>
                                 Midterm
                             </option>
 
-                            <option value="FINAL">
-                                Final
-                            </option>
-
-                        </select>
+                            <option value="FINAL" {% if edit_exam and edit_exam.exam_type == 'FINAL' %}selected{% endif %}>
 
                     </div>
 
@@ -151,7 +153,8 @@
                                        type="checkbox"
                                        name="subjects"
                                        value="{{ subject.id }}"
-                                       id="subject{{ subject.id }}">
+                                       id="subject{{ subject.id }}"
+                                       {% if subject.id in edit_subject_ids %}checked{% endif %}>
 
                                 <label class="form-check-label"
                                        for="subject{{ subject.id }}">

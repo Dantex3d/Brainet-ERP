@@ -1,0 +1,118 @@
+{% extends 'dashboards/base.html' %}
+{% load static %}
+
+{% block content %}
+
+<div class="container-fluid py-4">
+
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body d-flex justify-content-between align-items-center">
+            <div>
+                <h2 class="fw-bold text-primary mb-1">📄 {{ display_title }}</h2>
+                <p class="text-muted mb-0">Full marksheet view — view all marks directly in the browser.</p>
+            </div>
+
+            <div class="d-flex gap-2">
+                <a href="{% url 'marksheet_center' %}?class={{ class_obj.id }}&term={{ term_obj.id }}{% if exam_obj %}&exam={{ exam_obj.id }}{% endif %}{% if selected_stream %}&stream={{ selected_stream }}{% endif %}" class="btn btn-outline-primary">← Back to Marksheet Center</a>
+                <a href="{% url 'export_marksheet_pdf' %}?class={{ class_obj.id }}&term={{ term_obj.id }}{% if exam_obj %}&exam={{ exam_obj.id }}{% endif %}" class="btn btn-danger">📥 Download PDF</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3 align-items-center">
+                <div class="col-md-8">
+                    <strong>Instruction for students:</strong>
+                    <p class="mb-0">Students may scan the school QR code (if provided) or enter their <strong>admission number</strong> below to quickly jump to their row. Keep your admission number private; treat it as your password.</p>
+                </div>
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <input id="student_search" type="text" class="form-control" placeholder="Enter admission number">
+                        <button id="student_find" class="btn btn-primary">Find</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered align-middle" id="full_marks_table">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Rank</th>
+                            <th>Name</th>
+                            <th>Adm No</th>
+                            <th>Stream</th>
+                            {% for subject in subjects %}
+                                <th>{{ subject.short_name }}</th>
+                            {% endfor %}
+                            <th>Total</th>
+                            <th>Avg</th>
+                            <th>Grade</th>
+                            <th>Points</th>
+                            <th>Stream Rank</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in report_rows %}
+                        <tr data-adm="{{ row.student.admission_number }}">
+                            <td class="fw-bold">{{ row.position }}</td>
+                            <td>{{ row.student.name }}</td>
+                            <td>{{ row.student.admission_number }}</td>
+                            <td>{{ row.stream_name }}</td>
+                            {% for score in row.subject_scores %}
+                                <td class="text-center">{% if score is not None %}{{ score }}{% else %}-{% endif %}</td>
+                            {% endfor %}
+                            <td class="fw-bold text-success text-center">{{ row.total }}</td>
+                            <td class="text-center">{{ row.average }}</td>
+                            <td class="text-center">{{ row.grade }}</td>
+                            <td class="text-center">{{ row.points }}</td>
+                            <td class="text-center">{{ row.stream_rank }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="100%" class="text-center text-muted">Marks not yet generated.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-body">
+            <h5>Grade Distribution</h5>
+            <div class="d-flex flex-wrap gap-2">
+                {% for k,v in grade_counts.items %}
+                    <span class="badge bg-secondary">{{ k }}: {{ v }}</span>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+document.getElementById('student_find').addEventListener('click', function(e){
+    e.preventDefault();
+    var val = document.getElementById('student_search').value.trim();
+    if(!val) return;
+    var rows = document.querySelectorAll('#full_marks_table tbody tr[data-adm]');
+    rows.forEach(function(r){ r.style.background = ''; });
+    for(var i=0;i<rows.length;i++){
+        var adm = rows[i].getAttribute('data-adm');
+        if(adm === val){
+            rows[i].style.background = '#fff3cd';
+            rows[i].scrollIntoView({behavior: 'smooth', block: 'center'});
+            return;
+        }
+    }
+    alert('Admission number not found.');
+});
+</script>
+
+{% endblock %}
