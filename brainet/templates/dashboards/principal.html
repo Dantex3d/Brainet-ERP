@@ -156,8 +156,23 @@
                             </a>
                         </div>
                         <div class="col-md-6">
+                            <a href="{% url 'manage_subjects' %}" class="btn btn-outline-dark w-100 py-3 rounded-3">
+                                📘 Subject Manager
+                            </a>
+                        </div>
+                        <div class="col-md-6">
+                            <a href="{% url 'manage_grading' %}" class="btn btn-outline-success w-100 py-3 rounded-3">
+                                ⭐ Grade Manager
+                            </a>
+                        </div>
+                        <div class="col-md-6">
                             <a href="{% url 'manage_exams' %}" class="btn btn-outline-info w-100 py-3 rounded-3">
-                                📝 Manage Exams
+                                📝 Exam Settings
+                            </a>
+                        </div>
+                        <div class="col-md-6">
+                            <a href="{% url 'manage_terms' %}" class="btn btn-outline-primary w-100 py-3 rounded-3">
+                                📅 Term Manager
                             </a>
                         </div>
                         <div class="col-md-6">
@@ -244,6 +259,18 @@
                     </a>
                     <a href="{% url 'manage_dorms' %}" class="btn btn-outline-secondary rounded-3 text-start py-2">
                         🏠 Manage Dormitories
+                    </a>
+                    <a href="{% url 'manage_subjects' %}" class="btn btn-outline-dark rounded-3 text-start py-2">
+                        📘 Subject Manager
+                    </a>
+                    <a href="{% url 'manage_grading' %}" class="btn btn-outline-success rounded-3 text-start py-2">
+                        ⭐ Grade Manager
+                    </a>
+                    <a href="{% url 'manage_exams' %}" class="btn btn-outline-info rounded-3 text-start py-2">
+                        📝 Exam Settings
+                    </a>
+                    <a href="{% url 'manage_terms' %}" class="btn btn-outline-primary rounded-3 text-start py-2">
+                        📅 Term Manager
                     </a>
                     <a href="{% url 'enter_marks' %}" class="btn btn-outline-info rounded-3 text-start py-2">
                         📝 Enter Marks

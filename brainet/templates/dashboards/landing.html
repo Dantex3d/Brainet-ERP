@@ -12,6 +12,10 @@
 
     <!-- PWA Manifest -->
     <link rel="manifest" href="{% static 'manifest.json' %}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'images/brainet-icon-192.png' %}">
+    <link rel="mask-icon" href="{% static 'images/brainet-icon-512.png' %}" color="#0d6efd">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#0d6efd">
     <meta name="description" content="Intelligent school management platform designed to automate administration, examinations, analytics, reporting, finance and academic operations.">
 
@@ -945,12 +949,12 @@
                         <div class="card bg-dark border-warning h-100">
                             <div class="card-body text-center">
                                 <i class="bi bi-phone text-warning" style="font-size: 2.5rem; margin-bottom: 15px; display: block;"></i>
-                                <h5 class="card-title text-white">Mobile App</h5>
-                                <p class="card-text text-muted small">Android & iOS native apps</p>
-                                <a href="https://github.com/merkoudaniel/Brainet-ERP/tree/main/mobile-app" class="btn btn-outline-light btn-sm" target="_blank">
-                                    <i class="bi bi-info-circle me-2"></i>Mobile App Info
+                                <h5 class="card-title text-white">Android App</h5>
+                                <p class="card-text text-muted small">Download the Android app package</p>
+                                <a href="{% url 'mobile_app' %}" class="btn btn-outline-light btn-sm">
+                                    <i class="bi bi-download me-2"></i>Download Android App
                                 </a>
-                                <small class="d-block text-warning mt-2">Not published on stores</small>
+                                <small class="d-block text-warning mt-2">Available from this website</small>
                             </div>
                         </div>
                     </div>
@@ -965,11 +969,10 @@
                 Open Web App
             </a>
 
-            <a href="https://www.brainetanalytics.co.ke"
-               target="_blank"
+            <a href="/static/mobile-app/Brainet-ERP.apk"
                class="btn btn-primary btn-lg shadow-lg">
                 <i class="bi bi-phone me-2"></i>
-                Download Android App
+                Download Android APK
             </a>
         </div>
 
@@ -982,7 +985,7 @@
                     </p>
                 </div>
             </div>
-        </div>/*
+        </div>
 
         <a href="{% url 'register_school' %}"
            class="btn btn-outline-light btn-lg shadow-lg mt-4">
@@ -1204,7 +1207,7 @@ window.addEventListener('appinstalled', () => {
 // Register Service Worker for PWA
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/static/service-worker.js')
+        navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
             .then((registration) => {
                 console.log('Service Worker registered successfully:', registration);
             })

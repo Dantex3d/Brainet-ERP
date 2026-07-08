@@ -7,6 +7,7 @@ urlpatterns = [
     # LANDING
     # =====================================================
     path("", views.landing_page, name="landing_page"),
+    path("mobile-app/", views.mobile_app, name="mobile_app"),
     path("features-demo/", views.features_demo, name="features_demo"),
 
     # =====================================================

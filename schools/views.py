@@ -1455,6 +1455,11 @@ def landing_page(request):
     ]
     return render(request, "dashboards/landing.html", {"schools_list": schools_list, "testimonials": testimonials})
 
+
+def mobile_app(request):
+    return render(request, "dashboards/mobile_app.html")
+
+
 @login_required
 def features_demo(request):
     """Demo page showcasing new features for customers"""
@@ -5074,11 +5079,13 @@ def generate_progress_chart(scores):
 
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.decorators import login_required
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, Image
-from reportlab.lib.pagesizes import A4
+# Alias Image to RLImage to match usage below
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, Image as RLImage
+# Avoid rebinding Final constants elsewhere by aliasing
+from reportlab.lib.pagesizes import A4 as RL_A4
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib import colors
-from reportlab.lib.units import inch
+from reportlab.lib.units import inch as rl_inch
 
 # helper: grade + points + remarks
 def get_grade_points_and_remarks(school, mark):
@@ -5221,8 +5228,8 @@ def export_class_report(request, class_id, term_id, exam_id):
 
     styles = getSampleStyleSheet()
     styles.add(ParagraphStyle(name="ReportHeader", fontSize=12, leading=16, spaceAfter=6))
-    styles.add(ParagraphStyle(name="ReportInfo", fontSize=9, leading=12, spaceAfter=4))
-    styles.add(ParagraphStyle(name="ReportSmall", fontSize=8, leading=10))
+    styles.add(ParagraphStyle(name="ReportInfo", fontSize=9, leading=14, spaceAfter=4))
+    styles.add(ParagraphStyle(name="ReportSmall", fontSize=8, leading=12))
     elements = []
 
     # =========================
@@ -5261,27 +5268,29 @@ def export_class_report(request, class_id, term_id, exam_id):
 # ======================
     subject_positions = {}
 
+    # Initialize subject_positions for all students
     for student in students:
-        subject_positions[student.id] = {}
-        for subject in subjects:
-            marks_qs = StudentMark.objects.filter(
-                subject=subject,
-                term=term_obj
-            )
-            if exam_obj:
-                marks_qs = marks_qs.filter(exam=exam_obj)
+        subject_positions[student.id] = {subject.id: None for subject in subjects}
 
-            ranking = assign_competition_ranks(
-                list(marks_qs.order_by('-marks')),
-                lambda mark: float(mark.marks),
-                rank_attr="position",
-            )
+    # Compute rankings once per subject (not once per student)
+    for subject in subjects:
+        marks_qs = StudentMark.objects.filter(
+            subject=subject,
+            term=term_obj
+        )
+        if exam_obj:
+            marks_qs = marks_qs.filter(exam=exam_obj)
+
+        ranking = assign_competition_ranks(
+            list(marks_qs.order_by('-marks')),
+            lambda mark: float(mark.marks),
+            rank_attr="position",
+        )
+
+        # assign positions for each student for this subject
+        for student in students:
             student_mark = next((mark for mark in ranking if mark.student_id == student.id), None)
-
-            if student_mark:
-                subject_positions[student.id][subject.id] = getattr(student_mark, "position", None)
-            else:
-                subject_positions[student.id][subject.id] = None
+            subject_positions[student.id][subject.id] = getattr(student_mark, "position", None) if student_mark else None
     # =========================
     for idx, student in enumerate(students):
 
@@ -5333,7 +5342,15 @@ def export_class_report(request, class_id, term_id, exam_id):
         elements.append(Spacer(1, 8))
 
         # ================= MARKS TABLE WITH TEACHER & POSITIONING =================
-        table_data = [["Subject", "Marks", "Grade", "Points", "Teacher", "Pos", "Comments"]]
+        table_data = [[
+            Paragraph("Subject", styles["ReportSmall"]),
+            Paragraph("Marks", styles["ReportSmall"]),
+            Paragraph("Grade", styles["ReportSmall"]),
+            Paragraph("Points", styles["ReportSmall"]),
+            Paragraph("Teacher", styles["ReportSmall"]),
+            Paragraph("Pos", styles["ReportSmall"]),
+            Paragraph("Comments", styles["ReportSmall"]),
+        ]]
 
         total_marks = 0
         total_points = 0
@@ -5363,8 +5380,11 @@ def export_class_report(request, class_id, term_id, exam_id):
 
             # Subject positioning indicator
             subject_position = ""
-            if subject_positions.get(student.id):
-                subject_position = subject_positions[student.id].get(subject.id)
+            student_key = getattr(student, "id", None) or getattr(student, "pk", None)
+            # subject may not expose an `id` attribute; prefer `id` or `pk` safely
+            subject_key = getattr(subject, "id", None) or getattr(subject, "pk", None)
+            if student_key and subject_positions.get(student_key):
+                subject_position = subject_positions[student_key].get(subject_key)
             subject_position_display = format_position_display(subject_position)
             if mark:
                 m = int(round(mark.marks))
@@ -5374,21 +5394,23 @@ def export_class_report(request, class_id, term_id, exam_id):
                 total_points += points
 
                 table_data.append([
-                Paragraph(subject.name, styles["ReportSmall"]),
-                m,
-                grade,
-                    points,
+                    Paragraph(subject.name, styles["ReportSmall"]),
+                    Paragraph(str(m), styles["ReportSmall"]),
+                    Paragraph(str(grade), styles["ReportSmall"]),
+                    Paragraph(str(points), styles["ReportSmall"]),
                     Paragraph(teacher_name, styles["ReportSmall"]),
-                    subject_position_display,
+                    Paragraph(str(subject_position_display), styles["ReportSmall"]),
                     Paragraph(remarks, styles["ReportSmall"])
                 ])
             else:
                 table_data.append([
                     Paragraph(subject.name, styles["ReportSmall"]),
-                    "-", "-", "-",
+                    Paragraph("-", styles["ReportSmall"]),
+                    Paragraph("-", styles["ReportSmall"]),
+                    Paragraph("-", styles["ReportSmall"]),
                     Paragraph(teacher_name, styles["ReportSmall"]),
-                    subject_position_display,
-                    "-"
+                    Paragraph(str(subject_position_display), styles["ReportSmall"]),
+                    Paragraph("-", styles["ReportSmall"])
                 ])
 
         # ================= TABLE STYLE =================
@@ -5509,7 +5531,7 @@ def export_class_report(request, class_id, term_id, exam_id):
 
         # ================= FOOTER =================
         elements.append(Paragraph(
-            "Powered by Brainet Analytics | Grade Report Forms",
+            "Powered by Brainet Analytics | Report Forms",
             styles["Normal"]
         ))
 
@@ -5535,12 +5557,9 @@ def clear_notifications(request):
 
     # If this was an AJAX/API call, return JSON; otherwise redirect back to dashboard
     if request.headers.get("x-requested-with") == "XMLHttpRequest":
-        from django.http import JsonResponse
         return JsonResponse({"deleted": deleted_count})
 
     return redirect("dos_dashboard")  # adjust to your dashboard view name
-
-from django.contrib import messages
 
 def add_term(request):
     if request.method == "POST":
