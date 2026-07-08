@@ -148,29 +148,13 @@ class Term(models.Model):
     name = models.CharField(max_length=100)
     start_date = models.DateField()
     end_date = models.DateField()
-    opening_datetime = models.DateTimeField(null=True, blank=True)
-    closing_datetime = models.DateTimeField(null=True, blank=True)
 
     class Meta:
-        # remove 'level' if it doesn't exist
         unique_together = ("school", "name", "start_date")
         ordering = ["start_date"]
 
     def __str__(self):
         return self.name
-
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-
-        if self.closing_datetime:
-            next_term = Term.objects.filter(
-                school=self.school,
-                start_date__gt=self.start_date
-            ).order_by("start_date").first()
-
-            if next_term and not next_term.opening_datetime:
-                next_term.opening_datetime = self.closing_datetime
-                next_term.save(update_fields=["opening_datetime"])
 
 
 # =========================================================

@@ -242,12 +242,20 @@
                                     selected
                                 {% endif %}>
 
-                                {{ e.name }}
+                                {{ e.name }}{% if not e.is_active %} (Closed){% endif %}
                             </option>
                         {% endfor %}
 
                     </select>
 
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Entry Mode</label>
+                    <select name="entry_mode" class="form-select" onchange="this.form.submit()">
+                        <option value="single" {% if selected_entry_mode == 'single' %}selected{% endif %}>Single Subject Entry</option>
+                        <option value="bulk" {% if selected_entry_mode == 'bulk' %}selected{% endif %}>Bulk Entry</option>
+                    </select>
                 </div>
 
             </div>
@@ -285,6 +293,10 @@
                name="term"
                value="{{ selected_term }}">
 
+        <input type="hidden"
+               name="entry_mode"
+               value="{{ selected_entry_mode|default:'single' }}">
+
         <div class="card shadow border-0">
 
             <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
@@ -307,7 +319,29 @@
 
             <div class="card-body">
 
+                {% if exam_closed_warning %}
+                    <div class="alert alert-warning rounded-3 mb-3">
+                        {{ exam_closed_warning }}
+                    </div>
+                {% endif %}
+
+                {% if selected_class and selected_subject and selected_term and selected_exam and students %}
+                    <div class="alert alert-info rounded-3 mb-3">
+                        Existing marks for the selected exam will appear below. Use the selected entry mode to update them.
+                    </div>
+                {% endif %}
+
                 {% if students %}
+
+                    {% if selected_entry_mode == 'bulk' %}
+                        <div class="alert alert-secondary rounded-3 mb-3">
+                            Enter marks in order, one per student, separated by commas, spaces, or new lines.
+                        </div>
+                        <textarea name="bulk_marks" class="form-control" rows="8" placeholder="e.g. 78, 82, 65"></textarea>
+                        <div class="mt-3">
+                            <button class="btn btn-success">💾 Save Bulk Marks</button>
+                        </div>
+                    {% else %}
 
                     <div class="table-responsive">
 
@@ -356,16 +390,20 @@
                                     </td>
 
                                     <td>
-
-                                             <input type="number"
-                                                 name="mark_{{ student.id }}"
-                                                 class="form-control"
-                                                 min="0"
-                                                 max="100"
-                                                 step="1"
-                                                 placeholder="0 - 100"
-                                                 required>
-
+                                        <div class="d-flex flex-column gap-1">
+                                            <input type="number"
+                                                name="mark_{{ student.id }}"
+                                                class="form-control"
+                                                min="0"
+                                                max="100"
+                                                step="1"
+                                                placeholder="0 - 100"
+                                                value="{{ existing_marks|get_item:student.id|default:'' }}"
+                                                required>
+                                            {% if existing_marks|get_item:student.id %}
+                                                <small class="text-success">Current: {{ existing_marks|get_item:student.id }}</small>
+                                            {% endif %}
+                                        </div>
                                     </td>
 
                                 </tr>
@@ -377,6 +415,8 @@
                         </table>
 
                     </div>
+
+                    {% endif %}
 
                 {% else %}
 

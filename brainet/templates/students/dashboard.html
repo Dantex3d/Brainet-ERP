@@ -172,6 +172,59 @@
 
     </div>
 
+    {% if performance_history or subject_performance_chart %}
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-header bg-info text-white rounded-top-4">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">📊 Academic Performance</h5>
+                <span class="badge bg-light text-dark">Trend + subject insights</span>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row g-4">
+                {% if performance_chart %}
+                <div class="col-lg-6">
+                    <div class="border rounded-4 p-3 bg-light">
+                        <h6 class="fw-bold mb-3">Performance Over Time</h6>
+                        <img src="data:image/png;base64,{{ performance_chart }}" alt="Performance over time" class="img-fluid rounded-3 w-100">
+                    </div>
+                </div>
+                {% endif %}
+                {% if subject_performance_chart %}
+                <div class="col-lg-6">
+                    <div class="border rounded-4 p-3 bg-light">
+                        <h6 class="fw-bold mb-3">Subject Performance</h6>
+                        <img src="data:image/png;base64,{{ subject_performance_chart }}" alt="Subject performance" class="img-fluid rounded-3 w-100">
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            {% if performance_history %}
+            <div class="table-responsive mt-4">
+                <table class="table table-sm table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Term</th>
+                            <th>Period</th>
+                            <th>Average Mark</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for entry in performance_history %}
+                        <tr>
+                            <td class="fw-semibold">{{ entry.term_name }}</td>
+                            <td>{{ entry.start_date|date:"M Y" }} - {{ entry.end_date|date:"M Y" }}</td>
+                            <td><span class="badge bg-primary">{{ entry.score }}</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
     <div class="row">
 
         <!-- LEFT SIDE -->

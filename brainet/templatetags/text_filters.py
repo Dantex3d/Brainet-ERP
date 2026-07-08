@@ -21,3 +21,12 @@ def get_school_logo_url_filter(school):
     from schools.views import get_school_logo_url
 
     return get_school_logo_url(school)
+
+
+@register.filter(name='get_item')
+def get_item(value, key, default=''):
+    if value is None:
+        return default
+    if isinstance(value, dict):
+        return value.get(key, default)
+    return getattr(value, key, default)

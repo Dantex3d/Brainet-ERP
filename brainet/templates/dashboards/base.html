@@ -81,11 +81,13 @@
                             </a>
                         </li>
 
+                        {% if user.role != 'student' %}
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'account_profile' %}">
                                 <i class="bi bi-person-circle"></i> My Account
                             </a>
                         </li>
+                        {% endif %}
 
                         {% if user.is_superuser %}
                         <li class="nav-item position-relative">

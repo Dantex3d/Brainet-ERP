@@ -14,6 +14,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth import authenticate, get_user_model, login
 from django.db import transaction
+from exams.models import Exam, Mark
 from django.db.models import Q
 from django.urls import reverse
 
@@ -1530,7 +1531,6 @@ def dos_dashboard(request):
     }
 
     return render(request, "dashboards/dos.html", context)
-from exams.models import Exam
 from django.db.models import Avg, Count
 @login_required
 def principal_dashboard(request):
@@ -1549,10 +1549,8 @@ def principal_dashboard(request):
         .order_by("subject__name")
     )
 
-    # Pending reports (example: assume Report model)
-    from reports.models import Report
-    # Pending reports
-
+    active_exams = Exam.objects.filter(school=school, is_active=True)
+    exam_window_open = active_exams.exists()
 
     return render(request, "dashboards/principal.html", {
         "school": school,
@@ -1562,6 +1560,8 @@ def principal_dashboard(request):
         "subject_performance": subject_performance,
         "notices_sent": SchoolNotice.objects.filter(school=school).order_by('-created_at'),
         "notices": SchoolNotice.objects.filter(school=school).order_by('-created_at'),
+        "exam_window_open": exam_window_open,
+        "active_exam_count": active_exams.count(),
     })
 
 @login_required
@@ -2168,6 +2168,25 @@ def student_dashboard(request):
         student=student
     ).select_related("subject").order_by("-created_at")
 
+    performance_history = get_student_term_performance_history(student)
+    performance_chart = None
+    subject_performance_chart = None
+    if performance_history:
+        labels = [entry["term_name"] for entry in performance_history]
+        scores = [entry["score"] for entry in performance_history]
+        performance_chart = generate_progress_chart(scores, labels=labels, title=f"{student.name} Performance Over Time", chart_type="line")
+
+    subject_scores = []
+    subject_labels = []
+    for subject in subjects:
+        subject_mark = StudentMark.objects.filter(student=student, subject=subject).order_by("-created_at").first()
+        if subject_mark and subject_mark.marks is not None:
+            subject_scores.append(float(subject_mark.marks))
+            subject_labels.append(subject.short_name or subject.name[:10])
+
+    if subject_scores:
+        subject_performance_chart = generate_progress_chart(subject_scores, labels=subject_labels, title=f"{student.name} Subject Performance", chart_type="bar")
+
     average = 0
     if marks.exists():
         total_score = sum([float(mark.marks) for mark in marks if mark.marks is not None])
@@ -2215,6 +2234,9 @@ def student_dashboard(request):
         "submissions": submissions,
         "marks": marks,
         "average": average,
+        "performance_history": performance_history,
+        "performance_chart": performance_chart,
+        "subject_performance_chart": subject_performance_chart,
         "online_classes": online_class_view,
         "notices": SchoolNotice.objects.filter(school=school).filter(recipient_type__in=['students','all']).order_by('-created_at'),
     })
@@ -3545,15 +3567,25 @@ def manage_terms(request):
 def open_exam_window(request):
     school = request.user.school
 
-    # This is a placeholder function. The actual implementation would depend on how you manage exam windows in your models.
-    messages.info(request, "Exam window opened successfully.")
-    return redirect("dos_dashboard")
+    Exam.objects.filter(school=school).update(is_active=True)
+    messages.success(request, "Exam window opened successfully. Marks entry is now available.")
+
+    next_url = request.POST.get("next") or request.GET.get("next")
+    if next_url:
+        return redirect(next_url)
+    return redirect("principal_dashboard" if getattr(request.user, "role", None) == "principal" else "dos_dashboard")
+
+
 def close_exam_window(request):
     school = request.user.school
 
-    # This is a placeholder function. The actual implementation would depend on how you manage exam windows in your models.
-    messages.info(request, "Exam window closed successfully.")
-    return redirect("dos_dashboard")
+    Exam.objects.filter(school=school).update(is_active=False)
+    messages.warning(request, "Exam window closed. Contact admin to enter or update results if this was a mistake.")
+
+    next_url = request.POST.get("next") or request.GET.get("next")
+    if next_url:
+        return redirect(next_url)
+    return redirect("principal_dashboard" if getattr(request.user, "role", None) == "principal" else "dos_dashboard")
 from django.shortcuts import render, redirect
 from django.contrib import messages
 
@@ -3701,10 +3733,14 @@ def enter_marks(request):
     selected_subject = request.GET.get("subject")
     selected_exam = request.GET.get("exam")
     selected_term = request.GET.get("term")
+    selected_entry_mode = request.GET.get("entry_mode", "single")
 
     students = Student.objects.none()
     streams = Stream.objects.none()
     subjects = Subject.objects.filter(school=school).order_by("name")
+    selected_exam_obj = None
+    existing_marks = {}
+    exam_closed_warning = None
 
     # =========================
     # LOAD STREAMS AND STUDENTS SAFELY
@@ -3736,14 +3772,30 @@ def enter_marks(request):
     # If an exam is selected, restrict subjects to those registered for the exam
     if selected_exam:
         try:
-            exam_obj = Exam.objects.filter(id=selected_exam, school=school).first()
-            if exam_obj:
-                exam_subject_ids = exam_obj.exam_subjects.values_list("subject_id", flat=True)
+            selected_exam_obj = Exam.objects.filter(id=selected_exam, school=school).first()
+            if selected_exam_obj:
+                exam_subject_ids = selected_exam_obj.exam_subjects.values_list("subject_id", flat=True)
                 subjects = subjects.filter(id__in=exam_subject_ids).order_by("name")
                 if not subjects.exists():
                     messages.warning(request, "Selected exam has no registered subjects. Please assign subjects to the exam before entering marks.")
+                if not selected_exam_obj.is_active:
+                    exam_closed_warning = "This exam is closed. Contact admin to enter or update results."
+                    messages.warning(request, exam_closed_warning)
         except Exception:
             pass
+
+    if selected_class and selected_subject and selected_term and selected_exam_obj and students.exists():
+        subject = Subject.objects.filter(id=selected_subject, school=school).first()
+        term = Term.objects.filter(id=selected_term, school=school).first()
+        if subject and term:
+            for student in students:
+                mark_obj = StudentMark.objects.filter(
+                    student=student,
+                    subject=subject,
+                    term=term,
+                    exam=selected_exam_obj,
+                ).first()
+                existing_marks[student.id] = str(mark_obj.marks) if mark_obj else ""
 
     # =========================
     # SAVE MARKS
@@ -3756,6 +3808,7 @@ def enter_marks(request):
         subject_id = request.POST.get("subject")
         exam_id = request.POST.get("exam")
         term_id = request.POST.get("term")
+        entry_mode = request.POST.get("entry_mode", "single")
 
         # -------------------------
         # VALIDATION
@@ -3764,9 +3817,6 @@ def enter_marks(request):
             messages.error(request, "Class, Subject and Term are required")
             return redirect("enter_marks")
 
-        # -------------------------
-        # SAFE OBJECTS
-        # -------------------------
         subject = Subject.objects.filter(id=subject_id, school=school).first()
         term = Term.objects.filter(id=term_id, school=school).first()
         exam = Exam.objects.filter(id=exam_id, school=school).first() if exam_id else None
@@ -3775,72 +3825,102 @@ def enter_marks(request):
             messages.error(request, "Invalid subject or term selected")
             return redirect("enter_marks")
 
+        if exam and not exam.is_active:
+            messages.error(request, "This exam is closed. Contact admin to enter or update results.")
+            redirect_url = f"/schools/principal/enter-marks/?class={class_id}&subject={subject_id}&term={term_id}"
+            if stream_id:
+                redirect_url += f"&stream={stream_id}"
+            if exam_id:
+                redirect_url += f"&exam={exam_id}"
+            if option and option != "all":
+                redirect_url += f"&option={option}"
+            if entry_mode:
+                redirect_url += f"&entry_mode={entry_mode}"
+            return redirect(redirect_url)
+
         grading = GradingPolicy.objects.filter(school=school)
+        students_for_entry = Student.objects.filter(
+            school=school,
+            current_class_id=class_id
+        )
+        if stream_id:
+            students_for_entry = students_for_entry.filter(stream_id=stream_id)
+        students_for_entry = students_for_entry.order_by("name")
 
         saved_count = 0
 
-        # -------------------------
-        # LOOP MARKS
-        # -------------------------
-        for key, value in request.POST.items():
-
-            if not key.startswith("mark_"):
-                continue
-
-            student_id = key.split("_")[1]
-
-            student = Student.objects.filter(
-                id=student_id,
-                school=school
-            ).first()
-
-            if not student:
-                logger.debug("Skipping mark for unknown student id=%s", student_id)
-                continue
-
-            raw = (value or "").strip()
-
-            # skip empty inputs
-            if raw == "":
-                logger.debug("Empty mark input for student id=%s, skipping", student_id)
-                continue
-
-            # Only accept integer marks (no decimals)
-            try:
-                marks = int(raw)
-            except (ValueError, TypeError):
-                logger.debug("Invalid non-integer mark for student id=%s: %s", student_id, raw)
-                continue
-
-            # validate range
-            if marks < 0 or marks > 100:
-                logger.debug("Out of range mark for student id=%s: %s", student_id, marks)
-                continue
-
-            # find grade using integer mark
-            grade_obj = grading.filter(
-                min_score__lte=marks,
-                max_score__gte=marks
-            ).first()
-
-            defaults = {
-                "marks": marks,
-                "grade": grade_obj.grade_letter if grade_obj else "",
-                "points": grade_obj.points if grade_obj else 0
-            }
-
-            try:
+        if entry_mode == "bulk":
+            bulk_marks = (request.POST.get("bulk_marks") or "").strip()
+            values = [value.strip() for value in re.split(r"[\n,;]+", bulk_marks) if value.strip()]
+            for index, student in enumerate(students_for_entry):
+                if index >= len(values):
+                    break
+                raw = values[index]
+                try:
+                    marks = int(raw)
+                except (ValueError, TypeError):
+                    continue
+                if marks < 0 or marks > 100:
+                    continue
+                grade_obj = grading.filter(min_score__lte=marks, max_score__gte=marks).first()
+                defaults = {
+                    "marks": marks,
+                    "grade": grade_obj.grade_letter if grade_obj else "",
+                    "points": grade_obj.points if grade_obj else 0,
+                }
                 StudentMark.objects.update_or_create(
                     student=student,
                     subject=subject,
                     term=term,
                     exam=exam,
-                    defaults=defaults
+                    defaults=defaults,
                 )
                 saved_count += 1
-                logger.info("Saved mark: student=%s subject=%s term=%s exam=%s marks=%s", student.id, subject.id, term.id, getattr(exam, 'id', None), marks)
-            except Exception as e:
-                logger.exception("Failed to save mark for student %s: %s", student_id, e)
+        else:
+            for key, value in request.POST.items():
+                if not key.startswith("mark_"):
+                    continue
+
+                student_id = key.split("_")[1]
+                student = Student.objects.filter(id=student_id, school=school).first()
+                if not student:
+                    logger.debug("Skipping mark for unknown student id=%s", student_id)
+                    continue
+
+                raw = (value or "").strip()
+                if raw == "":
+                    logger.debug("Empty mark input for student id=%s, skipping", student_id)
+                    continue
+
+                try:
+                    marks = int(raw)
+                except (ValueError, TypeError):
+                    logger.debug("Invalid non-integer mark for student id=%s: %s", student_id, raw)
+                    continue
+
+                if marks < 0 or marks > 100:
+                    logger.debug("Out of range mark for student id=%s: %s", student_id, marks)
+                    continue
+
+                grade_obj = grading.filter(min_score__lte=marks, max_score__gte=marks).first()
+                defaults = {
+                    "marks": marks,
+                    "grade": grade_obj.grade_letter if grade_obj else "",
+                    "points": grade_obj.points if grade_obj else 0,
+                }
+
+                try:
+                    StudentMark.objects.update_or_create(
+                        student=student,
+                        subject=subject,
+                        term=term,
+                        exam=exam,
+                        defaults=defaults,
+                    )
+                    saved_count += 1
+                    logger.info("Saved mark: student=%s subject=%s term=%s exam=%s marks=%s", student.id, subject.id, term.id, getattr(exam, 'id', None), marks)
+                except Exception as e:
+                    logger.exception("Failed to save mark for student %s: %s", student_id, e)
 
         messages.success(request, f"{saved_count} marks saved successfully")
 
@@ -3852,6 +3932,8 @@ def enter_marks(request):
             redirect_url += f"&exam={exam_id}"
         if option and option != "all":
             redirect_url += f"&option={option}"
+        if entry_mode:
+            redirect_url += f"&entry_mode={entry_mode}"
 
         return redirect(redirect_url)
 
@@ -3871,6 +3953,9 @@ def enter_marks(request):
         "selected_subject": selected_subject,
         "selected_exam": selected_exam,
         "selected_term": selected_term,
+        "selected_entry_mode": selected_entry_mode,
+        "existing_marks": existing_marks,
+        "exam_closed_warning": exam_closed_warning,
     })
 
 def report_center(request):
@@ -5066,16 +5151,73 @@ from io import BytesIO
 
 import matplotlib.pyplot as plt
 
-def generate_progress_chart(scores):
-    fig, ax = plt.subplots()
-    ax.plot(range(1, len(scores)+1), scores, marker='o')
-    ax.set_title("Performance Progress")
-    ax.set_xlabel("Exam")
-    ax.set_ylabel("Score")
+def generate_progress_chart(scores, labels=None, title="Performance Progress", chart_type="line", ymax=100):
+    fig, ax = plt.subplots(figsize=(5.8, 2.8), dpi=140)
+    fig.patch.set_facecolor("white")
+    ax.set_facecolor("#f8fafc")
+
+    if labels:
+        x_values = labels
+    else:
+        x_values = list(range(1, len(scores) + 1))
+
+    if chart_type == "bar":
+        colors = ["#2563eb", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#0f766e"]
+        bars = ax.bar(x_values, scores, color=colors[:len(scores)] if len(scores) <= len(colors) else None, edgecolor="#1e293b", linewidth=0.8)
+        ax.set_ylim(0, ymax)
+        for bar in bars:
+            height = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width() / 2, height + 1, f"{int(height)}", ha="center", va="bottom", fontsize=7, color="#334155")
+    else:
+        ax.plot(x_values, scores, marker="o", linewidth=2.2, color="#2563eb", markersize=5)
+        ax.fill_between(x_values, scores, 0, color="#2563eb", alpha=0.12)
+        ax.set_ylim(0, ymax)
+
+    ax.set_title(title, fontsize=9, fontweight="bold", color="#0f172a")
+    ax.set_xlabel("Period" if chart_type == "line" else "Subject", fontsize=8, color="#475569")
+    ax.set_ylabel("Score", fontsize=8, color="#475569")
+    ax.grid(True, linestyle="--", linewidth=0.6, alpha=0.35, color="#94a3b8")
+    ax.set_axisbelow(True)
+    for spine in ["top", "right"]:
+        ax.spines[spine].set_visible(False)
+    for spine in ["left", "bottom"]:
+        ax.spines[spine].set_color("#cbd5e1")
+
+    plt.tight_layout()
     buffer = BytesIO()
-    plt.savefig(buffer, format="PNG")
+    plt.savefig(buffer, format="PNG", bbox_inches="tight")
     buffer.seek(0)
     return base64.b64encode(buffer.getvalue()).decode()
+
+
+def get_student_term_performance_history(student):
+    """Return a term-by-term performance trend using the average mark for each term."""
+    marks_qs = StudentMark.objects.filter(student=student).select_related("term")
+    marks_by_term = defaultdict(list)
+
+    for mark in marks_qs:
+        if getattr(mark, "term_id", None):
+            marks_by_term[mark.term_id].append(float(mark.marks))
+
+    if not marks_by_term:
+        return []
+
+    terms = Term.objects.filter(school=student.school, id__in=marks_by_term.keys()).order_by("start_date")
+    history = []
+
+    for term in terms:
+        term_marks = marks_by_term.get(term.id, [])
+        if term_marks:
+            average_mark = round(sum(term_marks) / len(term_marks), 1)
+            history.append({
+                "term_id": term.id,
+                "term_name": term.name,
+                "start_date": term.start_date,
+                "end_date": term.end_date,
+                "score": average_mark,
+            })
+
+    return history
 
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.decorators import login_required
@@ -5205,6 +5347,12 @@ def export_class_report(request, class_id, term_id, exam_id):
     # Use the current calendar year for the report filename
     year = datetime.date.today().year
 
+    # Build term date info for the report header
+    term_open_date = term_obj.start_date.strftime("%d %b %Y") if term_obj.start_date else "—"
+    term_close_date = term_obj.end_date.strftime("%d %b %Y") if term_obj.end_date else "—"
+    next_term = Term.objects.filter(school=school, start_date__gt=term_obj.start_date).order_by("start_date").first()
+    next_term_open_date = next_term.start_date.strftime("%d %b %Y") if next_term and next_term.start_date else "—"
+
     response = HttpResponse(content_type="application/pdf")
 
     class_label = str(class_obj.name or "Class").strip()
@@ -5307,7 +5455,8 @@ def export_class_report(request, class_id, term_id, exam_id):
         {school.address or ""}<br/>
         {school.phone or ""} | {school.email or ""}<br/><br/>
         <b>ACADEMIC REPORT FORM</b><br/>
-        Class: {class_obj.name}{stream_display} | Term: {term_obj.name} | Exam: {exam_obj.name}
+        Class: {class_obj.name}{stream_display} | Term: {term_obj.name} | Exam: {exam_obj.name}<br/>
+        School closed on {term_close_date} | Next term opens on {next_term_open_date}
         """
 
         if logo:
@@ -5476,24 +5625,52 @@ def export_class_report(request, class_id, term_id, exam_id):
         except Exception:
             qr_img = None
 
-        # Progress graph
+        # Performance charts for this student
+        term_chart_img = None
+        subject_chart_img = None
+        try:
+            term_scores = []
+            term_labels = []
+            for entry in performance_history:
+                if entry.get("term_name"):
+                    term_labels.append(entry["term_name"])
+                    term_scores.append(float(entry["score"]))
+
+            if term_scores:
+                term_b64 = generate_progress_chart(term_scores, labels=term_labels, title=f"{student.name} Performance Over Time", chart_type="line")
+                import base64
+                from io import BytesIO
+                term_bytes = base64.b64decode(term_b64)
+                term_buf = BytesIO(term_bytes)
+                term_chart_img = RLImage(term_buf, width=240, height=120)
+        except Exception:
+            term_chart_img = None
+
         try:
             scores = []
+            labels = []
             for subject in subjects:
                 m_filter = {"student": student, "subject": subject, "term": term_obj}
                 if exam_obj:
                     m_filter["exam"] = exam_obj
                 m = StudentMark.objects.filter(**m_filter).first()
-                scores.append(int(round(m.marks))) if m else scores.append(0)
+                scores.append(int(round(m.marks)) if m else 0)
+                labels.append(subject.short_name or subject.name[:8])
 
-            b64 = generate_progress_chart(scores)
+            chart_title = f"{student.name} Subject Performance"
+            if exam_obj:
+                chart_title = f"{student.name} Subject Performance - {exam_obj.name}"
+            else:
+                chart_title = f"{student.name} Subject Performance - {term_obj.name}"
+
+            b64 = generate_progress_chart(scores, labels, title=chart_title, chart_type="bar")
             import base64
             from io import BytesIO
             img_bytes = base64.b64decode(b64)
             buf = BytesIO(img_bytes)
-            progress_img = RLImage(buf, width=200, height=100)
+            subject_chart_img = RLImage(buf, width=240, height=120)
         except Exception:
-            progress_img = None
+            subject_chart_img = None
 
         # Build side-by-side layout
         left_flowables = teacher_block
@@ -5514,13 +5691,20 @@ def export_class_report(request, class_id, term_id, exam_id):
             right_flowables.append(Spacer(1, 4))
             right_flowables.append(Paragraph(login_text, styles["ReportSmall"]))
 
-        if progress_img:
-            right_flowables.append(Spacer(1, 8))
-            right_flowables.append(progress_img)
-        else:
-            right_flowables.append(Paragraph("Progress chart unavailable", styles["ReportSmall"]))
+        if term_chart_img:
+            right_flowables.append(Spacer(1, 6))
+            right_flowables.append(Paragraph("Performance Over Time", styles["ReportSmall"]))
+            right_flowables.append(term_chart_img)
 
-        columns_table = Table([[left_flowables, right_flowables]], colWidths=[220, 280])
+        if subject_chart_img:
+            right_flowables.append(Spacer(1, 6))
+            right_flowables.append(Paragraph("Subject Performance", styles["ReportSmall"]))
+            right_flowables.append(subject_chart_img)
+
+        if not term_chart_img and not subject_chart_img:
+            right_flowables.append(Paragraph("Charts unavailable", styles["ReportSmall"]))
+
+        columns_table = Table([[left_flowables, right_flowables]], colWidths=[220, 300])
         columns_table.setStyle(TableStyle([
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
             ("GRID", (0, 0), (-1, -1), 0.0, colors.white),
