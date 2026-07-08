@@ -21,8 +21,10 @@ from teachers.models import Teacher
 class Exam(models.Model):
     
     EXAM_TYPES = (
+        ("OPENING", "Opening Exam"),
+        ("MIDTERM", "Midterm Exam"),
+        ("END_TERM", "End Term Exam"),
         ("CAT", "CAT"),
-        ("MIDTERM", "Midterm"),
         ("FINAL", "Final"),
     )
 

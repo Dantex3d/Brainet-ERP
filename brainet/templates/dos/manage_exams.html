@@ -15,7 +15,7 @@
             </h3>
 
             <p class="text-muted mb-0">
-                Create and manage school examinations
+                Create and manage school examinations with simple exam types for opening, midterm, or end term
             </p>
 
         </div>
@@ -76,7 +76,7 @@
                            <input type="text"
                                name="name"
                                class="form-control"
-                               placeholder="e.g Midterm Exam"
+                               placeholder="e.g. New exam name"
                                value="{% if edit_exam %}{{ edit_exam.name }}{% endif %}"
                                required>
 
@@ -119,15 +119,19 @@
                                 class="form-select"
                                 required>
 
-                            <option value="CAT" {% if edit_exam and edit_exam.exam_type == 'CAT' %}selected{% endif %}>
-                                CAT
+                            <option value="OPENING" {% if edit_exam and edit_exam.exam_type == 'OPENING' %}selected{% endif %}>
+                                Opening Exam
                             </option>
 
                             <option value="MIDTERM" {% if edit_exam and edit_exam.exam_type == 'MIDTERM' %}selected{% endif %}>
-                                Midterm
+                                Midterm Exam
                             </option>
 
-                            <option value="FINAL" {% if edit_exam and edit_exam.exam_type == 'FINAL' %}selected{% endif %}>
+                            <option value="END_TERM" {% if edit_exam and edit_exam.exam_type == 'END_TERM' %}selected{% endif %}>
+                                End Term Exam
+                            </option>
+
+                        </select>
 
                     </div>
 

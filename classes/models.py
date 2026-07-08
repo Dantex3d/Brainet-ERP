@@ -17,6 +17,19 @@ class Class(models.Model):
         related_name="mastered_classes"
     )
 
+    @property
+    def school_stage(self):
+        """Return the school stage for this class level."""
+        if self.level is None:
+            return "unknown"
+        if self.level <= 6:
+            return "primary"
+        if self.level <= 9:
+            return "junior"
+        if self.level <= 12:
+            return "senior"
+        return "other"
+
     def __str__(self):
         return f"{self.name} ({self.school.name})"
 

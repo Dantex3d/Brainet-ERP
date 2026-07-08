@@ -8,11 +8,45 @@
         <h3 class="fw-bold text-primary">
             Students Management
         </h3>
-        <a href="{% url 'add_student' %}" class="btn btn-success">
-            ➕ Add New Student
-        </a>
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="{% url 'add_student' %}" class="btn btn-success">
+                ➕ Add New Student
+            </a>
+            <a href="{% url 'download_student_import_template' %}" class="btn btn-outline-primary">
+                ⬇ Template
+            </a>
+            <a href="{% url 'export_students_to_excel' %}" class="btn btn-outline-secondary">
+                ⬆ Export Excel
+            </a>
+        </div>
     </div>
 
+
+    <div class="card shadow rounded-4 mb-4">
+        <div class="card-body">
+            <h5 class="fw-bold mb-3">📥 Bulk Student Admission</h5>
+            <form method="post" action="{% url 'import_students_from_excel' %}" enctype="multipart/form-data" class="row g-3 align-items-end">
+                {% csrf_token %}
+                <div class="col-md-6">
+                    <label class="form-label">Upload Excel file</label>
+                    <input type="file" name="excel_file" class="form-control" accept=".xlsx,.xls" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Class</label>
+                    <select name="class_id" class="form-select" required>
+                        <option value="">Select class</option>
+                        {% for c in classes %}
+                        <option value="{{ c.id }}">{{ c.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary w-100">Import Students</button>
+                </div>
+            </form>
+            <p class="text-muted small mt-2 mb-0">Use the template to upload students. Required columns: name, admission_number, gender, class_name, stream_name, parent_phone.</p>
+        </div>
+    </div>
 
     <!-- STUDENTS TABLE -->
     <div class="card shadow rounded-4">
@@ -43,6 +77,21 @@
                             <div class="d-flex gap-2 flex-wrap">
                                 <a href="{% url 'view_student' s.id %}" class="btn btn-sm btn-primary">View</a>
                                 <a href="{% url 'edit_student' s.id %}" class="btn btn-sm btn-warning">Edit</a>
+                                {% if s.status == 'active' %}
+                                <form method="post" action="{% url 'deactivate_student' s.id %}">
+                                    {% csrf_token %}
+                                    <button class="btn btn-sm btn-outline-secondary">
+                                        Deactivate
+                                    </button>
+                                </form>
+                                {% else %}
+                                <form method="post" action="{% url 'activate_student' s.id %}">
+                                    {% csrf_token %}
+                                    <button class="btn btn-sm btn-outline-success">
+                                        Activate
+                                    </button>
+                                </form>
+                                {% endif %}
                                 <form method="post" action="{% url 'delete_student' s.id %}">
                                     {% csrf_token %}
                                     <button class="btn btn-sm btn-danger"

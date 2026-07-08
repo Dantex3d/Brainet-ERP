@@ -17,52 +17,71 @@ class PromotionService:
     """Service for handling student promotions at the end of the academic year"""
 
     @staticmethod
+    def get_school_stage(level):
+        """Use class levels to distinguish primary, junior, and senior school stages."""
+        if level is None:
+            return None
+        if level <= 6:
+            return "primary"
+        if level <= 9:
+            return "junior"
+        if level <= 12:
+            return "senior"
+        return "other"
+
+    @staticmethod
     def get_next_class(current_class, current_stream=None):
         """
         Get the next class for a student based on current class level.
-        
-        Logic:
-        - Level 1 → Level 2 (same school, same stream if exists)
-        - Level 2 → Level 3 (same school, same stream if exists)
-        - Level 3 → Graduated (remove from classes)
-        
-        Args:
-            current_class: The Class object the student is currently in
-            current_stream: The Stream object the student is currently in (optional)
-        
-        Returns:
-            tuple: (next_class, next_stream) or (None, None) if graduated
+
+        Primary levels 1-6 can advance within the same school.
+        Primary to junior is allowed at level 6 -> 7.
+        Junior to senior is treated as a graduation-style exit.
         """
         if not current_class:
             return None, None
 
         school = current_class.school
         current_level = current_class.level
+        current_stage = PromotionService.get_school_stage(current_level)
 
-        # Graduation logic: if level is 3, student graduates
-        if current_level >= 3:
-            return None, None  # Student graduated
+        if current_stage is None:
+            return None, None
 
-        # Get next level class
-        next_level = current_level + 1
-        
+        if current_stage == "primary":
+            if current_level >= 6:
+                next_level = 7
+            else:
+                next_level = current_level + 1
+        elif current_stage == "junior":
+            if current_level >= 9:
+                return None, None
+            next_level = current_level + 1
+        elif current_stage == "senior":
+            if current_level >= 12:
+                return None, None
+            next_level = current_level + 1
+        else:
+            return None, None
+
+        next_stage = PromotionService.get_school_stage(next_level)
+        if current_stage == "junior" and next_stage == "senior":
+            return None, None
+
         try:
             next_class = Class.objects.get(
                 school=school,
                 level=next_level
             )
         except Class.DoesNotExist:
-            # Create next class if it doesn't exist
             next_class = PromotionService.create_next_class(
-                school, 
-                current_class, 
+                school,
+                current_class,
                 next_level
             )
 
-        # Handle stream promotion (e.g., Grade 10 East → Grade 11 East)
         next_stream = None
         if current_stream:
-            # Try to find or create same stream in next class
             next_stream = PromotionService.get_or_create_stream(
                 next_class,
                 current_stream.name
@@ -155,7 +174,7 @@ class PromotionService:
             student.stream = next_stream
             student.status = 'active'
         else:
-            # Student graduated
+            # Student graduated or exited the school flow
             student.current_class = None
             student.stream = None
             student.status = 'inactive'

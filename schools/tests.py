@@ -5,8 +5,38 @@ from brainet.templatetags.text_filters import register
 from exams.models import Exam
 from schools.models import School, Term, Subject
 from students.models import Student
-from schools.views import assign_competition_ranks, generate_progress_chart, get_student_term_performance_history
+from schools.views import assign_competition_ranks, generate_progress_chart, get_student_term_performance_history, get_combined_mark_for_reporting
+from schools.promotion_service import PromotionService
 from users.models import CustomUser
+
+
+class PromotionStageTests(TestCase):
+    def setUp(self):
+        self.school = School.objects.create(
+            name="Promotion School",
+            address="Test Address",
+            phone="0712345678",
+            email="promotion@example.com",
+            is_active=True,
+            is_verified=True,
+        )
+
+    def test_primary_to_junior_is_allowed_within_same_school(self):
+        primary_class = self.school.classes_app_classes.create(name="Grade 6", level=6)
+        junior_class = self.school.classes_app_classes.create(name="Grade 7", level=7)
+
+        next_class, next_stream = PromotionService.get_next_class(primary_class)
+
+        self.assertEqual(next_class, junior_class)
+        self.assertIsNone(next_stream)
+
+    def test_junior_to_senior_exits_the_school_flow(self):
+        junior_class = self.school.classes_app_classes.create(name="Grade 9", level=9)
+
+        next_class, next_stream = PromotionService.get_next_class(junior_class)
+
+        self.assertIsNone(next_class)
+        self.assertIsNone(next_stream)
 
 
 class SchoolLogoStorageTests(TestCase):
@@ -66,6 +96,55 @@ class StudentPerformanceHistoryTests(TestCase):
         self.assertEqual([entry["term_name"] for entry in history], ["Term 2", "Term 3"])
         self.assertEqual(history[0]["score"], 70.0)
         self.assertEqual(history[1]["score"], 82.0)
+
+
+class CombinedExamReportTests(TestCase):
+    def setUp(self):
+        self.school = School.objects.create(
+            name="Combo School",
+            address="Test Address",
+            phone="0712345678",
+            email="school@example.com",
+            is_active=True,
+            is_verified=True,
+        )
+        self.term = Term.objects.create(
+            school=self.school,
+            name="Term 1",
+            start_date="2024-01-01",
+            end_date="2024-03-31",
+        )
+        self.subject = Subject.objects.create(school=self.school, name="English")
+        self.student = Student.objects.create(
+            school=self.school,
+            admission_number="STD0002",
+            name="Benedict",
+            gender="Male",
+        )
+        self.opening_exam = Exam.objects.create(
+            school=self.school,
+            term=self.term,
+            name="Opening Exam",
+            exam_type="OPENING",
+            is_active=True,
+        )
+        self.midterm_exam = Exam.objects.create(
+            school=self.school,
+            term=self.term,
+            name="Midterm Exam",
+            exam_type="MIDTERM",
+            is_active=True,
+        )
+
+    def test_combined_mark_uses_average_of_term_exams(self):
+        from schools.models import StudentMark
+
+        StudentMark.objects.create(student=self.student, subject=self.subject, term=self.term, exam=self.opening_exam, marks=70)
+        StudentMark.objects.create(student=self.student, subject=self.subject, term=self.term, exam=self.midterm_exam, marks=90)
+
+        combined_mark = get_combined_mark_for_reporting(self.student, self.subject, self.term, combine_requested=True)
+
+        self.assertEqual(combined_mark, 80.0)
 
 
 class ReportFormTests(TestCase):

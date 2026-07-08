@@ -10,11 +10,11 @@
 
         <div>
             <h2 class="fw-bold mb-0">
-                📊 Marksheet Center
+                📊 Academic Center
             </h2>
 
             <small class="text-muted">
-                Professional Results Management System
+                One command point for marksheets, reports, and class reporting
             </small>
         </div>
 
@@ -235,41 +235,22 @@
             <!-- EXPORT CLASS REPORT -->
             <div class="col-lg-3 col-md-6">
 
-                <a href="{% url 'export_class_report' selected_class selected_term selected_exam %}"
-                   class="btn btn-primary w-100 py-3">
+                    <a href="{% url 'export_class_report' selected_class selected_term selected_exam %}{% if selected_stream %}?stream_id={{ selected_stream }}{% endif %}"
+                       class="btn btn-primary w-100 py-3">
 
-                    📘 Export Class Report
+                        📘 Export Class Report
 
-                </a>
+                    </a>
 
-            </div>
+                </div>
 
-            <!-- PRINT -->
-            <div class="col-lg-3 col-md-6">
+                <!-- COMBINED REPORT FORM -->
+                <div class="col-lg-3 col-md-6">
 
-                <button onclick="window.print()"
-                        class="btn btn-dark w-100 py-3">
+                    <a href="{% url 'export_class_report' selected_class selected_term selected_exam %}{% if selected_stream %}?stream_id={{ selected_stream }}&{% else %}?{% endif %}combine=1"
+                       class="btn btn-warning w-100 py-3 text-dark">
 
-                    🖨 Print Results
-
-                </button>
-
-            </div>
-
-        </div>
-
-    </div>
-
-</div>
-
-{% endif %}
-
-    <!-- ====================================== -->
-    <!-- RESULTS TABLE -->
-    <!-- ====================================== -->
-    <div class="card shadow border-0">
-
-        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                        🧾 Combined Report Form
 
             <div>
 

@@ -6,6 +6,8 @@ from urllib.parse import urlparse
 from django.utils import timezone
 from django.conf import settings
 import logging
+from io import BytesIO
+import openpyxl
 from utils.email_service import send_email
 
 from django.http import HttpResponse, JsonResponse
@@ -1883,7 +1885,7 @@ def view_class_students(request, class_id):
 def manage_students(request):
     school = request.user.school
 
-    students = Student.objects.filter(school=school)
+    students = Student.objects.filter(school=school).order_by("name")
 
     classes = Class.objects.filter(school=school)
     streams = Stream.objects.filter(class_group__school=school)
@@ -1895,9 +1897,28 @@ def manage_students(request):
         "dorms": dorms,
     })
 
-from django.shortcuts import get_object_or_404, redirect, render
-from django.contrib import messages
-from classes.models import Class, Stream
+
+@login_required
+def activate_student(request, student_id):
+    student = get_object_or_404(Student, id=student_id, school=request.user.school)
+    if request.method == "POST":
+        student.status = "active"
+        student.current_class = student.current_class or Class.objects.filter(school=request.user.school).order_by("level").first()
+        student.save(update_fields=["status", "current_class"])
+        messages.success(request, f"{student.name} has been activated.")
+    return redirect("manage_students")
+
+
+@login_required
+def deactivate_student(request, student_id):
+    student = get_object_or_404(Student, id=student_id, school=request.user.school)
+    if request.method == "POST":
+        student.status = "inactive"
+        student.current_class = None
+        student.stream = None
+        student.save(update_fields=["status", "current_class", "stream"])
+        messages.success(request, f"{student.name} has been deactivated from active school activities.")
+    return redirect("manage_students")
 from students.models import Student
 from django.contrib.auth import get_user_model
 
@@ -2087,6 +2108,167 @@ def download_student_list(request):
     students = Student.objects.filter(school=school)
 
     return HttpResponse("Student list download will be implemented here.")  
+
+
+@login_required
+def download_student_import_template(request):
+    school = request.user.school
+    workbook = openpyxl.Workbook()
+    sheet = workbook.active
+    sheet.title = "Students"
+    headers = ["name", "admission_number", "gender", "class_name", "stream_name", "parent_phone"]
+    sheet.append(headers)
+    sheet.append(["John Doe", "ADM001", "Male", "Grade 1", "A", "0712345678"])
+    sheet.append(["Jane Doe", "ADM002", "Female", "Grade 1", "B", "0712345679"])
+
+    buffer = BytesIO()
+    workbook.save(buffer)
+    buffer.seek(0)
+
+    response = HttpResponse(buffer.getvalue(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    response["Content-Disposition"] = f"attachment; filename={school.name.replace(' ', '_')}_student_import_template.xlsx"
+    return response
+
+
+@login_required
+def import_students_from_excel(request):
+    school = request.user.school
+
+    if request.method != "POST":
+        return redirect("manage_students")
+
+    excel_file = request.FILES.get("excel_file")
+    class_id = request.POST.get("class_id")
+    if not excel_file or not class_id:
+        messages.error(request, "Please upload an Excel file and select a class.")
+        return redirect("manage_students")
+
+    try:
+        workbook = openpyxl.load_workbook(excel_file, data_only=True)
+        sheet = workbook.active
+        rows = list(sheet.iter_rows(values_only=True))
+    except Exception as exc:
+        messages.error(request, f"Unable to read Excel file: {exc}")
+        return redirect("manage_students")
+
+    if not rows:
+        messages.error(request, "The uploaded Excel file is empty.")
+        return redirect("manage_students")
+
+    headers = [str(cell).strip().lower() if cell is not None else "" for cell in rows[0]]
+    expected_headers = ["name", "admission_number", "gender", "class_name", "stream_name", "parent_phone"]
+    if headers[:len(expected_headers)] != expected_headers:
+        messages.error(request, "The Excel template is invalid. Please use the downloaded template.")
+        return redirect("manage_students")
+
+    school_class = get_object_or_404(Class, id=class_id, school=school)
+    imported = 0
+    skipped = 0
+    errors = []
+
+    for row_index, row in enumerate(rows[1:], start=2):
+        values = [cell if cell is not None else "" for cell in row]
+        if not any(str(value).strip() for value in values):
+            continue
+
+        name = str(values[0]).strip() if len(values) > 0 else ""
+        admission_number = str(values[1]).strip() if len(values) > 1 else ""
+        gender = str(values[2]).strip() if len(values) > 2 else ""
+        class_name = str(values[3]).strip() if len(values) > 3 else ""
+        stream_name = str(values[4]).strip() if len(values) > 4 else ""
+        parent_phone = str(values[5]).strip() if len(values) > 5 else ""
+
+        if not name or not admission_number or not gender:
+            skipped += 1
+            errors.append(f"Row {row_index}: name, admission_number, and gender are required.")
+            continue
+
+        if Student.objects.filter(school=school, admission_number=admission_number).exists():
+            skipped += 1
+            errors.append(f"Row {row_index}: admission number {admission_number} already exists.")
+            continue
+
+        if gender not in ["Male", "Female", "male", "female"]:
+            skipped += 1
+            errors.append(f"Row {row_index}: gender must be Male or Female.")
+            continue
+
+        target_class = school_class
+        if class_name and class_name != school_class.name:
+            target_class = Class.objects.filter(school=school, name__iexact=class_name).first()
+            if not target_class:
+                skipped += 1
+                errors.append(f"Row {row_index}: class {class_name} was not found.")
+                continue
+
+        stream = None
+        if stream_name:
+            stream = Stream.objects.filter(class_group=target_class, name__iexact=stream_name).first()
+            if not stream:
+                stream = Stream.objects.create(class_group=target_class, name=stream_name)
+
+        email = f"{admission_number}@{school.name.lower().replace(' ', '')}.school"
+        user = User.objects.create_user(
+            email=email,
+            password=admission_number,
+            school=school,
+            role="student"
+        )
+
+        Student.objects.create(
+            user=user,
+            school=school,
+            name=name,
+            admission_number=admission_number,
+            gender=gender.title(),
+            current_class=target_class,
+            stream=stream,
+            parent_phone=parent_phone,
+            status="active"
+        )
+        imported += 1
+
+    if imported:
+        messages.success(request, f"Imported {imported} student(s) successfully.")
+    if skipped:
+        messages.warning(request, f"Skipped {skipped} row(s).")
+    if errors:
+        messages.info(request, "Import issues: " + " | ".join(errors[:8]))
+
+    return redirect("manage_students")
+
+
+@login_required
+def export_students_to_excel(request):
+    school = request.user.school
+    students = Student.objects.filter(school=school).order_by("name")
+
+    workbook = openpyxl.Workbook()
+    sheet = workbook.active
+    sheet.title = "Students"
+    headers = ["name", "admission_number", "gender", "class_name", "stream_name", "parent_phone", "status"]
+    sheet.append(headers)
+
+    for student in students:
+        sheet.append([
+            student.name,
+            student.admission_number,
+            student.gender,
+            student.current_class.name if student.current_class else "",
+            student.stream.name if student.stream else "",
+            student.parent_phone or "",
+            student.status,
+        ])
+
+    buffer = BytesIO()
+    workbook.save(buffer)
+    buffer.seek(0)
+
+    response = HttpResponse(buffer.getvalue(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    response["Content-Disposition"] = f"attachment; filename={school.name.replace(' ', '_')}_students_export.xlsx"
+    return response
+
+
 @login_required
 def manage_dorms(request):
     school = request.user.school
@@ -5219,6 +5401,22 @@ def get_student_term_performance_history(student):
 
     return history
 
+
+def get_combined_mark_for_reporting(student, subject, term_obj, combine_requested=False):
+    """Return a combined mark for a subject using exam marks from the same term when requested."""
+    if not combine_requested:
+        return None
+
+    marks_qs = StudentMark.objects.filter(student=student, subject=subject, term=term_obj)
+    if not marks_qs.exists():
+        return None
+
+    marks = [float(mark.marks) for mark in marks_qs if mark.marks is not None]
+    if not marks:
+        return None
+
+    return round(sum(marks) / len(marks), 1)
+
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.decorators import login_required
 # Alias Image to RLImage to match usage below
@@ -5305,13 +5503,19 @@ def export_class_report(request, class_id, term_id, exam_id):
             school=school
         ).order_by("name")
 
-    # If an exam is selected, restrict report forms to students who have marks for that exam
+    # Restrict report forms to students who have marks for the selected term and, when needed, the chosen exam
     if exam_obj:
-        student_ids_with_marks = StudentMark.objects.filter(
-            student__in=students,
-            term=term_obj,
-            exam=exam_obj
-        ).values_list("student_id", flat=True).distinct()
+        if combine_requested:
+            student_ids_with_marks = StudentMark.objects.filter(
+                student__in=students,
+                term=term_obj,
+            ).values_list("student_id", flat=True).distinct()
+        else:
+            student_ids_with_marks = StudentMark.objects.filter(
+                student__in=students,
+                term=term_obj,
+                exam=exam_obj
+            ).values_list("student_id", flat=True).distinct()
 
         students = students.filter(id__in=list(student_ids_with_marks)).order_by("name")
 
@@ -5387,13 +5591,24 @@ def export_class_report(request, class_id, term_id, exam_id):
         student__in=students,
         term=term_obj
     ).select_related("student", "subject")
-    if exam_obj:
+    if exam_obj and not combine_requested:
         marks_qs = marks_qs.filter(exam=exam_obj)
 
-    mark_map = {
-        (mark.student_id, mark.subject_id): mark
-        for mark in marks_qs
-    }
+    if combine_requested:
+        combined_mark_map = {}
+        for mark in marks_qs:
+            key = (mark.student_id, mark.subject_id)
+            combined_mark_map.setdefault(key, []).append(float(mark.marks))
+
+        mark_map = {}
+        for key, values in combined_mark_map.items():
+            average_mark = round(sum(values) / len(values), 1)
+            mark_map[key] = type("CombinedMark", (), {"marks": average_mark})()
+    else:
+        mark_map = {
+            (mark.student_id, mark.subject_id): mark
+            for mark in marks_qs
+        }
 
     totals = {
         student.id: sum(
@@ -5422,22 +5637,38 @@ def export_class_report(request, class_id, term_id, exam_id):
 
     # Compute rankings once per subject (not once per student)
     for subject in subjects:
-        marks_qs = StudentMark.objects.filter(
+        subject_marks_qs = StudentMark.objects.filter(
             subject=subject,
             term=term_obj
         )
-        if exam_obj:
-            marks_qs = marks_qs.filter(exam=exam_obj)
+        if exam_obj and not combine_requested:
+            subject_marks_qs = subject_marks_qs.filter(exam=exam_obj)
 
-        ranking = assign_competition_ranks(
-            list(marks_qs.order_by('-marks')),
-            lambda mark: float(mark.marks),
-            rank_attr="position",
-        )
+        if combine_requested:
+            combined_scores = {}
+            for mark in subject_marks_qs:
+                combined_scores.setdefault(mark.student_id, []).append(float(mark.marks))
+
+            ranking_rows = []
+            for student_id, values in combined_scores.items():
+                average_mark = round(sum(values) / len(values), 1)
+                ranking_rows.append(type("CombinedMark", (), {"student_id": student_id, "marks": average_mark})())
+
+            ranking = assign_competition_ranks(
+                ranking_rows,
+                lambda mark: float(mark.marks),
+                rank_attr="position",
+            )
+        else:
+            ranking = assign_competition_ranks(
+                list(subject_marks_qs.order_by('-marks')),
+                lambda mark: float(mark.marks),
+                rank_attr="position",
+            )
 
         # assign positions for each student for this subject
         for student in students:
-            student_mark = next((mark for mark in ranking if mark.student_id == student.id), None)
+            student_mark = next((mark for mark in ranking if getattr(mark, "student_id", None) == student.id), None)
             subject_positions[student.id][subject.id] = getattr(student_mark, "position", None) if student_mark else None
     # =========================
     for idx, student in enumerate(students):
@@ -5511,10 +5742,14 @@ def export_class_report(request, class_id, term_id, exam_id):
                 "subject": subject,
                 "term": term_obj,
             }
-            if exam_obj:
+            if exam_obj and not combine_requested:
                 mark_filter["exam"] = exam_obj
 
             mark = StudentMark.objects.filter(**mark_filter).first()
+            if combine_requested and not mark:
+                combined_mark = get_combined_mark_for_reporting(student, subject, term_obj, combine_requested=True)
+                if combined_mark is not None:
+                    mark = type("CombinedMark", (), {"marks": combined_mark, "grade": "", "points": 0})()
 
             # Get subject teacher
             teacher_name = "—"

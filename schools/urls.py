@@ -74,11 +74,16 @@ urlpatterns = [
     # STUDENTS
     # =====================================================
     path("students/", views.manage_students, name="manage_students"),
+    path("students/<int:student_id>/activate/", views.activate_student, name="activate_student"),
+    path("students/<int:student_id>/deactivate/", views.deactivate_student, name="deactivate_student"),
     path("students/add/", views.add_student, name="add_student"),
     path("students/<int:student_id>/", views.view_student, name="view_student"),
     path("students/<int:student_id>/edit/", views.edit_student, name="edit_student"),
     path("students/<int:student_id>/delete/", views.delete_student, name="delete_student"),
     path("students/download/", views.download_student_list, name="download_student_list"),
+    path("students/import/", views.import_students_from_excel, name="import_students_from_excel"),
+    path("students/export/", views.export_students_to_excel, name="export_students_to_excel"),
+    path("students/template/", views.download_student_import_template, name="download_student_import_template"),
     path("students/<int:student_id>/report/", views.student_report, name="student_report"),
     
     # API ENDPOINTS
