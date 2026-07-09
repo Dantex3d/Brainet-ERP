@@ -3929,15 +3929,15 @@ def enter_marks(request):
     # =========================
     if selected_class:
         streams = Stream.objects.filter(class_group_id=selected_class).order_by("name")
-        students = Student.objects.filter(
+        students_qs = Student.objects.filter(
             school=school,
             current_class_id=selected_class
         )
 
         if selected_stream:
-            students = students.filter(stream_id=selected_stream)
+            students_qs = students_qs.filter(stream_id=selected_stream)
 
-        students = students.order_by("name")
+        students = list(students_qs.order_by("name"))
 
         # Filter subjects by class + option selection
         class_subjects = ClassSubject.objects.filter(class_name_id=selected_class)
@@ -3966,18 +3966,55 @@ def enter_marks(request):
         except Exception:
             pass
 
-    if selected_class and selected_subject and selected_term and selected_exam_obj and students.exists():
-        subject = Subject.objects.filter(id=selected_subject, school=school).first()
+    if selected_class and selected_term and students:
         term = Term.objects.filter(id=selected_term, school=school).first()
-        if subject and term:
-            for student in students:
-                mark_obj = StudentMark.objects.filter(
-                    student=student,
-                    subject=subject,
+        if term:
+            if selected_entry_mode == "bulk":
+                marks_qs = StudentMark.objects.filter(
+                    student__in=[student.id for student in students],
                     term=term,
-                    exam=selected_exam_obj,
-                ).first()
-                existing_marks[student.id] = str(mark_obj.marks) if mark_obj else ""
+                )
+                if selected_exam_obj:
+                    marks_qs = marks_qs.filter(exam=selected_exam_obj)
+                marks_qs = marks_qs.order_by("student_id", "subject_id", "-created_at")
+
+                latest_marks = {}
+                for mark_obj in marks_qs:
+                    student_id = getattr(mark_obj.student_id, "__int__", lambda: mark_obj.student_id)()
+                    subject_id = getattr(mark_obj.subject_id, "__int__", lambda: mark_obj.subject_id)()
+                    key = (student_id, subject_id)
+                    if key in latest_marks:
+                        continue
+                    latest_marks[key] = str(mark_obj.marks) if mark_obj and mark_obj.marks is not None else ""
+
+                for student in students:
+                    subject_values = []
+                    for subject in subjects:
+                        current_value = latest_marks.get((student.id, subject.id), "")
+                        subject_values.append({"subject": subject, "current_mark": current_value})
+                    setattr(student, "subject_entry_values", subject_values)
+            elif selected_subject:
+                subject = Subject.objects.filter(id=selected_subject, school=school).first()
+                if subject:
+                    marks_qs = StudentMark.objects.filter(
+                        student__in=[student.id for student in students],
+                        subject=subject,
+                        term=term,
+                    )
+                    if selected_exam_obj:
+                        marks_qs = marks_qs.filter(exam=selected_exam_obj)
+                    marks_qs = marks_qs.order_by("student_id", "-created_at")
+
+                    seen_students = set()
+                    for mark_obj in marks_qs:
+                        student_id = getattr(mark_obj.student_id, "__int__", lambda: mark_obj.student_id)()
+                        if student_id in seen_students:
+                            continue
+                        seen_students.add(student_id)
+                        existing_marks[student_id] = str(mark_obj.marks) if mark_obj and mark_obj.marks is not None else ""
+
+                    for student in students:
+                        setattr(student, "current_mark", existing_marks.get(getattr(student, "id", None), ""))
 
     # =========================
     # SAVE MARKS
@@ -3995,21 +4032,20 @@ def enter_marks(request):
         # -------------------------
         # VALIDATION
         # -------------------------
-        if not class_id or not subject_id or not term_id:
-            messages.error(request, "Class, Subject and Term are required")
+        if not class_id or not term_id:
+            messages.error(request, "Class and Term are required")
             return redirect("enter_marks")
 
-        subject = Subject.objects.filter(id=subject_id, school=school).first()
         term = Term.objects.filter(id=term_id, school=school).first()
         exam = Exam.objects.filter(id=exam_id, school=school).first() if exam_id else None
 
-        if not subject or not term:
-            messages.error(request, "Invalid subject or term selected")
+        if not term:
+            messages.error(request, "Invalid term selected")
             return redirect("enter_marks")
 
         if exam and not exam.is_active:
             messages.error(request, "This exam is closed. Contact admin to enter or update results.")
-            redirect_url = f"/schools/principal/enter-marks/?class={class_id}&subject={subject_id}&term={term_id}"
+            redirect_url = f"/schools/principal/enter-marks/?class={class_id}&term={term_id}"
             if stream_id:
                 redirect_url += f"&stream={stream_id}"
             if exam_id:
@@ -4029,84 +4065,98 @@ def enter_marks(request):
             students_for_entry = students_for_entry.filter(stream_id=stream_id)
         students_for_entry = students_for_entry.order_by("name")
 
+        if entry_mode == "bulk":
+            class_subjects = ClassSubject.objects.filter(class_name_id=class_id)
+            if option == "optional":
+                class_subjects = class_subjects.filter(is_optional=True)
+            elif option == "core":
+                class_subjects = class_subjects.filter(is_optional=False)
+
+            subject_ids_for_entry = list(class_subjects.values_list("subject_id", flat=True))
+            if exam:
+                subject_ids_for_entry = list(
+                    Subject.objects.filter(id__in=exam.exam_subjects.values_list("subject_id", flat=True), school=school)
+                    .values_list("id", flat=True)
+                )
+            if not subject_ids_for_entry:
+                messages.error(request, "No subjects are assigned for the selected class or exam")
+                return redirect("enter_marks")
+        else:
+            if not subject_id:
+                messages.error(request, "Subject is required for single-entry mode")
+                return redirect("enter_marks")
+            subject = Subject.objects.filter(id=subject_id, school=school).first()
+            if not subject:
+                messages.error(request, "Invalid subject selected")
+                return redirect("enter_marks")
+            subject_ids_for_entry = [subject.id]
+
         saved_count = 0
 
-        if entry_mode == "bulk":
-            bulk_marks = (request.POST.get("bulk_marks") or "").strip()
-            values = [value.strip() for value in re.split(r"[\n,;]+", bulk_marks) if value.strip()]
-            for index, student in enumerate(students_for_entry):
-                if index >= len(values):
-                    break
-                raw = values[index]
-                try:
-                    marks = int(raw)
-                except (ValueError, TypeError):
+        for key, value in request.POST.items():
+            if not key.startswith("mark_"):
+                continue
+
+            match = re.fullmatch(r"mark_(\d+)(?:_(\d+))?", key)
+            if not match:
+                continue
+
+            student_id = int(match.group(1))
+            student = Student.objects.filter(id=student_id, school=school).first()
+            if not student:
+                logger.debug("Skipping mark for unknown student id=%s", student_id)
+                continue
+
+            raw = (value or "").strip()
+            if raw == "":
+                logger.debug("Empty mark input for student id=%s, skipping", student_id)
+                continue
+
+            try:
+                marks = int(raw)
+            except (ValueError, TypeError):
+                logger.debug("Invalid non-integer mark for student id=%s: %s", student_id, raw)
+                continue
+
+            if marks < 0 or marks > 100:
+                logger.debug("Out of range mark for student id=%s: %s", student_id, marks)
+                continue
+
+            parsed_subject_id = match.group(2)
+            if entry_mode == "bulk":
+                if not parsed_subject_id:
                     continue
-                if marks < 0 or marks > 100:
+                subject_for_entry = Subject.objects.filter(id=parsed_subject_id, school=school).first()
+                if not subject_for_entry:
                     continue
-                grade_obj = grading.filter(min_score__lte=marks, max_score__gte=marks).first()
-                defaults = {
-                    "marks": marks,
-                    "grade": grade_obj.grade_letter if grade_obj else "",
-                    "points": grade_obj.points if grade_obj else 0,
-                }
+            else:
+                subject_for_entry = Subject.objects.filter(id=subject_ids_for_entry[0], school=school).first()
+                if not subject_for_entry:
+                    continue
+
+            grade_obj = grading.filter(min_score__lte=marks, max_score__gte=marks).first()
+            defaults = {
+                "marks": marks,
+                "grade": grade_obj.grade_letter if grade_obj else "",
+                "points": grade_obj.points if grade_obj else 0,
+            }
+
+            try:
                 StudentMark.objects.update_or_create(
                     student=student,
-                    subject=subject,
+                    subject=subject_for_entry,
                     term=term,
                     exam=exam,
                     defaults=defaults,
                 )
                 saved_count += 1
-        else:
-            for key, value in request.POST.items():
-                if not key.startswith("mark_"):
-                    continue
-
-                student_id = key.split("_")[1]
-                student = Student.objects.filter(id=student_id, school=school).first()
-                if not student:
-                    logger.debug("Skipping mark for unknown student id=%s", student_id)
-                    continue
-
-                raw = (value or "").strip()
-                if raw == "":
-                    logger.debug("Empty mark input for student id=%s, skipping", student_id)
-                    continue
-
-                try:
-                    marks = int(raw)
-                except (ValueError, TypeError):
-                    logger.debug("Invalid non-integer mark for student id=%s: %s", student_id, raw)
-                    continue
-
-                if marks < 0 or marks > 100:
-                    logger.debug("Out of range mark for student id=%s: %s", student_id, marks)
-                    continue
-
-                grade_obj = grading.filter(min_score__lte=marks, max_score__gte=marks).first()
-                defaults = {
-                    "marks": marks,
-                    "grade": grade_obj.grade_letter if grade_obj else "",
-                    "points": grade_obj.points if grade_obj else 0,
-                }
-
-                try:
-                    StudentMark.objects.update_or_create(
-                        student=student,
-                        subject=subject,
-                        term=term,
-                        exam=exam,
-                        defaults=defaults,
-                    )
-                    saved_count += 1
-                    logger.info("Saved mark: student=%s subject=%s term=%s exam=%s marks=%s", student.id, subject.id, term.id, getattr(exam, 'id', None), marks)
-                except Exception as e:
-                    logger.exception("Failed to save mark for student %s: %s", student_id, e)
+                logger.info("Saved mark: student=%s subject=%s term=%s exam=%s marks=%s", student.id, subject_for_entry.id, term.id, getattr(exam, 'id', None), marks)
+            except Exception as e:
+                logger.exception("Failed to save mark for student %s: %s", student_id, e)
 
         messages.success(request, f"{saved_count} marks saved successfully")
 
-        redirect_url = f"/schools/principal/enter-marks/?class={class_id}&subject={subject_id}&term={term_id}"
+        redirect_url = f"{request.path}?class={class_id}&term={term_id}"
 
         if stream_id:
             redirect_url += f"&stream={stream_id}"
@@ -4116,6 +4166,8 @@ def enter_marks(request):
             redirect_url += f"&option={option}"
         if entry_mode:
             redirect_url += f"&entry_mode={entry_mode}"
+        if entry_mode != "bulk" and subject_id:
+            redirect_url += f"&subject={subject_id}"
 
         return redirect(redirect_url)
 

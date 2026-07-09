@@ -3,7 +3,7 @@ from django.urls import reverse
 
 from brainet.templatetags.text_filters import register
 from exams.models import Exam
-from schools.models import School, Term, Subject
+from schools.models import School, Term, Subject, StudentMark
 from students.models import Student
 from schools.views import assign_competition_ranks, generate_progress_chart, get_student_term_performance_history, get_combined_mark_for_reporting
 from schools.promotion_service import PromotionService
@@ -181,6 +181,82 @@ class ReportFormTests(TestCase):
     def test_generate_progress_chart_returns_png_payload(self):
         payload = generate_progress_chart([70, 82, 91], labels=["Eng", "Math", "Sci"], title="Sample")
         self.assertTrue(payload.startswith("i"))
+
+
+class MarksEntryDisplayTests(TestCase):
+    def setUp(self):
+        self.school = School.objects.create(
+            name="Marks School",
+            address="Test Address",
+            phone="0712345678",
+            email="marks@example.com",
+            is_active=True,
+            is_verified=True,
+        )
+        self.term = Term.objects.create(
+            school=self.school,
+            name="Term 1",
+            start_date="2024-01-01",
+            end_date="2024-03-31",
+        )
+        self.user = CustomUser.objects.create_user(
+            email="principal2@example.com",
+            password="testpass123",
+            role="principal",
+            school=self.school,
+            email_verified=True,
+        )
+        self.class_obj = self.school.classes_app_classes.create(name="Grade 7", level=7)
+        self.subject = Subject.objects.create(school=self.school, name="English")
+        self.student = Student.objects.create(
+            school=self.school,
+            admission_number="STD0003",
+            name="Alice",
+            gender="Female",
+            current_class=self.class_obj,
+        )
+        StudentMark.objects.create(
+            student=self.student,
+            subject=self.subject,
+            term=self.term,
+            marks=78,
+            grade="B",
+            points=3,
+        )
+
+    def test_enter_marks_displays_existing_marks_without_exam_filter(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(
+            reverse("enter_marks") + f"?class={self.class_obj.id}&subject={self.subject.id}&term={self.term.id}"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'value="78"')
+        self.assertContains(response, "Current: 78")
+
+    def test_enter_marks_has_bulk_entry_toggle(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(
+            reverse("enter_marks") + f"?class={self.class_obj.id}&subject={self.subject.id}&term={self.term.id}"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'name="entry_mode" value="bulk"')
+
+    def test_bulk_entry_page_renders_without_crashing(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(
+            reverse("enter_marks") + f"?class={self.class_obj.id}&term={self.term.id}&entry_mode=bulk"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Student Name")
+        self.assertContains(response, "Admission No")
+        self.assertContains(response, self.subject.name)
+        self.assertContains(response, 'name="mark_')
 
 
 class ExamWindowTests(TestCase):
