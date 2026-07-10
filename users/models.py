@@ -20,6 +20,7 @@ class CustomUser(AbstractUser):
         ("teacher", "Teacher"),
         ("dos", "DOS"),
         ("principal", "Principal"),
+        ("bursar", "Bursar"),
         ("admin", "Admin"),
         ("superuser", "Superuser"),
     )

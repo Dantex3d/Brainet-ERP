@@ -59,11 +59,16 @@ Attendance Management
 
 Fee Management
 
-- Fee structure setup
-- Fee payment recording
-- Outstanding balance tracking
-- Financial reports
-- Receipt generation
+- **Fee Structures**: Define multi-component fee structures by school and term
+- **Professional Invoices**: Generate invoices with unique numbering and payment tracking
+- **Multiple Payment Methods**: M-Pesa, Bank Transfer, Cash, and Other methods
+- **Payment Tracking**: Track invoice status (Pending, Paid, Overdue)
+- **Professional Receipts**: Print-ready receipts with school headers, logos, and watermarks
+- **School Branding**: Multiple school names, official certification, and decorative headers
+- **Receipt Export**: PDF and print-friendly receipt generation
+- **Payment References**: Track payment methods, transaction IDs, and references
+- **Bursar Role**: Dedicated bursar account for fee management
+- **Role-Based Access**: Superuser, Principal, DOS, and Bursar can manage fees
 
 Communication System
 

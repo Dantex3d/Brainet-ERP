@@ -1,0 +1,228 @@
+{% extends 'dashboards/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <!-- Back to Home -->
+            <div class="mb-4">
+                <a href="{% url 'landing_page' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Home
+                </a>
+            </div>
+
+            <!-- About Section Header -->
+            <div class="mb-5">
+                <h1 class="display-4 fw-bold text-primary mb-3">
+                    <i class="bi bi-info-circle-fill"></i> About Brainet Analytics
+                </h1>
+                <p class="lead text-muted">
+                    Intelligent school management platform designed to empower educational institutions across Kenya.
+                </p>
+            </div>
+
+            <!-- Developer Profile Card -->
+            <div class="card border-0 shadow-lg rounded-4 mb-5">
+                <div class="card-body p-5">
+                    <div class="row align-items-center">
+                        <div class="col-md-4 text-center mb-4 mb-md-0">
+                            <div class="bg-primary rounded-circle p-5 d-inline-flex align-items-center justify-content-center" style="width: 180px; height: 180px;">
+                                <i class="bi bi-person-fill text-white" style="font-size: 4rem;"></i>
+                            </div>
+                        </div>
+                        <div class="col-md-8">
+                            <h2 class="fw-bold mb-2">Daniel Pkorir Merkou</h2>
+                            <p class="text-success fw-semibold mb-3">
+                                <i class="bi bi-award-fill"></i> Full Stack Developer & System Architect
+                            </p>
+                            <p class="text-muted mb-3">
+                                Daniel is a dedicated Computer Science graduate from one of Kenya's premier TVET institutions, combining technical excellence with practical problem-solving expertise.
+                            </p>
+                            <div class="d-flex flex-wrap gap-2">
+                                <span class="badge bg-primary">Full Stack Development</span>
+                                <span class="badge bg-success">System Architecture</span>
+                                <span class="badge bg-info">Database Design</span>
+                                <span class="badge bg-warning text-dark">EdTech Solutions</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mission Statement -->
+            <div class="card border-0 bg-light rounded-4 mb-5">
+                <div class="card-body p-4">
+                    <h3 class="fw-bold mb-3">
+                        <i class="bi bi-target"></i> Our Mission
+                    </h3>
+                    <p class="mb-0">
+                        To revolutionize school management across Kenya by providing affordable, scalable, and user-friendly technology solutions that empower educators, streamline administration, and create data-driven insights for student success.
+                    </p>
+                </div>
+            </div>
+
+            <!-- About the System -->
+            <div class="row mb-5">
+                <div class="col-md-6 mb-3">
+                    <div class="card h-100 border-0 shadow-sm rounded-4">
+                        <div class="card-body">
+                            <h5 class="card-title fw-bold mb-2">
+                                <i class="bi bi-rocket-fill text-primary"></i> Built in Kenya
+                            </h5>
+                            <p class="card-text text-muted">
+                                Brainet Analytics is proudly developed by a Kenyan Computer Science graduate, designed specifically to meet the needs of Kenyan schools and educational institutions.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <div class="card h-100 border-0 shadow-sm rounded-4">
+                        <div class="card-body">
+                            <h5 class="card-title fw-bold mb-2">
+                                <i class="bi bi-lightning-fill text-success"></i> Innovative Features
+                            </h5>
+                            <p class="card-text text-muted">
+                                From automated exam management to fee collection, promotion systems, and comprehensive analytics—all built with schools' real challenges in mind.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Features Highlights -->
+            <div class="card border-0 shadow-lg rounded-4 mb-5">
+                <div class="card-header bg-primary text-white rounded-top-4 py-3">
+                    <h5 class="mb-0">
+                        <i class="bi bi-gear-fill"></i> Core Capabilities
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <ul class="list-unstyled">
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> <strong>Exam Management</strong> — Automated exam scheduling and grading</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> <strong>Fee Collection</strong> — Bank transfer & M-Pesa integration</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> <strong>Student Promotion</strong> — Automated promotion workflows</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> <strong>Reporting</strong> — Comprehensive analytics & insights</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <ul class="list-unstyled">
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> <strong>Class Management</strong> — Class creation and student assignment</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> <strong>Staff Administration</strong> — User roles & permissions</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> <strong>PWA Support</strong> — Works offline on mobile & desktop</li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> <strong>Multi-School Support</strong> — Manage multiple institutions</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contact & Support -->
+            <div class="card border-0 bg-light rounded-4 mb-5">
+                <div class="card-body p-4">
+                    <h3 class="fw-bold mb-3">
+                        <i class="bi bi-chat-dots-fill"></i> Get in Touch
+                    </h3>
+                    <p class="mb-3">
+                        For support, feedback, or partnership inquiries, reach out to the development team:
+                    </p>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p>
+                                <i class="bi bi-telephone-fill text-primary"></i> 
+                                <a href="tel:+254700269717">+254 700 269 717</a>
+                            </p>
+                            <p>
+                                <i class="bi bi-whatsapp text-success"></i> 
+                                <a href="https://wa.me/254700269717" target="_blank">WhatsApp Support</a>
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <p>
+                                <i class="bi bi-envelope-fill text-danger"></i> 
+                                <a href="mailto:merkoudaniel@gmail.com">merkoudaniel@gmail.com</a>
+                            </p>
+                            <p>
+                                <i class="bi bi-globe text-info"></i> 
+                                <a href="https://brainetanalytics.co.ke" target="_blank">brainetanalytics.co.ke</a>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="row text-center mb-5">
+                <div class="col-md-3 col-6 mb-3">
+                    <div class="card border-0 shadow-sm rounded-4">
+                        <div class="card-body">
+                            <h3 class="fw-bold text-primary">50+</h3>
+                            <p class="text-muted mb-0">Schools Active</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6 mb-3">
+                    <div class="card border-0 shadow-sm rounded-4">
+                        <div class="card-body">
+                            <h3 class="fw-bold text-success">20K+</h3>
+                            <p class="text-muted mb-0">Students Managed</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6 mb-3">
+                    <div class="card border-0 shadow-sm rounded-4">
+                        <div class="card-body">
+                            <h3 class="fw-bold text-info">99%</h3>
+                            <p class="text-muted mb-0">Automation Rate</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6 mb-3">
+                    <div class="card border-0 shadow-sm rounded-4">
+                        <div class="card-body">
+                            <h3 class="fw-bold text-warning">2026</h3>
+                            <p class="text-muted mb-0">Year Established</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Call to Action -->
+            <div class="card border-0 bg-primary text-white rounded-4 text-center p-5">
+                <h3 class="fw-bold mb-3">Ready to Transform Your School?</h3>
+                <p class="mb-4">Join 50+ schools already using Brainet Analytics to revolutionize their operations.</p>
+                <a href="{% url 'register_school' %}" class="btn btn-light btn-lg fw-bold">
+                    <i class="bi bi-arrow-right-circle-fill"></i> Register Your School Today
+                </a>
+            </div>
+
+            <!-- Back to Home -->
+            <div class="mt-5 text-center">
+                <a href="{% url 'landing_page' %}" class="btn btn-outline-primary btn-lg">
+                    <i class="bi bi-arrow-left"></i> Back to Home
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    body {
+        background: #f8f9fa;
+    }
+    
+    .display-4 {
+        color: #0d6efd;
+    }
+    
+    .card {
+        transition: all 0.3s ease;
+    }
+    
+    .card:hover {
+        transform: translateY(-5px);
+    }
+</style>
+{% endblock %}

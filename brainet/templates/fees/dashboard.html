@@ -1,0 +1,178 @@
+{% extends 'dashboards/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- SCHOOL HEADER WITH LOGO -->
+    {% if school and school.logo %}
+    <div class="row mb-4">
+        <div class="col-lg-12">
+            <div class="card border-0 shadow-lg rounded-4 bg-gradient">
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-2 text-center">
+                            <img src="{{ school.logo.url }}" alt="{{ school.name }}" style="max-height: 100px; max-width: 100px; object-fit: contain;">
+                        </div>
+                        <div class="col-md-10">
+                            <h2 class="fw-bold text-primary mb-1">{{ school.name }}</h2>
+                            {% if school.motto %}<p class="text-muted mb-2 fst-italic">{{ school.motto }}</p>{% endif %}
+                            <small class="text-muted">{{ school.address }} | Tel: {{ school.phone }}</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <h1 class="fw-bold text-primary mb-1">💰 Fees Management</h1>
+            <p class="text-muted">Create and manage school fee structures, invoices, and payments.</p>
+        </div>
+        <div class="col-lg-4">
+            <div class="d-flex justify-content-end gap-2 flex-wrap">
+                <a href="{% url 'create_fee_structure' %}" class="btn btn-success shadow-sm rounded-3">
+                    ➕ New Fee Structure
+                </a>
+                <a href="{% url 'create_invoice' %}" class="btn btn-primary shadow-sm rounded-3">
+                    📄 New Invoice
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {% if messages %}
+    <div class="row mb-3">
+        <div class="col-lg-12">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row g-4">
+        <!-- FEE STRUCTURES -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-lg rounded-4">
+                <div class="card-header bg-success text-white rounded-top-4">
+                    <h5 class="mb-0">📋 Fee Structures</h5>
+                </div>
+                <div class="card-body">
+                    {% if structures %}
+                    <div class="list-group">
+                        {% for structure in structures %}
+                        <div class="list-group-item border rounded-3 mb-2">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="mb-1">{{ structure.title }}</h6>
+                                    <small class="text-muted">{{ structure.school.name }}</small><br>
+                                    <small class="text-muted">Term: {{ structure.term|default:"General" }}</small>
+                                </div>
+                                <span class="badge bg-primary fs-6">KES {{ structure.total_amount }}</span>
+                            </div>
+                            <small class="text-secondary d-block mt-2">
+                                {% for component in structure.component_lines %}
+                                • {{ component }}<br>
+                                {% endfor %}
+                            </small>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center py-4">No fee structures yet. Create one to get started.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- INVOICES -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-lg rounded-4">
+                <div class="card-header bg-primary text-white rounded-top-4 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">📊 Recent Invoices</h5>
+                    <span class="badge bg-light text-dark">{{ invoices|length }}</span>
+                </div>
+                <div class="card-body table-responsive">
+                    {% if invoices %}
+                    <table class="table table-sm align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Invoice #</th>
+                                <th>Payer</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for invoice in invoices|slice:":10" %}
+                            <tr>
+                                <td><small><strong>{{ invoice.invoice_number }}</strong></small></td>
+                                <td><small>{{ invoice.payer_name|truncatewords:3 }}</small></td>
+                                <td><strong>KES {{ invoice.amount }}</strong></td>
+                                <td>
+                                    {% if invoice.paid %}
+                                    <span class="badge bg-success">Paid</span>
+                                    {% elif invoice.is_overdue %}
+                                    <span class="badge bg-danger">Overdue</span>
+                                    {% else %}
+                                    <span class="badge bg-warning text-dark">Pending</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'invoice_detail' invoice.id %}" class="btn btn-sm btn-outline-primary">View</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <p class="text-muted text-center py-4">No invoices yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- STATISTICS -->
+    <div class="row g-3 mt-2">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-lg rounded-4 bg-primary text-white">
+                <div class="card-body">
+                    <h6 class="text-white-50 mb-2">Total Invoices</h6>
+                    <h3 class="fw-bold">{{ invoices|length }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-lg rounded-4 bg-success text-white">
+                <div class="card-body">
+                    <h6 class="text-white-50 mb-2">Paid</h6>
+                    <h3 class="fw-bold">{{ invoices|dictsort:"paid"|length }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-lg rounded-4 bg-warning text-dark">
+                <div class="card-body">
+                    <h6 class="mb-2">Pending</h6>
+                    <h3 class="fw-bold">{{ invoices|length }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-lg rounded-4 bg-info text-white">
+                <div class="card-body">
+                    <h6 class="text-white-50 mb-2">Structures</h6>
+                    <h3 class="fw-bold">{{ structures|length }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

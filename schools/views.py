@@ -1469,6 +1469,11 @@ def features_demo(request):
     return render(request, "schools/features_demo.html")
 
 
+def about_us(request):
+    """About page with developer information"""
+    return render(request, "schools/about_us.html")
+
+
 def contact_admin(request):
     """Simple page instructing users to contact their administrator."""
     return render(request, "schools/contact_admin.html")
@@ -3181,6 +3186,52 @@ def manage_staff(request):
     return render(request, "dos/staff.html", {
         "staff": staff
     })
+
+
+@login_required
+def create_bursar(request):
+    """Principal creates a bursar account for their school"""
+    if getattr(request.user, 'role', None) != 'principal' or not request.user.school:
+        messages.error(request, 'Only principals can create bursar accounts.')
+        return redirect('dashboard')
+    
+    if request.method == 'POST':
+        name = request.POST.get('name', '').strip()
+        email = request.POST.get('email', '').strip()
+        phone = request.POST.get('phone', '').strip()
+        
+        if not all([name, email, phone]):
+            messages.error(request, 'All fields are required.')
+            return redirect('create_bursar')
+        
+        school = request.user.school
+        
+        # Check if email already exists
+        if CustomUser.objects.filter(email=email).exists():
+            messages.error(request, f'Email {email} is already registered.')
+            return redirect('create_bursar')
+        
+        # Create bursar account
+        username = email.split('@')[0]
+        try:
+            user = CustomUser.objects.create_user(
+                username=username,
+                email=email,
+                password='bursar123',  # Temporary password
+                role='bursar',
+                school=school,
+                first_name=name,
+                phone=phone,
+            )
+            
+            send_user_verification_email(user, request=request, role_name='Bursar')
+            messages.success(request, f'Bursar account created for {name}. A verification email has been sent to {email}.')
+            return redirect('principal_dashboard')
+        except Exception as e:
+            messages.error(request, f'Error creating bursar account: {str(e)}')
+            return redirect('create_bursar')
+    
+    return render(request, 'schools/create_bursar.html')
     
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages

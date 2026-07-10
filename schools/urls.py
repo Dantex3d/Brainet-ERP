@@ -9,6 +9,7 @@ urlpatterns = [
     path("", views.landing_page, name="landing_page"),
     path("mobile-app/", views.mobile_app, name="mobile_app"),
     path("features-demo/", views.features_demo, name="features_demo"),
+    path("about-us/", views.about_us, name="about_us"),
 
     # =====================================================
     # SUPERUSER
@@ -161,6 +162,7 @@ urlpatterns = [
     path("principal/dashboard/", views.principal_dashboard, name="principal_dashboard"),
     path("principal/school-dos/", views.principal_school_manager, name="principal_school_manager"),
     path("principal/enter-marks/", views.enter_marks, name="enter_marks"),
+    path("principal/create-bursar/", views.create_bursar, name="create_bursar"),
     
     # =====================================================
     #TERMS

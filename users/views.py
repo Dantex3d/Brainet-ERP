@@ -63,6 +63,9 @@ class CustomLoginView(LoginView):
         elif role == 'subject_teacher':
             return reverse_lazy('subject_teacher_dashboard')
 
+        elif role == 'bursar':
+            return reverse_lazy('fees_dashboard')
+
         elif role == 'student':
             return reverse_lazy('student_dashboard')
 
@@ -98,6 +101,9 @@ def dashboard(request):
 
     elif role == 'subject_teacher':
         return redirect('teacher_dashboard')
+
+    elif role == 'bursar':
+        return redirect('fees_dashboard')
 
     elif role == 'student':
         return redirect('student_dashboard')

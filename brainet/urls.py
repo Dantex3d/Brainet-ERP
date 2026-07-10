@@ -35,6 +35,7 @@ urlpatterns = [
     path("exams/", include("exams.urls")),
     path("assignments/", include("assignments.urls")),
     path("subjects/", include("subjects.urls")),
+    path("fees/", include("fees.urls")),
 
 
     # schools app (school management, vouchers, DOS, etc.)

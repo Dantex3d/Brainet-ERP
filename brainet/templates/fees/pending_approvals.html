@@ -1,0 +1,115 @@
+{% extends 'dashboards/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-lg-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="fw-bold text-primary mb-1">📋 Fee Approvals</h1>
+                    <p class="text-muted">Review and approve pending fee structures and invoices from {{ school.name }}</p>
+                </div>
+                <a href="{% url 'principal_dashboard' %}" class="btn btn-outline-secondary rounded-3">← Back to Dashboard</a>
+            </div>
+        </div>
+    </div>
+
+    {% if messages %}
+    <div class="row mb-3">
+        <div class="col-lg-12">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row g-4">
+        <!-- PENDING FEE STRUCTURES -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-lg rounded-4">
+                <div class="card-header bg-warning text-dark rounded-top-4">
+                    <h5 class="mb-0">📊 Pending Fee Structures <span class="badge bg-dark">{{ pending_structures|length }}</span></h5>
+                </div>
+                <div class="card-body">
+                    {% if pending_structures %}
+                    <div class="list-group">
+                        {% for structure in pending_structures %}
+                        <div class="list-group-item border rounded-3 mb-2">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <h6 class="mb-1">{{ structure.title }}</h6>
+                                    <small class="text-muted">Term: {{ structure.term|default:"General" }}</small><br>
+                                    <small class="text-muted">Created by: {{ structure.created_by.get_full_name|default:structure.created_by.email }}</small>
+                                </div>
+                                <span class="badge bg-primary fs-6">KES {{ structure.total_amount }}</span>
+                            </div>
+                            <small class="text-secondary d-block mb-2">
+                                {% for component in structure.component_lines %}
+                                • {{ component }}<br>
+                                {% endfor %}
+                            </small>
+                            <div class="d-flex gap-2">
+                                <a href="{% url 'approve_fee_structure' structure.id %}" class="btn btn-success btn-sm rounded-2">
+                                    ✓ Approve
+                                </a>
+                                <a href="{% url 'reject_fee_structure' structure.id %}" class="btn btn-danger btn-sm rounded-2">
+                                    ✕ Reject
+                                </a>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center py-4">✓ No pending fee structures</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- PENDING INVOICES -->
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-lg rounded-4">
+                <div class="card-header bg-info text-white rounded-top-4">
+                    <h5 class="mb-0">💰 Pending Invoices <span class="badge bg-light text-dark">{{ pending_invoices|length }}</span></h5>
+                </div>
+                <div class="card-body">
+                    {% if pending_invoices %}
+                    <div class="list-group">
+                        {% for invoice in pending_invoices %}
+                        <div class="list-group-item border rounded-3 mb-2">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <h6 class="mb-1">{{ invoice.invoice_number }}</h6>
+                                    <small class="text-muted">Payer: {{ invoice.payer_name }}</small><br>
+                                    <small class="text-muted">Created: {{ invoice.generated_at|date:"d M, Y" }}</small>
+                                </div>
+                                <span class="badge bg-primary fs-6">KES {{ invoice.amount }}</span>
+                            </div>
+                            {% if invoice.description %}
+                            <small class="text-secondary d-block mb-2">{{ invoice.description|truncatewords:20 }}</small>
+                            {% endif %}
+                            <div class="d-flex gap-2">
+                                <a href="{% url 'approve_invoice' invoice.id %}" class="btn btn-success btn-sm rounded-2">
+                                    ✓ Approve
+                                </a>
+                                <a href="{% url 'reject_invoice' invoice.id %}" class="btn btn-danger btn-sm rounded-2">
+                                    ✕ Reject
+                                </a>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center py-4">✓ No pending invoices</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
