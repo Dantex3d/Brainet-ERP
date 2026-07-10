@@ -292,6 +292,12 @@
                     <a href="{% url 'add_student' %}" class="btn btn-outline-primary rounded-3 text-start py-2">
                         👨‍🎓 Add Student
                     </a>
+                     <a style="flex:0 0 auto;" href="{% url 'manage_students' %}" class="btn btn-outline-primary btn-sm rounded-3">
+                    👨‍🎓 Students
+                </a>
+                <a style="flex:0 0 auto;" href="{% url 'class_list_selector' %}" class="btn btn-outline-info btn-sm rounded-3">
+                    📋 Class Lists
+                </a>
                     <a href="{% url 'add_class' %}" class="btn btn-outline-success rounded-3 text-start py-2">
                         📚 Add Class
                     </a>
@@ -303,6 +309,9 @@
                     </a>
                     <a href="{% url 'manage_grading' %}" class="btn btn-outline-success rounded-3 text-start py-2">
                         ⭐ Grade Manager
+                    </a>
+                    <a style="flex:0 0 auto;" href="{% url 'promotion_center' %}" class="btn btn-outline-success btn-sm rounded-3">
+                    🚀 Promotion Pannel
                     </a>
                     <a href="{% url 'manage_exams' %}" class="btn btn-outline-info rounded-3 text-start py-2">
                         📝 Exam Settings

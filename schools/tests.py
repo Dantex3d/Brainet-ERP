@@ -3,7 +3,7 @@ from django.urls import reverse
 
 from brainet.templatetags.text_filters import register
 from exams.models import Exam
-from schools.models import School, Term, Subject, StudentMark
+from schools.models import School, Term, Subject, StudentMark, ContactMessage
 from students.models import Student
 from schools.views import assign_competition_ranks, generate_progress_chart, get_student_term_performance_history, get_combined_mark_for_reporting
 from schools.promotion_service import PromotionService
@@ -37,6 +37,62 @@ class PromotionStageTests(TestCase):
 
         self.assertIsNone(next_class)
         self.assertIsNone(next_stream)
+
+
+class ContactMessageFlowTests(TestCase):
+    def setUp(self):
+        self.school = School.objects.create(
+            name="Support School",
+            address="Test Address",
+            phone="0712345678",
+            email="supportschool@example.com",
+            is_active=True,
+            is_verified=True,
+        )
+        self.superuser = CustomUser.objects.create_user(
+            email="super@example.com",
+            password="testpass123",
+            role="superuser",
+            school=self.school,
+            email_verified=True,
+        )
+        self.superuser.is_superuser = True
+        self.superuser.save(update_fields=["is_superuser"])
+
+    def test_contact_submit_stores_message_for_superuser(self):
+        response = self.client.post(
+            reverse("contact_submit"),
+            {
+                "name": "Jane Doe",
+                "email": "jane@example.com",
+                "phone": "0712345678",
+                "message": "Need help with setup",
+            },
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(ContactMessage.objects.filter(email="jane@example.com").exists())
+
+    def test_superuser_can_reply_to_contact_message(self):
+        message = ContactMessage.objects.create(
+            name="Jane Doe",
+            email="jane@example.com",
+            phone="0712345678",
+            message="Need help with setup",
+        )
+        self.client.force_login(self.superuser)
+
+        response = self.client.post(
+            reverse("superuser_contact_reply", args=[message.id]),
+            {"reply": "We will help shortly."},
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        message.refresh_from_db()
+        self.assertTrue(message.handled)
+        self.assertEqual(message.reply, "We will help shortly.")
 
 
 class SchoolLogoStorageTests(TestCase):

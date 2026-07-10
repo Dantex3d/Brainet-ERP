@@ -2206,6 +2206,10 @@ def import_students_from_excel(request):
             stream = Stream.objects.filter(class_group=target_class, name__iexact=stream_name).first()
             if not stream:
                 stream = Stream.objects.create(class_group=target_class, name=stream_name)
+        elif target_class and target_class.streams.exists():
+            default_stream = target_class.streams.first()
+            if default_stream:
+                stream = default_stream
 
         email = f"{admission_number}@{school.name.lower().replace(' ', '')}.school"
         user = User.objects.create_user(
