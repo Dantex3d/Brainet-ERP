@@ -214,7 +214,7 @@
                 <a href="{% url 'view_full_marksheet' %}?class={{ selected_class }}&term={{ selected_term }}&exam={{ selected_exam }}{% if selected_stream %}&stream={{ selected_stream }}{% endif %}"
                    class="btn btn-success w-100 py-3">
 
-                    👁 View Full Marksheet
+                    👁 View Results
 
                 </a>
 
@@ -226,7 +226,7 @@
                 <a href="{% url 'export_marksheet_pdf' %}?class={{ selected_class }}&term={{ selected_term }}&exam={{ selected_exam }}{% if selected_stream %}&stream={{ selected_stream }}{% endif %}"
                    class="btn btn-danger w-100 py-3">
 
-                    📄 Export Marksheet PDF
+                    📄 Generate markshets Pdf
 
                 </a>
 
@@ -238,19 +238,22 @@
                     <a href="{% url 'export_class_report' selected_class selected_term selected_exam %}{% if selected_stream %}?stream_id={{ selected_stream }}{% endif %}"
                        class="btn btn-primary w-100 py-3">
 
-                        📘 Export Class Report
+                        📘 Generate Report Forms
 
                     </a>
 
                 </div>
 
                 <!-- COMBINED REPORT FORM -->
-                <div class="col-lg-3 col-md-6">
+               <!-- <div class="col-lg-3 col-md-6">
 
                     <a href="{% url 'export_class_report' selected_class selected_term selected_exam %}{% if selected_stream %}?stream_id={{ selected_stream }}&{% else %}?{% endif %}combine=1"
                        class="btn btn-warning w-100 py-3 text-dark">
 
-                        🧾 Combined Report Form
+                        🧾 Combined Results Report Forms
+                </a> -->
+                
+            </div>
 
             <div>
 
@@ -451,14 +454,15 @@
 
                 </p>
 
-            </div>
-
-            {% endif %}
+                        </div>
+            {% endif %}   {# closes: if students #}
 
         </div>
 
     </div>
 
 </div>
+
+{% endif %}   {# closes: if selected_class and selected_term and selected_exam #}
 
 {% endblock %}

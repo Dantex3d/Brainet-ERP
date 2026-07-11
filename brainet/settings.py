@@ -22,13 +22,11 @@ SECRET_KEY = os.environ.get(
     "django-insecure-development-key"
 )
 
-DEBUG = os.environ.get("DEBUG", "False") == "True"
+DEBUG = os.environ.get("DEBUG", "False")
 
 ALLOWED_HOSTS = [
     "brainetanalytics.co.ke",
     "www.brainetanalytics.co.ke",
-    "brainet.up.railway.app",
-    "brainet-erp.vercel.app",
     "localhost",
     "127.0.0.1",
 ]
@@ -36,7 +34,7 @@ ALLOWED_HOSTS = [
 CSRF_TRUSTED_ORIGINS = [
     "https://brainetanalytics.co.ke",
     "https://www.brainetanalytics.co.ke",
-    "https://brainet.up.railway.app",
+ 
 ]
 
 # =========================================================
