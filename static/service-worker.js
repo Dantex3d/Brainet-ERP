@@ -54,7 +54,7 @@ self.addEventListener('message', (event) => {
 
 async function checkForUpdates(port) {
   try {
-    const response = await fetch('/manifest.json');
+    const response = await fetch('/static/manifest.json');
     if (response.ok) {
       port.postMessage({ type: 'UPDATE_AVAILABLE' });
     }

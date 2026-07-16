@@ -210,7 +210,11 @@
     if (installButton) {
         installButton.addEventListener('click', async () => {
             if (!deferredPrompt) {
-                alert('Install is not available on this device yet. Please use Chrome or Edge and open the site in full screen.');
+                if (window.matchMedia('(display-mode: standalone)').matches) {
+                    alert('This app is already installed. Open it from your home screen or app launcher.');
+                } else {
+                    alert('Install is not available on this browser yet. Please use Chrome or Edge on Android, Windows, or desktop, and open the site in full screen. If you already installed it, open the installed app from your home screen.');
+                }
                 return;
             }
             deferredPrompt.prompt();
@@ -238,7 +242,7 @@
 
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
+            navigator.serviceWorker.register('{% static "service-worker.js" %}', { scope: '/' })
                 .then((registration) => {
                     console.log('Service Worker registered successfully:', registration);
                     
