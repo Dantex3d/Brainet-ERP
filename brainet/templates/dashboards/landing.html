@@ -1247,16 +1247,54 @@ window.addEventListener('appinstalled', () => {
     deferredPrompt = null;
 });
 
+// Update notification banner
+const updateBanner = document.createElement('div');
+updateBanner.id = 'updateBanner';
+updateBanner.className = 'alert alert-warning alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-2';
+updateBanner.style.cssText = 'display:none; z-index:9999; max-width:500px;';
+updateBanner.innerHTML = `
+    <strong>Update Available!</strong> A new version of Brainet is ready.
+    <button type="button" class="btn btn-warning btn-sm ms-2" id="updateBtn">Update Now</button>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+`;
+document.body.insertBefore(updateBanner, document.body.firstChild);
+
 // Register Service Worker for PWA
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
             .then((registration) => {
                 console.log('Service Worker registered successfully:', registration);
+                
+                // Check for updates every 60 seconds
+                setInterval(() => {
+                    registration.update().catch((error) => {
+                        console.log('Update check failed:', error);
+                    });
+                }, 60000);
+                
+                // Listen for controller change (new SW activated)
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    updateBanner.style.display = 'flex';
+                });
             })
             .catch((error) => {
                 console.log('Service Worker registration failed:', error);
             });
+        
+        // Listen for messages from service worker
+        navigator.serviceWorker.addEventListener('message', (event) => {
+            if (event.data.type === 'UPDATE_AVAILABLE') {
+                updateBanner.style.display = 'flex';
+            }
+        });
+    });
+    
+    // Handle update button click - force reload
+    document.addEventListener('click', (e) => {
+        if (e.target.id === 'updateBtn') {
+            window.location.reload();
+        }
     });
 }
 </script>

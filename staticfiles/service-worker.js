@@ -1,4 +1,6 @@
-const CACHE_NAME = 'brainet-erp-v1';
+// Version cache for update detection
+const CACHE_VERSION = 'brainet-erp-v2';
+const CACHE_NAME = CACHE_VERSION;
 const STATIC_ASSETS = [
   '/',
   '/login',
@@ -7,7 +9,7 @@ const STATIC_ASSETS = [
   'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js'
 ];
 
-// Install event - cache static assets
+// Check for updates every time service worker activates
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -16,7 +18,7 @@ self.addEventListener('install', (event) => {
       });
     })
   );
-  self.skipWaiting();
+  self.skipWaiting(); // Activate new SW immediately
 });
 
 // Activate event - clean up old caches
@@ -26,6 +28,7 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheName !== CACHE_NAME) {
+            console.log('Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
@@ -33,7 +36,32 @@ self.addEventListener('activate', (event) => {
     })
   );
   self.clients.claim();
+  
+  // Check for updates on activation
+  self.clients.matchAll().then((clients) => {
+    clients.forEach((client) => {
+      client.postMessage({ type: 'SW_ACTIVATED', version: CACHE_VERSION });
+    });
+  });
 });
+
+// Check for new versions periodically
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'CHECK_UPDATE') {
+    checkForUpdates(event.ports[0]);
+  }
+});
+
+async function checkForUpdates(port) {
+  try {
+    const response = await fetch('/manifest.json');
+    if (response.ok) {
+      port.postMessage({ type: 'UPDATE_AVAILABLE' });
+    }
+  } catch (error) {
+    console.log('Update check failed:', error);
+  }
+}
 
 // Fetch event - network first, then cache
 self.addEventListener('fetch', (event) => {
