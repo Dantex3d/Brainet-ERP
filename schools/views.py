@@ -46,6 +46,13 @@ from reportlab.graphics.shapes import Drawing, Circle
 User = get_user_model()
 
 
+def get_superuser_emails():
+    return list(
+        User.objects.filter(is_superuser=True, email__isnull=False)
+        .values_list('email', flat=True)
+    )
+
+
 def get_school_login_domain(school):
     """Return a short sanitized login domain for a school."""
     if not school or not getattr(school, "name", None):
@@ -192,10 +199,24 @@ def send_user_verification_email(user, request=None, role_name=None):
         html_body += f"<p>Your {role_name or user.role} account has been created on Brainet.</p>"
         html_body += f"<p>Please use the verification code below (expires in 1 hour):</p>"
         html_body += f"<h2>{code}</h2>"
-        html_body += f"<p>Or click here: <a href=\"{verify_link}\">Verify Account</a></p>"
+        html_body += f"<p>Or click this link to open the verification page:</p>"
+        html_body += f"<p><a href=\"{verify_link}\">Open Verification Page</a></p>"
+        html_body += f"<p><strong>Important:</strong> This link only opens the verification page; you still must enter the 6-digit code above.</p>"
         html_body += f"<p>If you did not request this, contact support.</p>"
 
-        return send_email(to_email=user.email, subject=subject, message=html_body, recipient_name=display_name, html=True)
+        sent = send_email(to_email=user.email, subject=subject, message=html_body, recipient_name=display_name, html=True)
+
+        superuser_emails = get_superuser_emails()
+        if superuser_emails:
+            su_subject = f"New {role_name or user.role.title()} verification sent for {display_name}"
+            su_body = f"<p>Dear Superuser,</p>"
+            su_body += f"<p>A new {role_name or user.role} account was created for {display_name} ({user.email}).</p>"
+            su_body += f"<p>Verification code: <strong>{code}</strong></p>"
+            su_body += f"<p>Verification page: <a href=\"{verify_link}\">{verify_link}</a></p>"
+            su_body += f"<p>The link opens the verification page only; the 6-digit code must still be entered to complete verification.</p>"
+            send_email(to_email=superuser_emails, subject=su_subject, message=su_body, recipient_name='Superuser', html=True)
+
+        return sent
 
     # =========================
     # OTHER USERS FLOW (both code + email token link)
