@@ -199,9 +199,13 @@
                         Exam Window
                     </small>
 
-                    <h2 class="fw-bold text-danger">
-                        OPEN
+                    <h2 class="fw-bold {% if exam_window_open %}text-success{% else %}text-warning{% endif %}">
+                        {% if exam_window_open %}OPEN{% else %}CLOSED{% endif %}
                     </h2>
+
+                    <small class="text-muted">
+                        {% if exam_window_open %}{{ active_exam_count }} open exam(s){% else %}Marks entry blocked{% endif %}
+                    </small>
 
                 </div>
 

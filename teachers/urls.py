@@ -7,6 +7,7 @@ urlpatterns = [
     path("export/pdf/", views.export_teachers_pdf, name="export_teachers_pdf"),
     path("add/", views.add_teacher, name="add_teacher"),
     path("<int:teacher_id>/edit/", views.edit_teacher, name="edit_teacher"),
+    path("<int:teacher_id>/assign/", views.assign_teacher, name="assign_teacher"),
     path("<int:teacher_id>/delete/", views.delete_teacher, name="delete_teacher"),
     path("dashboard/", views.teacher_dashboard, name="teacher_dashboard"),
     path("subject-teacher/dashboard/", views.teacher_dashboard, name="subject_teacher_dashboard"),

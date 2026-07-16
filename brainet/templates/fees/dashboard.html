@@ -35,8 +35,17 @@
                 <a href="{% url 'create_fee_structure' %}" class="btn btn-success shadow-sm rounded-3">
                     ➕ New Fee Structure
                 </a>
-                <a href="{% url 'create_invoice' %}" class="btn btn-primary shadow-sm rounded-3">
-                    📄 New Invoice
+                <a href="{% url 'fee_structure_schedule' %}" class="btn btn-secondary shadow-sm rounded-3">
+                    📄 Fee Schedule
+                </a>
+                <a href="{% url 'quick_payment' %}" class="btn btn-primary shadow-sm rounded-3">
+                    💸 Record Payment
+                </a>
+                <a href="{% url 'student_fee_statement' %}" class="btn btn-info shadow-sm rounded-3">
+                    🔍 Check Student Fees
+                </a>
+                <a href="{% url 'school_payment_account' %}" class="btn btn-warning shadow-sm rounded-3">
+                    🏦 Manage Payment Account
                 </a>
             </div>
         </div>
@@ -73,7 +82,12 @@
                                     <small class="text-muted">{{ structure.school.name }}</small><br>
                                     <small class="text-muted">Term: {{ structure.term|default:"General" }}</small>
                                 </div>
-                                <span class="badge bg-primary fs-6">KES {{ structure.total_amount }}</span>
+                                <div class="text-end">
+                                    <span class="badge bg-primary fs-6">KES {{ structure.total_amount }}</span>
+                                    <div class="mt-2">
+                                        <a href="{% url 'edit_fee_structure' structure.id %}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                                    </div>
+                                </div>
                             </div>
                             <small class="text-secondary d-block mt-2">
                                 {% for component in structure.component_lines %}

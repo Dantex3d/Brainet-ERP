@@ -1,8 +1,58 @@
 # schools/middleware.py
 
-from django.shortcuts import redirect
+import json
+import logging
+import traceback
+from django.shortcuts import redirect, render
 from django.contrib.auth import logout
 from django.urls import resolve, Resolver404
+from django.core.exceptions import PermissionDenied, SuspiciousOperation
+from django.http import Http404
+from django.conf import settings
+from .models import ErrorReport
+
+logger = logging.getLogger(__name__)
+
+
+class ErrorReporterMiddleware:
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        try:
+            response = self.get_response(request)
+            return response
+        except Http404 as exc:
+            return render(request, "exams/errors/404.html", {"message": str(exc)}, status=404)
+        except PermissionDenied:
+            raise
+        except SuspiciousOperation as exc:
+            return render(request, "exams/errors/400.html", {"message": str(exc)}, status=400)
+        except Exception as exc:
+            traceback_data = traceback.format_exception(type(exc), exc, exc.__traceback__)
+            report_data = {
+                "GET": request.GET.dict(),
+                "POST": request.POST.dict(),
+                "COOKIES": request.COOKIES,
+                "META": {k: v for k, v in request.META.items() if k.startswith("HTTP_")},
+            }
+
+            try:
+                ErrorReport.objects.create(
+                    school=getattr(request.user, "school", None) if request.user.is_authenticated else None,
+                    user=request.user if request.user.is_authenticated else None,
+                    path=request.path,
+                    method=request.method,
+                    exception_type=type(exc).__name__,
+                    message=str(exc),
+                    traceback="".join(traceback_data),
+                    data=json.dumps(report_data, default=str),
+                )
+            except Exception:
+                logger.exception("Failed to create error report")
+
+            raise
 
 
 class SchoolActivationMiddleware:

@@ -38,6 +38,13 @@ class CustomLoginView(LoginView):
         
         # Normal login flow
         login(self.request, user)
+
+        remember_me = form.cleaned_data.get("remember_me")
+        if remember_me:
+            self.request.session.set_expiry(settings.SESSION_COOKIE_AGE)
+        else:
+            self.request.session.set_expiry(0)
+
         return redirect(self.get_success_url())
 
     def get_success_url(self):

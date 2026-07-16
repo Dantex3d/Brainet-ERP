@@ -1,9 +1,19 @@
 from pathlib import Path
+import importlib
 import os
-from dotenv import load_dotenv
-import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
-import smtplib
+
+dotenv = importlib.util.find_spec('dotenv')
+if dotenv is not None:
+    load_dotenv = importlib.import_module('dotenv').load_dotenv
+else:
+    load_dotenv = lambda *args, **kwargs: None
+
+try:
+    dj_database_url = importlib.import_module('dj_database_url')
+except ImportError:
+    dj_database_url = None
+
 # =========================================================
 # BASE DIRECTORY
 # =========================================================
@@ -22,20 +32,15 @@ SECRET_KEY = os.environ.get(
     "django-insecure-development-key"
 )
 
-DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
-
-
 ALLOWED_HOSTS = [
     "brainetanalytics.co.ke",
     "www.brainetanalytics.co.ke",
-    "localhost",
     "127.0.0.1",
 ]
-    
+
 CSRF_TRUSTED_ORIGINS = [
     "https://brainetanalytics.co.ke",
     "https://www.brainetanalytics.co.ke",
- 
 ]
 
 # =========================================================
@@ -90,6 +95,8 @@ AUTHENTICATION_BACKENDS = [
 
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = '/teachers/dashboard/'
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_COOKIE_AGE = 1209600  # 2 weeks: used when remember me is selected
 
 # =========================================================
 # MIDDLEWARE
@@ -106,6 +113,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
 
     "schools.middleware.SchoolActivationMiddleware",
+    "schools.middleware.ErrorReporterMiddleware",
 
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -138,9 +146,14 @@ TEMPLATES = [
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 if DATABASE_URL:
-    DATABASES = {
-        "default": dj_database_url.parse(DATABASE_URL, conn_max_age=600)
-    }
+    if dj_database_url is not None:
+        DATABASES = {
+            "default": dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+        }
+    else:
+        raise ImproperlyConfigured(
+            "DATABASE_URL is set but the 'dj_database_url' package is not installed"
+        )
 else:
     DATABASES = {
         "default": {

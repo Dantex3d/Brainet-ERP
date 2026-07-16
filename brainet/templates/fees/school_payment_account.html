@@ -1,0 +1,54 @@
+{% extends 'dashboards/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm rounded-4 border-0">
+                <div class="card-header bg-warning text-dark rounded-top-4">
+                    <h4 class="mb-0">Manage School Payment Account</h4>
+                </div>
+                <div class="card-body p-4">
+                    {% if messages %}
+                        {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <form method="POST">
+                        {% csrf_token %}
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Bank Name</label>
+                            <input type="text" name="bank_name" class="form-control rounded-3" value="{{ school.bank_name|default:'' }}" placeholder="e.g., ABC Bank">
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Account Number</label>
+                            <input type="text" name="account_number" class="form-control rounded-3" value="{{ school.account_number|default:'' }}" placeholder="e.g., 1234567890">
+                        </div>
+                        <div class="d-flex gap-2 justify-content-end">
+                            <button type="submit" class="btn btn-primary rounded-3">Save Payment Account</button>
+                            {% if school.bank_name or school.account_number %}
+                            <button type="submit" name="action" value="delete" class="btn btn-outline-danger rounded-3" onclick="return confirm('Delete the saved school payment account details?');">Delete Details</button>
+                            {% endif %}
+                        </div>
+                    </form>
+
+                    <div class="mt-4 p-4 rounded-4 bg-light">
+                        <h5 class="fw-bold">Current payment account</h5>
+                        {% if school.bank_name and school.account_number %}
+                            <p class="mb-1"><strong>{{ school.bank_name }}</strong> - {{ school.account_number }}</p>
+                        {% else %}
+                            <p class="text-muted">No school payment account is configured at the moment.</p>
+                        {% endif %}
+                        <p class="small text-muted">These details are used in fee schedule reports and receipts where school payment methods are displayed.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

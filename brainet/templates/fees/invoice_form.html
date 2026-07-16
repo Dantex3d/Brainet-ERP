@@ -43,7 +43,7 @@
                             <select name="school" class="form-select rounded-3" required>
                                 <option value="">-- Select School --</option>
                                 {% for s in schools %}
-                                <option value="{{ s.id }}">{{ s.name }}</option>
+                                <option value="{{ s.id }}" {% if selected_school and selected_school.id == s.id %}selected{% endif %}>{{ s.name }}</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -54,38 +54,74 @@
                             <select name="structure" class="form-select rounded-3">
                                 <option value="">-- Select Structure --</option>
                                 {% for struct in structures %}
-                                <option value="{{ struct.id }}">{{ struct.title }} ({{ struct.school.name }}) - KES {{ struct.total_amount }}</option>
+                                <option value="{{ struct.id }}" {% if selected_structure and selected_structure.id == struct.id %}selected{% endif %}>{{ struct.title }} ({{ struct.school.name }}) - KES {{ struct.total_amount }}</option>
                                 {% endfor %}
                             </select>
                         </div>
 
                         <div class="mb-3">
+                            <label class="form-label fw-bold">Term</label>
+                            <select name="term" class="form-select rounded-3" required>
+                                <option value="">-- Select Term --</option>
+                                {% for term in terms %}
+                                <option value="{{ term.name }}" {% if selected_term == term.name %}selected{% endif %}>{{ term.name }}</option>
+                                {% endfor %}
+                            </select>
+                            {% if current_term and not selected_structure %}
+                            <div class="form-text">Defaulting invoice term to current active term if no structure is selected.</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Student Admission Number</label>
+                            <input id="admission_number_input" type="text" name="admission_number" class="form-control rounded-3" placeholder="Type admission number to pull student data" value="{{ admission_number }}">
+                            <div class="form-text">Leave blank for general invoices, or enter the student's admission number to auto-populate payer, school and student details.</div>
+                        </div>
+                        <div id="lookup-feedback" class="mb-3 text-danger" style="display:none;"></div>
+
+                        <div id="student-details">
+                        {% if student %}
+                        <div class="mb-3 p-3 rounded-4 bg-light border">
+                            <strong>Student found:</strong>
+                            <div class="mt-2"><strong>Name:</strong> {{ student.name }}</div>
+                            <div><strong>Admission #:</strong> {{ student.admission_number }}</div>
+                            <div><strong>Gender:</strong> {{ student.gender }}</div>
+                            <div><strong>Class:</strong> {% if student.current_class %}{{ student.current_class.name }}{% else %}N/A{% endif %}</div>
+                            <div><strong>Stream:</strong> {% if student.stream %}{{ student.stream.name }}{% else %}N/A{% endif %}</div>
+                            <div><strong>School:</strong> {{ student.school.name }}</div>
+                            <div><strong>Parent / Guardian:</strong> {{ student.parent_phone|default:'Not provided' }}</div>
+                            <div><strong>Status:</strong> {{ student.status }}</div>
+                        </div>
+                        {% endif %}
+                        </div>
+
+                        <div class="mb-3">
                             <label class="form-label fw-bold">Payer Name</label>
-                            <input type="text" name="payer_name" class="form-control rounded-3" placeholder="Student name or guardian name" required>
+                            <input type="text" name="payer_name" class="form-control rounded-3" placeholder="Student name or guardian name" required value="{{ payer_name }}">
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label fw-bold">Description (Optional)</label>
-                            <textarea name="description" class="form-control rounded-3" rows="3" placeholder="Invoice details, what fees are for, etc."></textarea>
+                            <textarea name="description" class="form-control rounded-3" rows="3" placeholder="Invoice details, what fees are for, etc.">{{ description }}</textarea>
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label fw-bold">Amount (KES)</label>
-                            <input type="number" name="amount" class="form-control rounded-3" step="0.01" min="0" placeholder="26500" required>
+                            <input type="number" name="amount" class="form-control rounded-3" step="0.01" min="0" placeholder="26500" required value="{{ amount }}">
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label fw-bold">Due Date (Optional)</label>
-                            <input type="date" name="due_date" class="form-control rounded-3">
+                            <input type="date" name="due_date" class="form-control rounded-3" value="{{ due_date }}">
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label fw-bold">Payment Method</label>
                             <select name="payment_method" class="form-select rounded-3">
-                                <option value="mpesa">M-Pesa</option>
-                                <option value="bank">Bank Transfer</option>
-                                <option value="cash">Cash</option>
-                                <option value="other">Other</option>
+                                <option value="mpesa" {% if payment_method == 'mpesa' %}selected{% endif %}>M-Pesa</option>
+                                <option value="bank" {% if payment_method == 'bank' %}selected{% endif %}>Bank Transfer</option>
+                                <option value="cash" {% if payment_method == 'cash' %}selected{% endif %}>Cash</option>
+                                <option value="other" {% if payment_method == 'other' %}selected{% endif %}>Other</option>
                             </select>
                         </div>
 
@@ -99,4 +135,79 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const admissionInput = document.getElementById('admission_number_input');
+    const feedback = document.getElementById('lookup-feedback');
+    const studentDetails = document.getElementById('student-details');
+    const payerInput = document.querySelector('input[name="payer_name"]');
+    const schoolSelect = document.querySelector('select[name="school"]');
+
+    function renderStudent(student) {
+        const details = [
+            `<div class="mb-3 p-3 rounded-4 bg-light border">`,
+            `<strong>Student found:</strong>`,
+            `<div class="mt-2"><strong>Name:</strong> ${student.name}</div>`,
+            `<div><strong>Admission #:</strong> ${student.admission_number}</div>`,
+            `<div><strong>Gender:</strong> ${student.gender}</div>`,
+            `<div><strong>Class:</strong> ${student.class || 'N/A'}</div>`,
+            `<div><strong>Stream:</strong> ${student.stream || 'N/A'}</div>`,
+            `<div><strong>School:</strong> ${student.school.name}</div>`,
+            `<div><strong>Parent / Guardian:</strong> ${student.parent_phone || 'Not provided'}</div>`,
+            `<div><strong>Status:</strong> ${student.status}</div>`,
+            `</div>`
+        ];
+        studentDetails.innerHTML = details.join('');
+    }
+
+    function clearStudent() {
+        studentDetails.innerHTML = '';
+    }
+
+    function lookupAdmission() {
+        const value = admissionInput.value.trim();
+        if (!value) {
+            feedback.style.display = 'none';
+            clearStudent();
+            return;
+        }
+
+        feedback.style.display = 'none';
+        fetch(`{% url 'student_lookup' %}?admission_number=${encodeURIComponent(value)}`)
+            .then(async function (response) {
+                const data = await response.json();
+                if (!response.ok || !data.ok) {
+                    feedback.textContent = data.message || 'Unable to find student.';
+                    feedback.style.display = 'block';
+                    clearStudent();
+                    return;
+                }
+
+                renderStudent(data.student);
+                if (payerInput && !payerInput.value.trim()) {
+                    payerInput.value = data.student.name;
+                }
+                if (schoolSelect) {
+                    const schoolId = String(data.student.school.id);
+                    const option = Array.from(schoolSelect.options).find(o => o.value === schoolId);
+                    if (option) {
+                        option.selected = true;
+                    }
+                }
+            })
+            .catch(function () {
+                feedback.textContent = 'Lookup failed. Please try again.';
+                feedback.style.display = 'block';
+                clearStudent();
+            });
+    }
+
+    let timeout;
+    admissionInput.addEventListener('input', function () {
+        clearTimeout(timeout);
+        timeout = setTimeout(lookupAdmission, 450);
+    });
+});
+</script>
 {% endblock %}

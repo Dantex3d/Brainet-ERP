@@ -53,5 +53,9 @@ if settings.DEBUG:
         document_root=settings.MEDIA_ROOT
     )
 
+handler400 = 'schools.views.bad_request'
+handler404 = 'schools.views.not_found'
+handler500 = 'schools.views.server_error'
+
 
 

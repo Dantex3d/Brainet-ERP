@@ -11,6 +11,7 @@ from reportlab.pdfgen import canvas
 
 from assignments.models import Assignment, Submission
 from classes.models import Class, Stream
+from exams.models import Exam
 from schools.models import Notification, Principal, Subject, SchoolNotice
 from students.models import Student
 from users.models import CustomUser
@@ -66,6 +67,31 @@ def assign_teacher_class(request):
         messages.success(request, "Class assigned successfully")
 
     return redirect("manage_teachers")
+
+@login_required
+def assign_teacher(request, teacher_id):
+    if not _can_manage_teachers(request):
+        messages.error(request, "Permission denied.")
+        return redirect("manage_teachers")
+
+    school = request.user.school
+    teacher = get_object_or_404(Teacher, id=teacher_id, school=school)
+    classes = Class.objects.filter(school=school)
+    subjects = Subject.objects.filter(school=school)
+    streams = Stream.objects.filter(class_group__school=school)
+
+    class_assignment = ClassTeacherAssignment.objects.filter(teacher=teacher).select_related("class_obj", "stream").first()
+    subject_assignments = TeacherSubjectAssignment.objects.filter(teacher=teacher).select_related("subject", "class_obj", "stream")
+
+    return render(request, "teachers/assign_teacher.html", {
+        "teacher": teacher,
+        "classes": classes,
+        "subjects": subjects,
+        "streams": streams,
+        "class_assignment": class_assignment,
+        "subject_assignments": subject_assignments,
+    })
+
 @login_required
 def add_teacher(request):
     if not _can_manage_teachers(request):
@@ -116,21 +142,7 @@ def add_teacher(request):
                 role='teacher'
             )
 
-            # If a class was selected during creation, create a class assignment
-            class_id = request.POST.get("assigned_class")
-            if class_id:
-                try:
-                    class_obj = Class.objects.get(id=class_id, school=school)
-                    ClassTeacherAssignment.objects.create(
-                        school=school,
-                        class_obj=class_obj,
-                        stream=_resolve_class_stream(class_obj),
-                        teacher=teacher
-                    )
-                except Exception:
-                    pass
-
-            # Send verification email
+                # Send verification email
             from schools.views import send_user_verification_email
             send_user_verification_email(user, request=request, role_name='Teacher')
 
@@ -277,6 +289,9 @@ def teacher_dashboard(request):
         school=school
     ).select_related("class_obj", "stream", "subject")
 
+    exam_window_open = Exam.objects.filter(school=school, is_active=True).exists()
+    active_exam_count = Exam.objects.filter(school=school, is_active=True).count()
+
     return render(request, template_name, {
         "teacher": teacher,
         "assigned_classes": assigned_classes,
@@ -293,6 +308,8 @@ def teacher_dashboard(request):
         "assignments_count": assignments.count(),
         "pending_marks": submissions.filter(assignment__isnull=False).count() if hasattr(submissions, 'filter') else len(submissions),
         "online_classes": online_classes,
+        "exam_window_open": exam_window_open,
+        "active_exam_count": active_exam_count,
     })    
 
 

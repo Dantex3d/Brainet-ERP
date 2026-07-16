@@ -14,7 +14,7 @@ def replace(value, old, new):
         return value
 
 
-@register.filter(name="get_school_logo_url", is_safe=False)
+@register.filter(name='get_school_logo_url', is_safe=False)
 def get_school_logo_url(school):
     """Return the URL for the school's logo.
 
@@ -23,7 +23,7 @@ def get_school_logo_url(school):
     if not school:
         return ""
 
-    logo = getattr(school, "logo", None)
+    logo = getattr(school, 'logo', None)
 
     if not logo:
         return ""

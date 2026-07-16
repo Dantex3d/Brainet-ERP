@@ -17,6 +17,9 @@
 
             <p><strong>Email:</strong> {{ school.email }}</p>
             <p><strong>Phone:</strong> {{ school.phone }}</p>
+            {% if school.bank_name and school.account_number %}
+                <p><strong>Bank Account:</strong> {{ school.bank_name }} - {{ school.account_number }}</p>
+            {% endif %}
 
             <p>
                 <strong>Status:</strong>

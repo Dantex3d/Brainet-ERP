@@ -4,455 +4,662 @@
     {% load static %}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Receipt - {{ invoice.invoice_number }}</title>
+    <title>Receipt - {{ invoice.receipt_number|default:invoice.invoice_number }}</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        /* ==========================================================
+   BRAINET ERP PROFESSIONAL RECEIPT
+==========================================================*/
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f5f5f5;
-            color: #333;
-        }
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
 
-        .print-container {
-            max-width: 800px;
-            margin: 20px auto;
-            background: white;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            border-radius: 8px;
-            overflow: hidden;
-        }
+body{
+    font-family:Arial,Helvetica,sans-serif;
+    background:#eceff3;
+    color:#222;
+    font-size:13px;
+}
 
-        /* WATERMARK */
-        .receipt-wrapper {
-            position: relative;
-            background: white;
-            padding: 40px;
-        }
+.receipt{
 
-        .watermark {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(-45deg);
-            font-size: 120px;
-            color: rgba(0, 0, 0, 0.03);
-            font-weight: bold;
-            z-index: 0;
-            pointer-events: none;
-            white-space: nowrap;
-            font-family: Arial, sans-serif;
-        }
+    width:148mm;
+    height:210mm;
 
-        .content {
-            position: relative;
-            z-index: 1;
-        }
+    margin:0 auto;
 
-        /* HEADER WITH LOGO */
-        .receipt-header {
-            text-align: center;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 3px solid #1f3c88;
-        }
+    background:#fff;
 
-        .school-logo {
-            max-height: 80px;
-            max-width: 80px;
-            margin: 0 auto 15px;
-            display: block;
-        }
+    padding:16px;
 
-        .school-name-main {
-            font-size: 24px;
-            font-weight: 700;
-            color: #1f3c88;
-            margin-bottom: 5px;
-        }
+    position:relative;
 
-        .school-motto {
-            font-size: 12px;
-            color: #666;
-            font-style: italic;
-            margin-bottom: 10px;
-        }
+    overflow:hidden;
 
-        .school-contact {
-            font-size: 11px;
-            color: #666;
-            line-height: 1.6;
-        }
+    page-break-inside:avoid;
+}
 
-        /* RECEIPT TYPE AND NUMBER */
-        .receipt-type {
-            text-align: center;
-            margin: 25px 0;
-            padding: 15px;
-            background: #f0f0f0;
-            border-radius: 6px;
-        }
+.receipt { page-break-inside: avoid; page-break-after: avoid; }
 
-        .receipt-type h2 {
-            font-size: 28px;
-            color: #1f3c88;
-            margin-bottom: 5px;
-        }
+.watermark-text{
+    position: absolute;
+    color: #163b7d;
+    opacity: 0.08;
+    font-size: 8px;
+    font-weight:700;
+    transform: rotate(-45deg);
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 1;
+    letter-spacing: 0.1em;
+}
 
-        .receipt-number {
-            font-size: 13px;
-            color: #666;
-            letter-spacing: 2px;
-        }
+/*========================================================*/
 
-        /* UNDERLINE DECORATION */
-        .header-underline {
-            width: 100%;
-            height: 4px;
-            background: linear-gradient(90deg, #1f3c88, #40c997, #1f3c88);
-            margin: 20px 0;
-            border-radius: 2px;
-        }
+.watermark-logo {
+    position: absolute;
+    width: 240px;
+    height: 240px;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    opacity: 0.15;
+    z-index: 1;
+    object-fit: contain;
+    pointer-events: none;
+}
 
-        /* DETAILS GRID */
-        .details-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin: 25px 0;
-            padding: 15px;
-            background: #f9f9f9;
-            border-radius: 6px;
-        }
+.receipt>*:not(.watermark-logo) {
+    position: relative;
+    z-index: 2;
+}
 
-        .detail-item h6 {
-            font-size: 11px;
-            color: #999;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 5px;
-            font-weight: 600;
-        }
+/*========================================================*/
 
-        .detail-item p {
-            font-size: 13px;
-            color: #333;
-            font-weight: 500;
-        }
+.header-table{
 
-        /* AMOUNT SECTION */
-        .amount-section {
-            background: linear-gradient(135deg, #1f3c88, #40c997);
-            color: white;
-            padding: 25px;
-            border-radius: 8px;
-            margin: 25px 0;
-            text-align: right;
-        }
+    width:100%;
 
-        .amount-section .label {
-            font-size: 12px;
-            opacity: 0.9;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
+    border-collapse:collapse;
 
-        .amount-section .amount {
-            font-size: 48px;
-            font-weight: 700;
-            letter-spacing: 1px;
-        }
+    margin-bottom:10px;
 
-        /* INFO TABLE */
-        .info-table {
-            width: 100%;
-            margin: 20px 0;
-            border-collapse: collapse;
-        }
+}
 
-        .info-table tr {
-            border-bottom: 1px solid #eee;
-        }
+.header-table td{
 
-        .info-table td {
-            padding: 12px 0;
-            font-size: 13px;
-        }
+    vertical-align:top;
 
-        .info-table .label {
-            color: #999;
-            font-weight: 600;
-            width: 40%;
-        }
+}
 
-        .info-table .value {
-            color: #333;
-            font-weight: 500;
-        }
+.logo-cell{
 
-        /* STATUS BADGE */
-        .status-badge {
-            display: inline-block;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
+    width:85px;
 
-        .status-paid {
-            background: #d4edda;
-            color: #155724;
-        }
+}
 
-        .status-pending {
-            background: #fff3cd;
-            color: #856404;
-        }
+.logo img {
+    width: 60px;
+    height: 60px;
+    object-fit: contain;
+    border-radius: 4px;
+}
 
-        .status-overdue {
-            background: #f8d7da;
-            color: #721c24;
-        }
 
-        /* FOOTER */
-        .receipt-footer {
-            text-align: center;
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #ddd;
-            color: #999;
-            font-size: 11px;
-            line-height: 1.8;
-        }
 
-        .footer-divider {
-            width: 100px;
-            height: 1px;
-            background: #ddd;
-            margin: 15px auto;
-        }
+.school-name{
 
-        /* PRINT STYLES */
-        @media print {
-            body {
-                background: white;
-            }
+    font-size:24px;
 
-            .print-container {
-                max-width: 100%;
-                margin: 0;
-                box-shadow: none;
-                border-radius: 0;
-            }
+    font-weight:700;
 
-            .no-print {
-                display: none !important;
-            }
+    color:#163b7d;
 
-            .print-container {
-                page-break-inside: avoid;
-            }
-        }
+}
 
-        /* NON-PRINT CONTROLS */
-        .print-controls {
-            text-align: center;
-            padding: 20px;
-            background: #f9f9f9;
-            border-bottom: 1px solid #ddd;
-        }
+.school-motto{
 
-        .btn {
-            display: inline-block;
-            padding: 10px 20px;
-            margin: 0 5px;
-            border: none;
-            border-radius: 4px;
-            font-size: 14px;
-            cursor: pointer;
-            text-decoration: none;
-            font-weight: 600;
-        }
+    font-style:italic;
 
-        .btn-print {
-            background: #1f3c88;
-            color: white;
-        }
+    color:#666;
 
-        .btn-back {
-            background: #6c757d;
-            color: white;
-        }
+    margin:4px 0;
 
-        .btn-download {
-            background: #28a745;
-            color: white;
-        }
+}
 
-        /* MULTIPLE SCHOOLS SECTION */
-        .schools-certified {
-            margin-top: 30px;
-            padding: 15px;
-            background: #f5f5f5;
-            border-left: 4px solid #1f3c88;
-            border-radius: 4px;
-            font-size: 12px;
-            color: #666;
-        }
+.school-contact{
 
-        .schools-certified strong {
-            display: block;
-            margin-bottom: 8px;
-            color: #333;
-        }
+    font-size:12px;
+
+    color:#555;
+
+    line-height:1.6;
+
+}
+
+/*========================================================*/
+
+.receipt-title{
+
+    margin:18px 0;
+
+    padding:10px;
+
+    text-align:center;
+
+    font-size:20px;
+
+    font-weight:700;
+
+    color:#fff;
+
+    background:#163b7d;
+
+    letter-spacing:1px;
+
+}
+
+/*========================================================*/
+
+.info-table{
+
+    width:100%;
+
+    border-collapse:collapse;
+
+    margin-bottom:18px;
+
+}
+
+.info-table td{
+
+    border:1px solid #d9d9d9;
+
+    padding:8px;
+
+    width:25%;
+
+}
+
+.info-table label{
+
+    display:block;
+
+    font-size:11px;
+
+    color:#777;
+
+    margin-bottom:4px;
+
+    text-transform:uppercase;
+
+}
+
+.info-table strong{
+
+    font-size:13px;
+
+}
+
+/*========================================================*/
+
+.section-title{
+
+    background:#163b7d;
+
+    color:#fff;
+
+    padding:8px 12px;
+
+    margin-top:15px;
+
+    margin-bottom:0;
+
+    font-size:14px;
+
+    font-weight:700;
+
+}
+
+/*========================================================*/
+
+.details-table{
+
+    width:100%;
+
+    border-collapse:collapse;
+
+    margin-bottom:18px;
+
+}
+
+.details-table td{
+
+    border:1px solid #ddd;
+
+    padding:9px 10px;
+
+}
+
+.details-table td:first-child{
+
+    width:35%;
+
+    font-weight:600;
+
+    background:#f8f9fb;
+
+}
+
+/*========================================================*/
+
+.payment-table{
+
+    width:100%;
+
+    border-collapse:collapse;
+
+    margin-top:0;
+
+    margin-bottom:20px;
+
+}
+
+.payment-table th{
+
+    background:#163b7d;
+
+    color:#fff;
+
+    padding:10px;
+
+    text-align:left;
+
+}
+
+.payment-table td{
+
+    border:1px solid #ddd;
+
+    padding:10px;
+
+}
+
+.payment-table tr:last-child{
+
+    font-weight:bold;
+
+    background:#eef7ff;
+
+}
+
+.right{
+
+    text-align:right;
+
+}
+
+/*========================================================*/
+
+.words{
+
+    border:1px solid #ddd;
+
+    padding:10px;
+
+    margin-bottom:20px;
+
+    background:#fafafa;
+
+}
+
+.words strong{
+
+    display:block;
+
+    margin-bottom:5px;
+
+}
+
+/*========================================================*/
+
+.footer-table{
+
+    width:100%;
+
+    margin-top:30px;
+
+    border-collapse:collapse;
+
+}
+
+.footer-table td{
+
+    width:50%;
+
+    vertical-align:top;
+
+}
+
+.stamp-box{
+
+    width:180px;
+
+    height:80px;
+
+    border:2px dashed #888;
+
+    text-align:center;
+
+    line-height:80px;
+
+    color:#777;
+
+    margin-top:8px;
+
+}
+
+.footer-note{
+
+    margin-top:25px;
+
+    text-align:center;
+
+    font-size:11px;
+
+    color:#666;
+
+    border-top:1px solid #ddd;
+
+    padding-top:12px;
+
+}
+
+/*========================================================*/
+
+.status{
+
+    padding:4px 10px;
+
+    border-radius:15px;
+
+    font-size:11px;
+
+    font-weight:bold;
+
+}
+
+.paid{
+
+    background:#d4edda;
+
+    color:#155724;
+
+}
+
+.unpaid{
+
+    background:#f8d7da;
+
+    color:#721c24;
+
+}
+
+/*========================================================*/
+
+.toolbar{
+
+    width:210mm;
+
+    margin:20px auto;
+
+    text-align:right;
+
+}
+
+.btn{
+
+    padding:10px 18px;
+
+    border:none;
+
+    cursor:pointer;
+
+    text-decoration:none;
+
+    color:#fff;
+
+    border-radius:4px;
+
+    margin-left:5px;
+
+    font-size:13px;
+
+}
+
+.btn-primary{
+
+    background:#163b7d;
+
+}
+
+.btn-secondary{
+
+    background:#666;
+
+}
+
+/*========================================================*/
+
+@page{
+    size: A5;
+    margin:8mm;
+}
+
+@media print{
+
+    body{
+
+        background:#fff;
+
+    }
+
+    .toolbar{
+
+        display:none;
+
+    }
+
+    .receipt{
+
+        width:100%;
+
+        margin:0;
+
+        box-shadow:none;
+
+        padding:0;
+
+    }
+
+}
     </style>
+
+   
+    
 </head>
+
 <body>
 
-<div class="print-controls no-print">
-    <button class="btn btn-print" onclick="window.print()">🖨️ Print Receipt</button>
-    <button class="btn btn-download" onclick="downloadPDF()">⬇️ Download PDF</button>
-    <a href="{% url 'invoice_detail' invoice.id %}" class="btn btn-back">← Back</a>
+<div class="toolbar no-print">
+
+    <button onclick="window.print()" class="btn btn-primary">
+        🖨 Print
+    </button>
+
+    <a href="{% url 'invoice_detail' invoice.id %}" class="btn btn-secondary">
+        ← Back
+    </a>
+
 </div>
 
-<div class="print-container">
-    <div class="watermark">{{ invoice.school.name|truncatewords:2 }}</div>
+<div class="receipt">
 
-    <div class="receipt-wrapper">
-        <div class="content">
+    {% if invoice.school.logo %}
+        <img src="{{ invoice.school.logo.url }}"
+             class="watermark-logo"
+             alt="">
+    {% endif %}
+    {% if invoice.school %}
+        <div class="watermark-text" style="top:12mm; left:-20mm;">{{ invoice.school.name }}</div>
+        <div class="watermark-text" style="top:34mm; left:8mm;">{{ invoice.school.name }}</div>
+        <div class="watermark-text" style="top:56mm; left:-18mm;">{{ invoice.school.name }}</div>
+        <div class="watermark-text" style="top:78mm; left:6mm;">{{ invoice.school.name }}</div>
+        <div class="watermark-text" style="top:100mm; left:-16mm;">{{ invoice.school.name }}</div>
+        <div class="watermark-text" style="top:122mm; left:8mm;">{{ invoice.school.name }}</div>
+        <div class="watermark-text" style="top:144mm; left:-20mm;">{{ invoice.school.name }}</div>
+        <div class="watermark-text" style="top:166mm; left:6mm;">{{ invoice.school.name }}</div>
+        <div class="watermark-text" style="top:188mm; left:-18mm;">{{ invoice.school.name }}</div>
+    {% endif %}
+    <div class="header">
 
-            <!-- SCHOOL HEADER WITH LOGO AND UNDERLINE -->
-            <div class="receipt-header">
-                {% if invoice.school.logo %}
-                <img src="{{ invoice.school.logo.url }}" alt="{{ invoice.school.name }}" class="school-logo">
-                {% else %}
-                <div style="width: 80px; height: 80px; margin: 0 auto 15px; background: #e0e0e0; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 40px;">
-                    🏫
-                </div>
-                {% endif %}
+    <div class="logo">
 
-                <div class="school-name-main">{{ invoice.school.name }}</div>
-                {% if invoice.school.motto %}
-                <div class="school-motto">{{ invoice.school.motto }}</div>
-                {% endif %}
+        {% if invoice.school.logo %}
 
-                <div class="school-contact">
-                    {% if invoice.school.address %}<div>{{ invoice.school.address }}</div>{% endif %}
-                    {% if invoice.school.phone %}<div>Tel: {{ invoice.school.phone }}</div>{% endif %}
-                    {% if invoice.school.email %}<div>Email: {{ invoice.school.email }}</div>{% endif %}
-                </div>
-            </div>
+            <img src="{{ invoice.school.logo.url }}"
+                 alt="{{ invoice.school.name }}">
 
-            <div class="header-underline"></div>
+        {% endif %}
 
-            <!-- RECEIPT TYPE -->
-            <div class="receipt-type">
-                <h2>💰 PAYMENT RECEIPT</h2>
-                <div class="receipt-number">Receipt #: {{ invoice.invoice_number }}</div>
-            </div>
-
-            <!-- PAYER AND DATE DETAILS -->
-            <div class="details-grid">
-                <div class="detail-item">
-                    <h6>Payer Name</h6>
-                    <p>{{ invoice.payer_name }}</p>
-                </div>
-                <div class="detail-item">
-                    <h6>Date Generated</h6>
-                    <p>{{ invoice.generated_at|date:"d M, Y" }}</p>
-                </div>
-                <div class="detail-item">
-                    <h6>Payment Method</h6>
-                    <p class="text-capitalize">{{ invoice.get_payment_method_display }}</p>
-                </div>
-                <div class="detail-item">
-                    <h6>Status</h6>
-                    <p>
-                        {% if invoice.paid %}
-                        <span class="status-badge status-paid">✓ Paid</span>
-                        {% elif invoice.is_overdue %}
-                        <span class="status-badge status-overdue">Overdue</span>
-                        {% else %}
-                        <span class="status-badge status-pending">Pending</span>
-                        {% endif %}
-                    </p>
-                </div>
-            </div>
-
-            <!-- DESCRIPTION IF AVAILABLE -->
-            {% if invoice.description %}
-            <div style="padding: 15px; background: #f9f9f9; border-radius: 6px; margin: 15px 0; border-left: 3px solid #1f3c88;">
-                <h6 style="font-size: 11px; color: #999; margin-bottom: 5px; text-transform: uppercase;">Description</h6>
-                <p style="font-size: 13px; color: #333;">{{ invoice.description }}</p>
-            </div>
-            {% endif %}
-
-            <!-- AMOUNT HIGHLIGHTED -->
-            <div class="amount-section">
-                <div class="label">Amount Due</div>
-                <div class="amount">KES {{ invoice.amount|floatformat:2 }}</div>
-            </div>
-
-            <!-- DETAILED INFO TABLE -->
-            <table class="info-table">
-                {% if invoice.due_date %}
-                <tr>
-                    <td class="label">Due Date:</td>
-                    <td class="value">{{ invoice.due_date|date:"d M, Y" }}</td>
-                </tr>
-                {% endif %}
-
-                {% if invoice.payment_reference %}
-                <tr>
-                    <td class="label">Payment Reference:</td>
-                    <td class="value"><code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px;">{{ invoice.payment_reference }}</code></td>
-                </tr>
-                {% endif %}
-
-                {% if invoice.paid_at %}
-                <tr>
-                    <td class="label">Paid At:</td>
-                    <td class="value">{{ invoice.paid_at|date:"d M, Y g:i A" }}</td>
-                </tr>
-                {% endif %}
-
-                <tr>
-                    <td class="label">Generated By:</td>
-                    <td class="value">{{ invoice.created_by.email|default:"System" }}</td>
-                </tr>
-            </table>
-
-            <!-- OFFICIAL SCHOOL CERTIFICATION -->
-            <div class="schools-certified">
-                <strong>✓ Official Receipt from {{ invoice.school.name }}</strong>
-                This receipt confirms payment received by {{ invoice.school.name }}. For inquiries, contact the school administration.
-            </div>
-
-            <!-- FOOTER -->
-            <div class="receipt-footer">
-                <div class="footer-divider"></div>
-                <div><strong>Brainet Analytics | School Management System</strong></div>
-                <div>Receipt Generated: {{ invoice.generated_at|date:"d M, Y H:i" }}</div>
-                <div style="margin-top: 10px; font-size: 10px;">This is an official receipt. Keep it for your records.</div>
-            </div>
-
-        </div>
     </div>
+
+    <div class="school-info">
+
+        <h1 class="school-name">{{ invoice.school.name }}</h1>
+
+        {% if invoice.school.motto %}
+            <p class="school-motto">{{ invoice.school.motto }}</p>
+        {% endif %}
+
+        <p class="school-contact">
+            {{ invoice.school.address }}
+            {% if invoice.school.phone %}
+                • {{ invoice.school.phone }}
+            {% endif %}
+            {% if invoice.school.email %}
+                • {{ invoice.school.email }}
+            {% endif %}
+        </p>
+
+    </div>
+
+</div>
+<div class="receipt-title">
+
+    OFFICIAL PAYMENT RECEIPT
+
+</div>
+<div class="section-title">RECEIPT SUMMARY</div>
+
+<table class="payment-table" style="width:100%; border-collapse:collapse; margin-top:12px;">
+    <tbody>
+        <tr>
+            <td style="width:50%; padding:10px; border:1px solid #ddd;"><strong>Receipt No</strong><br>{{ invoice.receipt_number|default:invoice.invoice_number }}</td>
+            <td style="width:50%; padding:10px; border:1px solid #ddd;"><strong>Date</strong><br>{{ invoice.generated_at|date:"d M Y H:i" }}</td>
+        </tr>
+        <tr>
+            <td style="padding:10px; border:1px solid #ddd;"><strong>Status</strong><br>{% if invoice.paid %}PAID{% else %}UNPAID{% endif %}</td>
+            <td style="padding:10px; border:1px solid #ddd;"><strong>Method</strong><br>{{ invoice.get_payment_method_display }}</td>
+        </tr>
+        <tr>
+            <td style="padding:10px; border:1px solid #ddd;"><strong>Student</strong><br>{% if invoice.student %}{{ invoice.student.name }}{% else %}{{ invoice.payer_name }}{% endif %}</td>
+            <td style="padding:10px; border:1px solid #ddd;"><strong>Admission No</strong><br>{% if invoice.student %}{{ invoice.student.admission_number }}{% else %}-{% endif %}</td>
+        </tr>
+        <tr>
+            <td style="padding:10px; border:1px solid #ddd;"><strong>Class / Stream</strong><br>{% if invoice.student and invoice.student.current_class %}{{ invoice.student.current_class.name }}{% endif %}{% if invoice.student and invoice.student.stream %} - {{ invoice.student.stream.name }}{% endif %}</td>
+            <td style="padding:10px; border:1px solid #ddd;"><strong>Academic Term</strong><br>{{ invoice.term|default:"N/A" }}</td>
+        </tr>
+        <tr>
+            <td style="padding:10px; border:1px solid #ddd;"><strong>Invoice Amount</strong><br>KES {{ invoice.amount|floatformat:2 }}</td>
+            <td style="padding:10px; border:1px solid #ddd;"><strong>Amount Paid</strong><br>KES {{ amount_paid|floatformat:2 }}</td>
+        </tr>
+        <tr>
+            <td style="padding:10px; border:1px solid #ddd;"><strong>Outstanding (Invoice)</strong><br>KES {{ invoice_balance|floatformat:2 }}</td>
+            <td style="padding:10px; border:1px solid #ddd;"><strong>{% if term_name %}Balance for {{ term_name }}{% else %}Term Balance{% endif %}</strong><br>KES {{ term_balance|default:0|floatformat:2 }}</td>
+        </tr>
+        {% if structure_total %}
+        <tr>
+            <td style="padding:10px; border:1px solid #ddd;" colspan="2"><strong>Full Fee Structure Total</strong><br>KES {{ structure_total|floatformat:2 }}</td>
+        </tr>
+        {% endif %}
+        <tr>
+            <td style="padding:10px; border:1px solid #ddd;" colspan="2"><strong>Overall Year Balance</strong><br>KES {{ overall_balance|default:0|floatformat:2 }}</td>
+        </tr>
+        {% if next_term_name %}
+        <tr>
+            <td style="padding:10px; border:1px solid #ddd;" colspan="2"><strong>Next Term ({{ next_term_name }}) Balance</strong><br>KES {{ next_term_balance|floatformat:2 }}</td>
+        </tr>
+        {% endif %}
+        <tr>
+            <td style="padding:10px; border:1px solid #ddd;" colspan="2"><strong>Amount in Words</strong><br>{{ amount_in_words }}</td>
+        </tr>
+        <tr>
+            <td style="padding:10px; border:1px solid #ddd;"><strong>Payment Reference</strong><br>{% if invoice.payment_reference %}{{ invoice.payment_reference }}{% else %}-{% endif %}</td>
+                <td style="padding:10px; border:1px solid #ddd;"><strong>Served By</strong><br>{% if invoice.served_by %}{{ invoice.served_by.get_name|default:invoice.served_by.get_full_name|default:invoice.served_by.username }}{% elif invoice.created_by %}{{ invoice.created_by.get_name|default:invoice.created_by.get_full_name|default:invoice.created_by.username }}{% else %}System{% endif %}</td>
+        </tr>
+        <tr>
+            <td style="padding:10px; border:1px solid #ddd;" colspan="2"><strong>Date Paid</strong><br>{% if invoice.paid_at %}{{ invoice.paid_at|date:"d M Y H:i" }}{% else %}{{ invoice.generated_at|date:"d M Y H:i" }}{% endif %}</td>
+        </tr>
+    </tbody>
+</table>
+
+
+<!-- ===================================================== -->
+<!-- SCHOOL STAMP                                          -->
+<!-- ===================================================== -->
+
+<div class="stamp-area">
+
+    <div class="stamp-box">
+
+        SCHOOL STAMP
+
+    </div>
+
 </div>
 
-<script>
-    function downloadPDF() {
-        const filename = 'Receipt_{{ invoice.invoice_number }}_{{ invoice.generated_at|date:"d-m-Y" }}.pdf';
-        window.print();
-    }
-</script>
+
+<!-- ===================================================== -->
+<!-- FOOTER                                                -->
+<!-- ===================================================== -->
+
+<div class="receipt-footer">
+
+    <strong>
+
+        Thank you for your payment.
+
+    </strong>
+
+    <br><br>
+
+    This is an official computer-generated receipt.
+
+    <br>
+
+    Generated by <strong>Brainet ERP School Management System</strong>
+
+    <br><br>
+
+    {{ invoice.generated_at|date:"d M Y H:i" }}
+
+</div>
+
+</div>
 
 </body>
+
 </html>

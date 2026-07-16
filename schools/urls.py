@@ -28,6 +28,8 @@ urlpatterns = [
     path("superuser/users/<int:user_id>/manual-verify/", views.manual_verify_user, name="manual_verify_user"),
     path("superuser/pending-verification/", views.pending_verification, name="pending_verification"),
     path("superuser/pending-verification/count/", views.pending_verification_count, name="pending_verification_count"),
+    path("superuser/error-reports/", views.error_reports, name="error_reports"),
+    path("superuser/error-reports/<int:report_id>/read/", views.mark_error_report_read, name="mark_error_report_read"),
     path("superuser/users/<int:user_id>/resend-verification/", views.resend_verification_email, name="resend_verification_email"),
     path("superuser/online-class/<int:online_class_id>/student/<int:student_id>/manual-join/", views.manual_join_online_class, name="manual_join_online_class"),
 
@@ -163,6 +165,7 @@ urlpatterns = [
     path("principal/school-dos/", views.principal_school_manager, name="principal_school_manager"),
     path("principal/enter-marks/", views.enter_marks, name="enter_marks"),
     path("principal/create-bursar/", views.create_bursar, name="create_bursar"),
+    path("principal/bursars/<int:user_id>/delete/", views.delete_bursar, name="delete_bursar"),
     
     # =====================================================
     #TERMS
@@ -193,6 +196,7 @@ urlpatterns = [
     path("promotion/student/<int:student_id>/", views.promote_student_view, name="promote_student"),
     path("promotion/school/", views.promote_school_view, name="promote_school"),
     path("promotion/history/", views.promotion_history, name="promotion_history"),
+    path("promotion/undo/<int:promotion_id>/", views.undo_promotion, name="undo_promotion"),
     
     # =====================================================
     # MESSAGE & NOTIFICATION MANAGEMENT

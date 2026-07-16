@@ -41,6 +41,24 @@
                            class="form-control">
                 </div>
 
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Bank Name</label>
+                    <input type="text"
+                           name="bank_name"
+                           value="{{ school.bank_name|default:'' }}"
+                           class="form-control"
+                           placeholder="e.g., ABC Bank">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Account Number</label>
+                    <input type="text"
+                           name="account_number"
+                           value="{{ school.account_number|default:'' }}"
+                           class="form-control"
+                           placeholder="e.g., 1234567890">
+                </div>
+
                 <button type="submit" class="btn btn-primary w-100">
                     Update School
                 </button>

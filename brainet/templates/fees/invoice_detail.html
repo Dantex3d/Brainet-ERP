@@ -64,6 +64,40 @@
                             <h5><strong>{{ invoice.invoice_number }}</strong></h5>
                         </div>
                     </div>
+                    {% if invoice.student %}
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-1">Student</h6>
+                            <p>{{ invoice.student.name }} ({{ invoice.student.admission_number }})</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-1">Term</h6>
+                            <p>{{ invoice.term|default:'N/A' }}</p>
+                        </div>
+                    </div>
+                    {% if statement %}
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <div class="p-3 rounded-4 bg-light border">
+                                <h6 class="text-muted mb-1">Current Balance</h6>
+                                <p class="fs-4 fw-bold" data-balance="current">KES {{ statement.current_balance|floatformat:2 }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="p-3 rounded-4 bg-light border">
+                                <h6 class="text-muted mb-1">Total Paid</h6>
+                                <p class="fs-4 fw-bold" data-balance="paid">KES {{ statement.total_paid|floatformat:2 }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="p-3 rounded-4 bg-light border">
+                                <h6 class="text-muted mb-1">Unpaid Total</h6>
+                                <p class="fs-4 fw-bold" data-balance="unpaid">KES {{ statement.total_unpaid|floatformat:2 }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endif %}
 
                     <hr>
 
@@ -117,42 +151,44 @@
                     </div>
                     {% endif %}
 
-                    {% if invoice.payment_reference %}
-                    <div class="mb-3">
+                    <div id="payment-reference-container" class="mb-3" style="display: {{ invoice.payment_reference|yesno:'block,none' }};">
                         <h6 class="text-muted mb-1">Payment Reference</h6>
-                        <p><code>{{ invoice.payment_reference }}</code></p>
+                        <p id="payment-reference"><code>{{ invoice.payment_reference }}</code></p>
                     </div>
-                    {% endif %}
 
-                    {% if invoice.paid_at %}
-                    <div class="mb-3">
+                    <div id="paid-at-container" class="mb-3" style="display: {{ invoice.paid_at|yesno:'block,none' }};">
                         <h6 class="text-muted mb-1">Paid At</h6>
-                        <p>{{ invoice.paid_at|date:"d M, Y g:i A" }}</p>
+                        <p id="paid-at-value">{{ invoice.paid_at|date:"d M, Y g:i A" }}</p>
                     </div>
-                    {% endif %}
+
+                    <div id="receipt-number-container" class="mb-3" style="display: {{ invoice.receipt_number|yesno:'block,none' }};">
+                        <h6 class="text-muted mb-1">Receipt Number</h6>
+                        <p id="receipt-number-value">{{ invoice.receipt_number }}</p>
+                    </div>
 
                     {% if not invoice.paid %}
                     <hr>
 
                     <h6 class="mb-3">Record Payment</h6>
-                    <form method="post" action="{% url 'record_payment' invoice.id %}">
+                    <div id="payment-alert" class="alert alert-success d-none" role="alert"></div>
+                    <form id="payment-form" method="post" action="{% url 'record_payment' invoice.id %}">
                         {% csrf_token %}
                         <div class="mb-3">
                             <label class="form-label">Payment Method</label>
                             <select name="payment_method" class="form-select rounded-3">
-                                <option value="mpesa" selected>M-Pesa</option>
-                                <option value="bank">Bank Transfer</option>
-                                <option value="cash">Cash</option>
-                                <option value="other">Other</option>
+                                <option value="mpesa" {% if invoice.payment_method == 'mpesa' %}selected{% endif %}>M-Pesa</option>
+                                <option value="bank" {% if invoice.payment_method == 'bank' %}selected{% endif %}>Bank Transfer</option>
+                                <option value="cash" {% if invoice.payment_method == 'cash' %}selected{% endif %}>Cash</option>
+                                <option value="other" {% if invoice.payment_method == 'other' %}selected{% endif %}>Other</option>
                             </select>
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label">Payment Reference (e.g., Transaction ID)</label>
-                            <input type="text" name="payment_reference" class="form-control rounded-3" placeholder="e.g., MPesa Code, Bank Reference">
+                            <input id="payment_reference_input" type="text" name="payment_reference" class="form-control rounded-3" placeholder="e.g., MPesa Code, Bank Reference" value="{{ invoice.payment_reference }}">
                         </div>
 
-                        <button type="submit" class="btn btn-success btn-lg rounded-3 w-100">✓ Mark as Paid</button>
+                        <button id="payment-submit" type="submit" class="btn btn-success btn-lg rounded-3 w-100">✓ Mark as Paid</button>
                     </form>
                     {% endif %}
                 </div>
@@ -163,9 +199,14 @@
             <div class="card border-0 shadow-lg rounded-4 bg-light">
                 <div class="card-body p-4">
                     <h6 class="fw-bold mb-3">Quick Actions</h6>
-                    <a href="{% url 'invoice_receipt' invoice.id %}" class="btn btn-outline-primary w-100 mb-2 rounded-3" target="_blank">
+                    <a id="receipt-button" href="{% url 'invoice_receipt_pdf' invoice.id %}" class="btn btn-outline-primary w-100 mb-2 rounded-3 {% if not invoice.paid %}disabled{% endif %}" target="_blank" aria-disabled="{% if not invoice.paid %}true{% else %}false{% endif %}">
                         🖨️ Print Receipt
                     </a>
+                    {% if invoice.student %}
+                    <a href="{% url 'student_fee_statement' %}?admission_number={{ invoice.student.admission_number }}" class="btn btn-outline-info w-100 mb-2 rounded-3">
+                        📋 View Student Statement
+                    </a>
+                    {% endif %}
                     <a href="{% url 'fees_dashboard' %}" class="btn btn-outline-secondary w-100 rounded-3">
                         ← Back to Dashboard
                     </a>
@@ -174,4 +215,112 @@
         </div>
     </div>
 </div>
+
+<script>
+(function() {
+    const paymentForm = document.getElementById('payment-form');
+    if (!paymentForm) {
+        return;
+    }
+
+    const alertBox = document.getElementById('payment-alert');
+    const submitButton = document.getElementById('payment-submit');
+    const receiptButton = document.getElementById('receipt-button');
+    const statusBadge = document.querySelector('.badge');
+    const paidAtContainer = document.getElementById('paid-at-container');
+    const paidAtValue = document.getElementById('paid-at-value');
+    const receiptNumberContainer = document.getElementById('receipt-number-container');
+    const receiptNumberValue = document.getElementById('receipt-number-value');
+    const paymentReferenceField = document.getElementById('payment-reference_input');
+    const paymentReferenceDisplay = document.getElementById('payment-reference');
+    const currentBalance = document.querySelector('[data-balance="current"]');
+    const totalPaid = document.querySelector('[data-balance="paid"]');
+    const totalUnpaid = document.querySelector('[data-balance="unpaid"]');
+
+    paymentForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+        alertBox.classList.add('d-none');
+        submitButton.disabled = true;
+
+        const formData = new FormData(paymentForm);
+        fetch(paymentForm.action, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: formData,
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.text().then(text => {
+                    throw new Error(text || 'Server returned an error.');
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            submitButton.disabled = false;
+            if (!data.ok) {
+                alertBox.classList.remove('d-none');
+                alertBox.classList.remove('alert-success');
+                alertBox.classList.add('alert-danger');
+                alertBox.textContent = data.message || 'Unable to record payment.';
+                return;
+            }
+
+            alertBox.classList.remove('d-none', 'alert-danger');
+            alertBox.classList.add('alert-success');
+            alertBox.textContent = data.message + ' Receipt generated.';
+
+            if (statusBadge) {
+                statusBadge.textContent = '✓ Paid';
+                statusBadge.classList.remove('bg-warning', 'text-dark', 'bg-danger');
+                statusBadge.classList.add('bg-success');
+            }
+            if (receiptButton) {
+                receiptButton.classList.remove('disabled');
+                receiptButton.setAttribute('href', data.receipt_url);
+                receiptButton.setAttribute('aria-disabled', 'false');
+            }
+            if (paidAtContainer && paidAtValue) {
+                paidAtContainer.style.display = 'block';
+                paidAtValue.textContent = new Date(data.paid_at).toLocaleString();
+            }
+            if (receiptNumberContainer && receiptNumberValue) {
+                receiptNumberContainer.style.display = 'block';
+                receiptNumberValue.textContent = data.receipt_number;
+            }
+            if (paymentReferenceDisplay) {
+                paymentReferenceDisplay.innerHTML = '<code>' + (formData.get('payment_reference') || '') + '</code>';
+            }
+            if (paymentReferenceField) {
+                paymentReferenceField.value = formData.get('payment_reference');
+            }
+
+            const statement = data.statement || { current_balance: 0, total_paid: 0, total_unpaid: 0 };
+            const currentBalanceAmount = Number(statement.current_balance || 0);
+            const totalPaidAmount = Number(statement.total_paid || 0);
+            const totalUnpaidAmount = Number(statement.total_unpaid || 0);
+
+            if (currentBalance) {
+                currentBalance.textContent = 'KES ' + currentBalanceAmount.toFixed(2);
+            }
+            if (totalPaid) {
+                totalPaid.textContent = 'KES ' + totalPaidAmount.toFixed(2);
+            }
+            if (totalUnpaid) {
+                totalUnpaid.textContent = 'KES ' + totalUnpaidAmount.toFixed(2);
+            }
+            paymentForm.querySelector('button[type="submit"]').disabled = true;
+        })
+        .catch((error) => {
+            submitButton.disabled = false;
+            alertBox.classList.remove('d-none');
+            alertBox.classList.remove('alert-success');
+            alertBox.classList.add('alert-danger');
+            alertBox.textContent = error.message || 'Payment failed due to a network error. Please try again.';
+        });
+    });
+})();
+</script>
 {% endblock %}

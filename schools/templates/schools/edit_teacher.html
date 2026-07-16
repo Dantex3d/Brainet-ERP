@@ -16,17 +16,9 @@
     <option value="class" {% if teacher.role == "class" %}selected{% endif %}>Class Teacher</option>
   </select><br><br>
 
-  <!-- ✅ Class Assignment -->
-  <label>Assigned Class (Optional):</label>
-  <select name="assigned_class">
-    <option value="">-- Select Class --</option>
-    {% for class in classes %}
-      <option value="{{ class.id }}" {% if class_assignment and class_assignment.class_obj.id == class.id %}selected{% endif %}>
-        {{ class.name }}
-      </option>
-    {% endfor %}
-  </select><br><br>
-  <small>When a class is selected, Brainet will use or create the class's default stream automatically.</small><br><br>
+  <div class="alert alert-info">
+    Teacher assignment is managed separately from edit. Use the Assign page from Manage Teachers to assign classes and subjects.
+  </div>
 
   <button type="submit" class="btn btn-primary">Update</button>
 </form>

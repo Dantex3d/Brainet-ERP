@@ -55,6 +55,7 @@
                         <th>Promoted By</th>
                         <th>Date</th>
                         <th width="20%">Remarks</th>
+                        <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -110,6 +111,16 @@
                         <td>
                             {% if promotion.remarks %}
                                 <small>{{ promotion.remarks|truncatewords:10 }}</small>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if promotion.status == 'promoted' or promotion.status == 'graduated' %}
+                                <form method="post" action="{% url 'undo_promotion' promotion.id %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Undo</button>
+                                </form>
                             {% else %}
                                 <span class="text-muted">-</span>
                             {% endif %}

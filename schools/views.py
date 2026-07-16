@@ -22,7 +22,7 @@ from django.urls import reverse
 
 import students
 import subjects
-from .models import DOSMessage, DOSQuery, Notification, School, DirectorOfStudies, Dormitory, Term, Class, Subject, GradingPolicy, StudentMark, StudentPromotion, SchoolNotice
+from .models import DOSMessage, DOSQuery, Notification, School, DirectorOfStudies, Dormitory, Term, Class, Subject, GradingPolicy, StudentMark, StudentPromotion, SchoolNotice, ErrorReport
 from django.db import IntegrityError
 from collections import defaultdict
 from students.models import Student
@@ -52,6 +52,12 @@ from teachers.models import Teacher
 
 def superuser_required(view_func):
     return user_passes_test(lambda u: u.is_superuser)(view_func)
+
+
+def exam_controller_required(view_func):
+    return user_passes_test(
+        lambda u: u.is_superuser or getattr(u, "role", None) in ["dos", "principal"]
+    )(view_func)
 
 from django.conf import settings
 from django.urls import reverse
@@ -487,6 +493,9 @@ def superuser_dashboard(request):
     notifications = Notification.objects.filter(recipient=request.user).order_by("-created_at")
     unread_notifications = notifications.filter(is_read=False).count()
 
+    error_reports = ErrorReport.objects.order_by("-created_at")
+    unread_error_reports = error_reports.filter(is_read=False).count()
+
     # ----------------------------
     # CONTEXT
     # ----------------------------
@@ -513,6 +522,8 @@ def superuser_dashboard(request):
         "unread_queries": unread_queries,
         "notifications": notifications,
         "unread_notifications": unread_notifications,
+        "error_reports": error_reports,
+        "unread_error_reports": unread_error_reports,
         "pending_renewals": pending_renewals,
         "pending_renewals_count": pending_renewals.count(),
         "principals": principals,
@@ -524,6 +535,42 @@ def superuser_dashboard(request):
         "dashboards/superuser.html",
         context
     )
+
+
+@login_required
+@superuser_required
+def error_reports(request):
+    reports = ErrorReport.objects.order_by("-created_at")
+    unread_error_reports = reports.filter(is_read=False).count()
+    return render(request, "dashboards/error_reports.html", {
+        "reports": reports,
+        "unread_error_reports": unread_error_reports,
+    })
+
+
+@login_required
+@superuser_required
+def mark_error_report_read(request, report_id):
+    report = get_object_or_404(ErrorReport, id=report_id)
+    if not report.is_read:
+        report.is_read = True
+        report.save(update_fields=["is_read"])
+    referer = request.META.get('HTTP_REFERER')
+    if referer:
+        return redirect(referer)
+    return redirect('error_reports')
+
+
+def bad_request(request, exception=None):
+    return render(request, "exams/errors/400.html", {"message": str(exception)}, status=400)
+
+
+def not_found(request, exception=None):
+    return render(request, "exams/errors/404.html", {"message": str(exception)}, status=404)
+
+
+def server_error(request):
+    return render(request, "exams/errors/500.html", status=500)
 
 
 def _superuser_management_context():
@@ -1247,6 +1294,8 @@ def edit_school_info(request):
         school.address = request.POST.get('address', school.address)
         school.email = request.POST.get('email', school.email)
         school.phone = request.POST.get('phone', school.phone)
+        school.bank_name = request.POST.get('bank_name', school.bank_name)
+        school.account_number = request.POST.get('account_number', school.account_number)
 
         logo = request.FILES.get("logo")
         if logo:
@@ -1495,6 +1544,10 @@ def dos_dashboard(request):
     subjects = Subject.objects.filter(school=school)
     exams = Exam.objects.filter(school=school).order_by("-created_at")
 
+    active_exams = exams.filter(is_active=True)
+    exam_window_open = active_exams.exists()
+    active_exam_count = active_exams.count()
+
     # =========================
     # DOS MESSAGES (both sent and received)
     # =========================
@@ -1533,6 +1586,8 @@ def dos_dashboard(request):
         "pending_vouchers": pending_vouchers,
         "approved_vouchers": approved_vouchers,
         "rejected_vouchers": rejected_vouchers,
+        "exam_window_open": exam_window_open,
+        "active_exam_count": active_exam_count,
         # Notices for staff
         "notices": SchoolNotice.objects.filter(school=school).filter(recipient_type__in=['teachers','all']).order_by('-created_at'),
     }
@@ -3190,49 +3245,113 @@ def manage_staff(request):
 
 @login_required
 def create_bursar(request):
-    """Principal creates a bursar account for their school"""
+    """Principal creates and manages bursar accounts for their school."""
     if getattr(request.user, 'role', None) != 'principal' or not request.user.school:
         messages.error(request, 'Only principals can create bursar accounts.')
         return redirect('dashboard')
-    
+
+    school = request.user.school
+    selected_bursar = None
+    bursars = CustomUser.objects.filter(school=school, role='bursar').order_by('first_name', 'email')
+
     if request.method == 'POST':
+        action = request.POST.get('action', 'create')
         name = request.POST.get('name', '').strip()
         email = request.POST.get('email', '').strip()
         phone = request.POST.get('phone', '').strip()
-        
+        password = request.POST.get('password', '')
+
+        if action == 'update':
+            bursar_id = request.POST.get('bursar_id')
+            if not bursar_id:
+                messages.error(request, 'Invalid bursar selected.')
+                return redirect('create_bursar')
+
+            bursar = get_object_or_404(CustomUser, id=bursar_id, school=school, role='bursar')
+
+            if not all([name, email, phone]):
+                messages.error(request, 'All fields are required.')
+                return redirect(f'{reverse("create_bursar")}?bursar_id={bursar.id}')
+
+            if CustomUser.objects.exclude(id=bursar.id).filter(email=email).exists():
+                messages.error(request, f'Email {email} is already registered.')
+                return redirect(f'{reverse("create_bursar")}?bursar_id={bursar.id}')
+
+            bursar.first_name = name
+            bursar.email = email
+            bursar.last_name = ''
+            if hasattr(bursar, 'phone'):
+                bursar.phone = phone
+            if password:
+                bursar.set_password(password)
+            bursar.save()
+
+            messages.success(request, f'Bursar account updated for {name}.')
+            return redirect('create_bursar')
+
+        # CREATE
         if not all([name, email, phone]):
             messages.error(request, 'All fields are required.')
             return redirect('create_bursar')
-        
-        school = request.user.school
-        
-        # Check if email already exists
+
         if CustomUser.objects.filter(email=email).exists():
             messages.error(request, f'Email {email} is already registered.')
             return redirect('create_bursar')
-        
-        # Create bursar account
-        username = email.split('@')[0]
+
         try:
+            first_name = name
+            last_name = ''
+            if ' ' in name:
+                parts = name.split()
+                first_name = parts[0]
+                last_name = ' '.join(parts[1:])
+
             user = CustomUser.objects.create_user(
-                username=username,
                 email=email,
-                password='bursar123',  # Temporary password
+                password='bursar123',
                 role='bursar',
                 school=school,
-                first_name=name,
-                phone=phone,
+                first_name=first_name,
+                last_name=last_name,
+                email_verified=False,
             )
-            
+            if hasattr(user, 'phone'):
+                user.phone = phone
+            user.save()
+
             send_user_verification_email(user, request=request, role_name='Bursar')
             messages.success(request, f'Bursar account created for {name}. A verification email has been sent to {email}.')
-            return redirect('principal_dashboard')
+            return redirect('create_bursar')
         except Exception as e:
             messages.error(request, f'Error creating bursar account: {str(e)}')
             return redirect('create_bursar')
-    
-    return render(request, 'schools/create_bursar.html')
-    
+
+    bursar_id = request.GET.get('bursar_id')
+    if bursar_id:
+        selected_bursar = get_object_or_404(CustomUser, id=bursar_id, school=school, role='bursar')
+
+    return render(request, 'schools/create_bursar.html', {
+        'bursars': bursars,
+        'selected_bursar': selected_bursar,
+    })
+
+
+@login_required
+def delete_bursar(request, user_id):
+    if getattr(request.user, 'role', None) != 'principal' or not request.user.school:
+        messages.error(request, 'Only principals can delete bursar accounts.')
+        return redirect('dashboard')
+
+    school = request.user.school
+    bursar = get_object_or_404(CustomUser, id=user_id, school=school, role='bursar')
+
+    if request.method == 'POST':
+        name = bursar.get_full_name() or bursar.email
+        bursar.delete()
+        messages.success(request, f'{name} deleted successfully.')
+
+    return redirect('create_bursar')
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -3616,6 +3735,8 @@ def add_school(request):
         phone = request.POST.get("phone")
         email = request.POST.get("email")
         subscription_balance = request.POST.get("subscription_balance") or 0
+        bank_name = request.POST.get("bank_name") or None
+        account_number = request.POST.get("account_number") or None
         logo = request.FILES.get("logo")
 
         logger = logging.getLogger(__name__)
@@ -3626,6 +3747,8 @@ def add_school(request):
                 phone=phone,
                 email=email,
                 subscription_balance=subscription_balance,
+                bank_name=bank_name,
+                account_number=account_number,
                 is_active=False,
             )
             if logo:
@@ -3645,6 +3768,8 @@ def add_school(request):
                 phone=phone,
                 email=email,
                 subscription_balance=subscription_balance,
+                bank_name=bank_name,
+                account_number=account_number,
                 is_active=False,
             )
             messages.success(request, "School added, but logo upload failed.")
@@ -3753,6 +3878,8 @@ def edit_school(request, school_id):
         school.address = request.POST.get("address")
         school.phone = request.POST.get("phone")
         school.email = request.POST.get("email")
+        school.bank_name = request.POST.get("bank_name", school.bank_name)
+        school.account_number = request.POST.get("account_number", school.account_number)
         school.save()
 
         messages.success(request, "School details updated successfully.")
@@ -3801,11 +3928,19 @@ def manage_terms(request):
         "terms": terms
     })  
 
+@login_required
+@exam_controller_required
+@require_POST
 def open_exam_window(request):
     school = request.user.school
+    exams = Exam.objects.filter(school=school)
+    active_count = exams.filter(is_active=True).count()
 
-    Exam.objects.filter(school=school).update(is_active=True)
-    messages.success(request, "Exam window opened successfully. Marks entry is now available.")
+    if active_count > 0:
+        messages.info(request, "Exam window is already open.")
+    else:
+        exams.update(is_active=True)
+        messages.success(request, "Exam window opened successfully. Marks entry is now available.")
 
     next_url = request.POST.get("next") or request.GET.get("next")
     if next_url:
@@ -3813,11 +3948,19 @@ def open_exam_window(request):
     return redirect("principal_dashboard" if getattr(request.user, "role", None) == "principal" else "dos_dashboard")
 
 
+@login_required
+@exam_controller_required
+@require_POST
 def close_exam_window(request):
     school = request.user.school
+    exams = Exam.objects.filter(school=school)
+    active_count = exams.filter(is_active=True).count()
 
-    Exam.objects.filter(school=school).update(is_active=False)
-    messages.warning(request, "Exam window closed. Contact admin to enter or update results if this was a mistake.")
+    if active_count == 0:
+        messages.info(request, "Exam window is already closed.")
+    else:
+        exams.update(is_active=False)
+        messages.warning(request, "Exam window closed. Contact admin to enter or update results if this was a mistake.")
 
     next_url = request.POST.get("next") or request.GET.get("next")
     if next_url:
@@ -3978,6 +4121,7 @@ def enter_marks(request):
     selected_exam_obj = None
     existing_marks = {}
     exam_closed_warning = None
+    exam_window_open = Exam.objects.filter(school=school, is_active=True).exists()
 
     # =========================
     # LOAD STREAMS AND STUDENTS SAFELY
@@ -4020,6 +4164,10 @@ def enter_marks(request):
                     messages.warning(request, exam_closed_warning)
         except Exception:
             pass
+
+    if not exam_window_open and not selected_exam_obj:
+        exam_closed_warning = "Exam entry is currently closed. Contact your school admin to open the exam window."
+        messages.warning(request, exam_closed_warning)
 
     if selected_class and selected_term and students:
         term = Term.objects.filter(id=selected_term, school=school).first()
@@ -4098,7 +4246,31 @@ def enter_marks(request):
             messages.error(request, "Invalid term selected")
             return redirect("enter_marks")
 
-        if exam and not exam.is_active:
+        if not exam_id:
+            messages.error(request, "Please select an active exam before saving marks.")
+            redirect_url = f"/schools/principal/enter-marks/?class={class_id}&term={term_id}"
+            if stream_id:
+                redirect_url += f"&stream={stream_id}"
+            if option and option != "all":
+                redirect_url += f"&option={option}"
+            if entry_mode:
+                redirect_url += f"&entry_mode={entry_mode}"
+            return redirect(redirect_url)
+
+        if not exam:
+            messages.error(request, "Selected exam was not found. Please choose a valid exam.")
+            redirect_url = f"/schools/principal/enter-marks/?class={class_id}&term={term_id}"
+            if stream_id:
+                redirect_url += f"&stream={stream_id}"
+            if exam_id:
+                redirect_url += f"&exam={exam_id}"
+            if option and option != "all":
+                redirect_url += f"&option={option}"
+            if entry_mode:
+                redirect_url += f"&entry_mode={entry_mode}"
+            return redirect(redirect_url)
+
+        if not exam.is_active:
             messages.error(request, "This exam is closed. Contact admin to enter or update results.")
             redirect_url = f"/schools/principal/enter-marks/?class={class_id}&term={term_id}"
             if stream_id:
@@ -4245,6 +4417,7 @@ def enter_marks(request):
         "selected_entry_mode": selected_entry_mode,
         "existing_marks": existing_marks,
         "exam_closed_warning": exam_closed_warning,
+        "exam_window_open": exam_window_open,
     })
 
 def report_center(request):
@@ -6297,6 +6470,47 @@ def promotion_history(request):
         'status_choices': StudentPromotion.PROMOTION_STATUS,
     }
     return render(request, "schools/promotion_history.html", context)
+
+
+@login_required
+def undo_promotion(request, promotion_id):
+    """Undo a previous promotion record and restore the student's previous class/stream."""
+    promotion = get_object_or_404(StudentPromotion, id=promotion_id, school=request.user.school)
+    student = promotion.student
+
+    if request.method != "POST":
+        messages.error(request, "Invalid undo request.")
+        return redirect("promotion_history")
+
+    if promotion.status not in ["promoted", "graduated"]:
+        messages.error(request, "Only promoted or graduated records can be undone.")
+        return redirect("promotion_history")
+
+    if not promotion.from_class:
+        messages.error(request, "This promotion cannot be undone because the previous class is not available.")
+        return redirect("promotion_history")
+
+    # Ensure the student is still in the promotion target state before undoing
+    if promotion.status == "promoted":
+        if student.current_class != promotion.to_class or student.stream != promotion.to_stream:
+            messages.error(request, "Student is no longer in the promoted class/stream. Undo not possible.")
+            return redirect("promotion_history")
+
+    if promotion.status == "graduated":
+        if student.current_class is not None:
+            messages.error(request, "Student is no longer graduated. Undo not possible.")
+            return redirect("promotion_history")
+
+    student.current_class = promotion.from_class
+    student.stream = promotion.from_stream
+    student.status = 'active'
+    student.save()
+
+    promotion.remarks = (promotion.remarks or "") + " [Undo performed]"
+    promotion.save()
+
+    messages.success(request, f"Promotion for {student.name} has been undone.")
+    return redirect("promotion_history")
 
 
 # =========================================================

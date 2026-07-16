@@ -18,7 +18,10 @@ def replace(value, arg):
 
 @register.filter(name='get_school_logo_url')
 def get_school_logo_url_filter(school):
-    from schools.views import get_school_logo_url
+    try:
+        from teachers.templatetags.teacher_text_filters import get_school_logo_url
+    except ImportError:
+        return ""
 
     return get_school_logo_url(school)
 

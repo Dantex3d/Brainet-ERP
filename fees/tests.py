@@ -1,4 +1,4 @@
-from django.test import TestCase, Client
+from django.test import TestCase, Client, override_settings
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 
@@ -8,6 +8,7 @@ from .models import FeeStructure, FeeInvoice
 User = get_user_model()
 
 
+@override_settings(STATICFILES_STORAGE='django.contrib.staticfiles.storage.StaticFilesStorage')
 class FeeStructureTestCase(TestCase):
     def setUp(self):
         self.school = School.objects.create(
@@ -28,6 +29,7 @@ class FeeStructureTestCase(TestCase):
     def test_create_fee_structure(self):
         fee_structure = FeeStructure.objects.create(
             school=self.school,
+            academic_year='2024',
             title='2024 Term 1 Fees',
             term='Term 1',
             components='Tuition: 15000\nBoarding: 8000',
@@ -41,6 +43,7 @@ class FeeStructureTestCase(TestCase):
     def test_fee_structure_component_lines(self):
         fee_structure = FeeStructure.objects.create(
             school=self.school,
+            academic_year='2024',
             components='Tuition: 15000\nBoarding: 8000\nLab: 2000',
             total_amount=25000,
         )
@@ -49,6 +52,7 @@ class FeeStructureTestCase(TestCase):
         self.assertIn('Tuition: 15000', lines)
 
 
+@override_settings(STATICFILES_STORAGE='django.contrib.staticfiles.storage.StaticFilesStorage')
 class FeeInvoiceTestCase(TestCase):
     def setUp(self):
         self.school = School.objects.create(
@@ -107,6 +111,7 @@ class FeeInvoiceTestCase(TestCase):
         self.assertTrue(invoice.is_overdue())
 
 
+@override_settings(STATICFILES_STORAGE='django.contrib.staticfiles.storage.StaticFilesStorage')
 class FeesDashboardAccessTestCase(TestCase):
     def setUp(self):
         self.school = School.objects.create(

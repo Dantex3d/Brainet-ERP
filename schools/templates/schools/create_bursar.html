@@ -23,32 +23,40 @@
     </div>
     {% endif %}
 
-    <div class="row">
-        <div class="col-lg-8">
-            <div class="card border-0 shadow-lg rounded-4">
+    <div class="row g-4">
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-lg rounded-4 h-100">
                 <div class="card-header bg-primary text-white rounded-top-4">
-                    <h5 class="mb-0">👤 Bursar Registration Form</h5>
+                    <h5 class="mb-0">👤 Bursar Registration & Edit</h5>
                 </div>
                 <div class="card-body p-4">
                     <form method="post">
                         {% csrf_token %}
+                        <input type="hidden" name="action" value="{% if selected_bursar %}update{% else %}create{% endif %}">
+                        <input type="hidden" name="bursar_id" value="{% if selected_bursar %}{{ selected_bursar.id }}{% endif %}">
 
                         <div class="mb-3">
                             <label class="form-label fw-bold">Full Name</label>
-                            <input type="text" name="name" class="form-control rounded-3" placeholder="e.g., John Mwangi" required>
+                            <input type="text" name="name" class="form-control rounded-3" placeholder="e.g., John Mwangi" value="{% if selected_bursar %}{{ selected_bursar.get_full_name }}{% endif %}" required>
                             <small class="text-muted">Bursar's full name</small>
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label fw-bold">Email Address</label>
-                            <input type="email" name="email" class="form-control rounded-3" placeholder="e.g., bursar@school.ac.ke" required>
+                            <input type="email" name="email" class="form-control rounded-3" placeholder="e.g., bursar@school.ac.ke" value="{% if selected_bursar %}{{ selected_bursar.email }}{% endif %}" required>
                             <small class="text-muted">Must be a unique email. A verification link will be sent here.</small>
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label fw-bold">Phone Number</label>
-                            <input type="tel" name="phone" class="form-control rounded-3" placeholder="e.g., 0700123456" required>
+                            <input type="tel" name="phone" class="form-control rounded-3" placeholder="e.g., 0700123456" value="{% if selected_bursar and selected_bursar.phone %}{{ selected_bursar.phone }}{% endif %}" required>
                             <small class="text-muted">Bursar's contact phone number</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Password</label>
+                            <input type="password" name="password" class="form-control rounded-3" placeholder="{% if selected_bursar %}Leave blank to keep current password{% else %}Temporary password is bursar123{% endif %}">
+                            <small class="text-muted">{% if selected_bursar %}Leave blank to keep current password.{% else %}A temporary password is assigned and verification email sent.{% endif %}</small>
                         </div>
 
                         <div class="alert alert-info mb-3">
@@ -57,15 +65,58 @@
                             <ul class="mb-0 mt-2">
                                 <li>The bursar will receive a verification email</li>
                                 <li>They must verify their email to activate the account</li>
-                                <li>They can then create fee structures and invoices (pending your approval)</li>
+                                <li>They can then manage fee structures and invoices</li>
                             </ul>
                         </div>
 
-                        <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-primary btn-lg rounded-3">✓ Create Bursar Account</button>
-                            <a href="{% url 'principal_dashboard' %}" class="btn btn-outline-secondary btn-lg rounded-3">Cancel</a>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button type="submit" class="btn btn-primary btn-lg rounded-3">{% if selected_bursar %}Update Bursar{% else %}Create Bursar Account{% endif %}</button>
+                            <a href="{% url 'create_bursar' %}" class="btn btn-outline-secondary btn-lg rounded-3">Cancel</a>
                         </div>
                     </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-lg rounded-4 h-100">
+                <div class="card-header bg-dark text-white rounded-top-4 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">📋 Existing Bursar Accounts</h5>
+                    <span class="badge bg-light text-dark">{{ bursars.count }}</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Phone</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for bursar in bursars %}
+                                <tr>
+                                    <td>{{ bursar.get_full_name|default:bursar.email }}</td>
+                                    <td>{{ bursar.email }}</td>
+                                    <td>{{ bursar.phone|default:'—' }}</td>
+                                    <td class="text-end">
+                                        <a href="{% url 'create_bursar' %}?bursar_id={{ bursar.id }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                                        <form method="post" action="{% url 'delete_bursar' bursar.id %}" class="d-inline-block" onsubmit="return confirm('Delete this bursar account? This action cannot be undone.');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted py-4">No bursar accounts created yet.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>

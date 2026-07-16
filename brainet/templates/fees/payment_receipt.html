@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Receipt - {{ payment.receipt_number }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background: #eceff3;
+            color: #222;
+            font-size: 13px;
+        }
+        html, body {
+            width: 148mm;
+            height: 210mm;
+            margin: 0;
+            padding: 0;
+        }
+        .receipt {
+            width: 148mm;
+            height: 210mm;
+            max-height: 210mm;
+            margin: 0 auto;
+            background: #fff;
+            padding: 4mm;
+            position: relative;
+            overflow: hidden;
+            box-shadow: none;
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+        .watermark-text {
+            position: absolute;
+            color: #163b7d;
+            opacity: 0.08;
+            font-size: 8px;
+            font-weight: 700;
+            transform: rotate(-45deg);
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 1;
+            letter-spacing: 0.08em;
+        }
+        .watermark-logo {
+            position: absolute;
+            width: 240px;
+            height: 240px;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0.15;
+            z-index: 1;
+            object-fit: contain;
+            pointer-events: none;
+        }
+        .receipt > *:not(.watermark-logo) {
+            position: relative;
+            z-index: 2;
+        }
+        .header {
+            display: flex;
+            gap: 14px;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #163b7d;
+        }
+        .logo img {
+            width: 70px;
+            height: 70px;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+        .school-info h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: #163b7d;
+            margin-bottom: 4px;
+        }
+        .school-info p {
+            font-size: 12px;
+            color: #555;
+            line-height: 1.5;
+            margin-top: 4px;
+        }
+        .receipt-title {
+            margin: 16px 0;
+            padding: 12px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: 700;
+            color: #fff;
+            background: #163b7d;
+            letter-spacing: 1px;
+        }
+        .section-title {
+            margin: 20px 0 10px;
+            padding: 10px 12px;
+            background: #163b7d;
+            color: #fff;
+            font-size: 13px;
+            font-weight: 700;
+            border-radius: 6px;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        .info-card {
+            background: #f8f9ff;
+            border: 1px solid #d9d9d9;
+            border-radius: 8px;
+            padding: 10px 12px;
+        }
+        .info-card strong {
+            display: block;
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #555;
+            margin-bottom: 6px;
+        }
+        .info-card .value {
+            font-size: 13px;
+            color: #111;
+        }
+        .info-card {
+            background: #f8f9ff;
+            border: 1px solid #d9d9d9;
+            border-radius: 8px;
+            padding: 10px 12px;
+        }
+        .info-card strong {
+            display: block;
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #555;
+            margin-bottom: 6px;
+        }
+        .info-card .value {
+            font-size: 13px;
+            color: #111;
+        }
+        .payment-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 14px;
+            margin-bottom: 18px;
+        }
+        .payment-table th,
+        .payment-table td {
+            border: 1px solid #d9d9d9;
+            padding: 10px;
+            vertical-align: top;
+        }
+        .payment-table th {
+            background: #163b7d;
+            color: #fff;
+            text-align: left;
+        }
+        .payment-table tr:nth-child(even) {
+            background: #fafbff;
+        }
+        .payment-table .label {
+            width: 40%;
+            font-weight: 700;
+            background: #f4f7fb;
+        }
+        .receipt::before {
+            content: '{{ account.school.name }}';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-30deg);
+            color: #163b7d;
+            opacity: 0.04;
+            font-size: 6px;
+            font-weight: 700;
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 1;
+        }
+        .watermark-logo {
+            width: 240px;
+            height: 240px;
+            opacity: 0.08;
+        }
+        .right {
+            text-align: right;
+        }
+        .words {
+            border: 1px solid #ddd;
+            padding: 12px;
+            margin-bottom: 20px;
+            background: #fafafa;
+            font-size: 13px;
+        }
+        .words strong {
+            display: block;
+            margin-bottom: 6px;
+        }
+        .footer {
+            margin-top: 28px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .stamp-box {
+            width: 180px;
+            height: 90px;
+            border: 2px dashed #888;
+            text-align: center;
+            line-height: 90px;
+            color: #777;
+        }
+        .footer-note {
+            width: calc(100% - 200px);
+            font-size: 12px;
+            color: #666;
+            line-height: 1.5;
+        }
+        .toolbar {
+            width: 100%;
+            max-width: 148mm;
+            margin: 0 auto 8px;
+            text-align: right;
+        }
+        .btn {
+            padding: 10px 16px;
+            border: none;
+            cursor: pointer;
+            text-decoration: none;
+            color: #fff;
+            border-radius: 5px;
+            margin-left: 6px;
+            font-size: 13px;
+            display: inline-block;
+        }
+        .btn-primary { background: #163b7d; }
+        .btn-secondary { background: #666; }
+        @page { size: A5 portrait; margin: 0; }
+        body { margin: 0; padding: 0; }
+        @media print {
+            html, body { width: 148mm; height: 210mm; margin: 0; padding: 0; }
+            body { background: #fff; }
+            .toolbar { display: none; }
+            .receipt { width: 148mm; height: 210mm; margin: 0; padding: 4mm; box-shadow: none; }
+        }
+    </style>
+</head>
+<body>
+<div class="toolbar no-print">
+    <button onclick="window.print()" class="btn btn-primary">🖨 Print</button>
+    <a href="{% url 'fees_dashboard' %}" class="btn btn-secondary">← Back to Fees</a>
+</div>
+<div class="receipt">
+    {% if account.school.logo %}
+        <img src="{{ account.school.logo.url }}" class="watermark-logo" alt="">
+    {% endif %}
+    {% if account.school %}
+        <div class="watermark-text" style="top:12mm; left:-20mm;">{{ account.school.name }}</div>
+        <div class="watermark-text" style="top:34mm; left:10mm;">{{ account.school.name }}</div>
+        <div class="watermark-text" style="top:56mm; left:-18mm;">{{ account.school.name }}</div>
+        <div class="watermark-text" style="top:78mm; left:10mm;">{{ account.school.name }}</div>
+        <div class="watermark-text" style="top:100mm; left:-20mm;">{{ account.school.name }}</div>
+        <div class="watermark-text" style="top:122mm; left:10mm;">{{ account.school.name }}</div>
+        <div class="watermark-text" style="top:144mm; left:-18mm;">{{ account.school.name }}</div>
+        <div class="watermark-text" style="top:166mm; left:10mm;">{{ account.school.name }}</div>
+        <div class="watermark-text" style="top:188mm; left:-20mm;">{{ account.school.name }}</div>
+    {% endif %}
+    <div class="header">
+        <div class="logo">
+            {% if account.school.logo %}
+                <img src="{{ account.school.logo.url }}" alt="{{ account.school.name }}">
+            {% endif %}
+        </div>
+        <div class="school-info">
+            <h1 class="school-name">{{ account.school.name }}</h1>
+            {% if account.school.motto %}<p class="school-motto">{{ account.school.motto }}</p>{% endif %}
+            <p class="school-contact">
+                {{ account.school.address }}
+                {% if account.school.phone %}• {{ account.school.phone }} {% endif %}
+                {% if account.school.email %}• {{ account.school.email }}{% endif %}
+            </p>
+        </div>
+    </div>
+    <div class="receipt-title">OFFICIAL PAYMENT RECEIPT</div>
+    <div class="info-grid">
+        <div class="info-card">
+            <strong>Receipt Number</strong>
+            <div class="value">{{ payment.receipt_number }}</div>
+        </div>
+        <div class="info-card">
+            <strong>Date</strong>
+            <div class="value">{{ payment.date_paid|date:"d M Y H:i" }}</div>
+        </div>
+        <div class="info-card">
+            <strong>Payment Method</strong>
+            <div class="value">{{ payment.get_payment_method_display }}</div>
+        </div>
+        <div class="info-card">
+            <strong>Reference</strong>
+            <div class="value">{% if payment.reference %}{{ payment.reference }}{% else %}-{% endif %}</div>
+        </div>
+        <div class="info-card">
+            <strong>Student</strong>
+            <div class="value">{{ student.name }}</div>
+        </div>
+        <div class="info-card">
+            <strong>Admission No</strong>
+            <div class="value">{{ student.admission_number }}</div>
+        </div>
+        <div class="info-card">
+            <strong>Class / Stream</strong>
+            <div class="value">
+                {% if student.current_class %}{{ student.current_class.name }}{% else %}-{% endif %}
+                {% if student.stream %} / {{ student.stream.name }}{% endif %}
+            </div>
+        </div>
+        <div class="info-card">
+            <strong>Term</strong>
+            <div class="value">{{ term_name|default:'N/A' }}</div>
+        </div>
+        <div class="info-card">
+            <strong>Saved By</strong>
+            <div class="value">{{ served_by_name }}</div>
+        </div>
+    </div>
+
+    <div class="section-title">Payment Summary</div>
+    <table class="payment-table">
+        <tbody>
+            <tr>
+                <td class="label">Paid Amount</td>
+                <td class="right">KES {{ paid_amount|floatformat:2 }}</td>
+            </tr>
+            <tr>
+                <td class="label">Term Balance</td>
+                <td class="right">KES {{ balance_amount|floatformat:2 }}</td>
+            </tr>
+            <tr>
+                <td class="label">Overall Year Balance</td>
+                <td class="right">KES {{ overall_balance|floatformat:2 }}</td>
+            </tr>
+        </tbody>
+    </table>
+    <p style="font-size:11px; color:#555; margin:8px 0 0;">*Overpayments are now allocated across prior, current, and next term accounts in chronological order.</p>
+
+    <div class="words">
+        <strong>Amount in Words</strong>
+        {{ amount_in_words }}
+    </div>
+    <div class="footer">
+        <div class="stamp-box">SCHOOL STAMP</div>
+        <div class="footer-note">
+            Thank you for your payment.<br><br>
+            This receipt is generated from the student's fee account and current balance information.
+            <br><br>
+            Generated by Brainet ERP School Management System.
+        </div>
+    </div>
+</div>
+</body>
+</html>

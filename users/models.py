@@ -99,3 +99,27 @@ class CustomUser(AbstractUser):
 
     def __str__(self):
         return self.email
+
+    def get_name(self):
+        """Return the best available display name for this user."""
+        full_name = self.get_full_name().strip()
+        if full_name:
+            return full_name
+
+        profile_name = None
+        if hasattr(self, 'teacher') and getattr(self.teacher, 'name', None):
+            profile_name = self.teacher.name
+        elif hasattr(self, 'principal') and getattr(self.principal, 'name', None):
+            profile_name = self.principal.name
+        elif hasattr(self, 'dos_profile') and getattr(self.dos_profile, 'name', None):
+            profile_name = self.dos_profile.name
+        elif hasattr(self, 'student_profile') and getattr(self.student_profile, 'name', None):
+            profile_name = self.student_profile.name
+
+        if profile_name:
+            return profile_name
+
+        return self.email
+
+    def get_display_name(self):
+        return self.get_name()

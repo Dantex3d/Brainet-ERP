@@ -194,6 +194,34 @@
 
     </div>
 
+    <div class="row g-4 mb-4">
+
+        <div class="col-md-3">
+
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+
+                <div class="card-body">
+
+                    <small class="text-muted">
+                        Exam Window
+                    </small>
+
+                    <h2 class="fw-bold {% if exam_window_open %}text-success{% else %}text-warning{% endif %}">
+                        {% if exam_window_open %}OPEN{% else %}CLOSED{% endif %}
+                    </h2>
+
+                    <small class="text-muted">
+                        {% if exam_window_open %}{{ active_exam_count }} open exam(s){% else %}Marks entry blocked{% endif %}
+                    </small>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
     <div class="row g-4">
 
         <!-- LEFT SIDE -->

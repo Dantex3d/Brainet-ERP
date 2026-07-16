@@ -1,0 +1,110 @@
+{% extends 'dashboards/base.html' %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <a href="{% url 'fees_dashboard' %}" class="btn btn-outline-secondary rounded-3 mb-3">← Back to Fees</a>
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center gap-4">
+                        {% if school and school.logo %}
+                        <div class="school-logo rounded-4 overflow-hidden" style="width: 100px; height: 100px; border: 1px solid #e1e1e1;">
+                            <img src="{{ school.logo.url }}" alt="{{ school.name }} logo" style="width: 100%; height: 100%; object-fit: cover;">
+                        </div>
+                        {% endif %}
+                        <div>
+                            <h1 class="fw-bold text-primary mb-1">{{ school.name|default:'School' }}</h1>
+                            <p class="mb-1">{{ school.address|default:'School address not available' }}</p>
+                            <p class="mb-0 text-muted">Tel: {{ school.phone|default:'N/A' }}{% if school.email %} • Email: {{ school.email }}{% endif %}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="border-top" style="border-color: rgba(31, 60, 136, .75); height: 2px;"></div>
+            </div>
+            <h1 class="fw-bold text-primary mt-4">OFFICIAL FEE STRUCTURE</h1>
+            <p class="text-muted">The current fee structure is presented by term with official payment account instructions below.</p>
+        </div>
+        <div class="col-lg-4 text-end">
+            <a href="{% url 'fee_structure_schedule_pdf' %}" class="btn btn-success rounded-3 mb-2">⬇️ Download PDF</a>
+            <a href="{% url 'fee_structure_schedule_pdf' %}?mode=print" target="_blank" class="btn btn-primary rounded-3 mb-2">🖨️ Print PDF</a>
+            <a href="{% url 'school_payment_account' %}" class="btn btn-warning rounded-3 mb-2">🏦 Manage Account</a>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-lg-12">
+            <div class="card border-0 shadow-lg rounded-4">
+                <div class="card-body p-4">
+                    <div class="table-responsive">
+                        <table class="table table-bordered align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Structure</th>
+                                    <th class="text-end">Term 1</th>
+                                    <th class="text-end">Term 2</th>
+                                    <th class="text-end">Term 3</th>
+                                    <th class="text-end">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in schedule_rows %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ row.title }}</strong>
+                                        {% if row.components %}
+                                        <div class="text-muted small mt-1">
+                                            {% for item in row.components %}
+                                            • {{ item }}<br>
+                                            {% endfor %}
+                                        </div>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">{% if row.term1_amount %}KES {{ row.term1_amount|floatformat:2 }}{% endif %}</td>
+                                    <td class="text-end">{% if row.term2_amount %}KES {{ row.term2_amount|floatformat:2 }}{% endif %}</td>
+                                    <td class="text-end">{% if row.term3_amount %}KES {{ row.term3_amount|floatformat:2 }}{% endif %}</td>
+                                    <td class="text-end">KES {{ row.amount|floatformat:2 }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted">No approved fee structures available.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <div class="p-4 rounded-4 bg-light">
+                                <h5 class="fw-bold">Totals by Term</h5>
+                                <p class="mb-1">Term 1 Total: <strong>KES {{ summary.total_term1|floatformat:2 }}</strong></p>
+                                <p class="mb-1">Term 2 Total: <strong>KES {{ summary.total_term2|floatformat:2 }}</strong></p>
+                                <p class="mb-1">Term 3 Total: <strong>KES {{ summary.total_term3|floatformat:2 }}</strong></p>
+                                <p class="mb-1">Grand Total: <strong>KES {{ summary.total_expected|floatformat:2 }}</strong></p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="p-4 rounded-4 bg-light">
+                                <h5 class="fw-bold">Payment Accounts</h5>
+                                {% if school and school.bank_name and school.account_number %}
+                                    <p class="mb-1">Bank Account: <strong>{{ school.bank_name }} - {{ school.account_number }}</strong></p>
+                                {% else %}
+                                    <p class="mb-1 text-muted">No school payment account has been configured.</p>
+                                {% endif %}
+                                <p class="text-muted small mt-2">Use official school payment accounts only. Upload payment proof where required.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <div class="alert alert-info rounded-4">
+                            <strong>Payment notice:</strong> Please pay to the official school account only. Payments made to other accounts are not recommended. Delay in payment may attract penalties or processing delays.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

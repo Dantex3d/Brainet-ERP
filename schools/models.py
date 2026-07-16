@@ -54,6 +54,8 @@ class School(models.Model):
     logo = CloudinaryField('image', blank=True, null=True)
 
     subscription_balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    bank_name = models.CharField(max_length=250, blank=True, null=True)
+    account_number = models.CharField(max_length=100, blank=True, null=True)
     is_active = models.BooleanField(default=False)
     is_verified = models.BooleanField(default=False)
     verified_at = models.DateTimeField(null=True, blank=True)
@@ -362,6 +364,34 @@ class Notification(models.Model):
 
     def __str__(self):
         return self.title      
+
+
+class ErrorReport(models.Model):
+    school = models.ForeignKey(
+        "School",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="error_reports"
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="error_reports"
+    )
+    path = models.CharField(max_length=500, blank=True, null=True)
+    method = models.CharField(max_length=10, blank=True, null=True)
+    exception_type = models.CharField(max_length=255)
+    message = models.TextField()
+    traceback = models.TextField(blank=True, null=True)
+    data = models.TextField(blank=True, null=True)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.exception_type} @ {self.path or 'unknown'}"
 
 
 # =========================================================

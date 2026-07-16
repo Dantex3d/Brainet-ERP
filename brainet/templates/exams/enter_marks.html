@@ -57,6 +57,12 @@
 
     {% endif %}
 
+    {% if not exam_window_open %}
+        <div class="alert alert-warning rounded-3 mb-4">
+            Exam entry is currently closed. Contact your school administrator to reopen the exam window before saving marks.
+        </div>
+    {% endif %}
+
     <!-- FILTER -->
     <form method="get"
           class="card shadow border-0 mb-4">

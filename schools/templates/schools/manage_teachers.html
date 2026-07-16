@@ -71,51 +71,15 @@
                                 {% endif %}
                             </td>
                             <td>
-                                <div class="d-flex gap-2">
-                                    <a href="{% url 'edit_teacher' teacher.id %}" class="btn btn-sm btn-outline-warning">Edit</a>
-                                    <a href="{% url 'delete_teacher' teacher.id %}" class="btn btn-sm btn-outline-danger">Delete</a>
-
-                                    <form method="post" action="{% url 'assign_teacher_class' %}" class="d-flex align-items-center">
-                                        {% csrf_token %}
-                                        <input type="hidden" name="teacher" value="{{ teacher.id }}">
-                                        <select name="class" class="form-select form-select-sm me-1">
-                                            <option value="">Choose class</option>
-                                            {% for class in classes %}
-                                                <option value="{{ class.id }}">{{ class.name }}</option>
-                                            {% endfor %}
-                                        </select>
-                                        <select name="stream" class="form-select form-select-sm me-1">
-                                            <option value="">Stream (optional)</option>
-                                            {% for stream in streams %}
-                                                <option value="{{ stream.id }}" data-class="{{ stream.class_group.id }}">{{ stream.class_group.name }} - {{ stream.name }}</option>
-                                            {% endfor %}
-                                        </select>
-                                        <button class="btn btn-sm btn-primary">Assign</button>
-                                    </form>
-
-                                    <form method="post" action="{% url 'assign_teacher_subject' %}" class="d-flex align-items-center">
-                                        {% csrf_token %}
-                                        <input type="hidden" name="teacher" value="{{ teacher.id }}">
-                                        <select name="subject" class="form-select form-select-sm me-1">
-                                            <option value="">Choose subject</option>
-                                            {% for subject in subjects %}
-                                                <option value="{{ subject.id }}">{{ subject.name }}</option>
-                                            {% endfor %}
-                                        </select>
-                                        <select name="class" class="form-select form-select-sm me-1">
-                                            <option value="">Choose class</option>
-                                            {% for class in classes %}
-                                                <option value="{{ class.id }}">{{ class.name }}</option>
-                                            {% endfor %}
-                                        </select>
-                                        <select name="stream" class="form-select form-select-sm me-1">
-                                            <option value="">Stream (optional)</option>
-                                            {% for stream in streams %}
-                                                <option value="{{ stream.id }}" data-class="{{ stream.class_group.id }}">{{ stream.class_group.name }} - {{ stream.name }}</option>
-                                            {% endfor %}
-                                        </select>
-                                        <button class="btn btn-sm btn-success">Assign</button>
-                                    </form>
+                                <div class="d-flex flex-column gap-2">
+                                    <div class="d-flex gap-2 flex-wrap align-items-center mb-2">
+                                        <a href="{% url 'edit_teacher' teacher.id %}" class="btn btn-sm btn-outline-warning">Edit</a>
+                                        <a href="{% url 'delete_teacher' teacher.id %}" class="btn btn-sm btn-outline-danger">Delete</a>
+                                        <a href="{% url 'assign_teacher' teacher.id %}" class="btn btn-sm btn-outline-primary" target="_blank">Assign</a>
+                                    </div>
+                                    <div class="text-muted small">
+                                        Add and edit teachers here. Use the Assign page to manage class and subject assignments.
+                                    </div>
                                 </div>
                             </td>
                         </tr>
