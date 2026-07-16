@@ -12,7 +12,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('schools', '0022_alter_errorreport_id'),
+        ('schools', '0021_add_error_report'),
         ('students', '0005_student_photo'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
