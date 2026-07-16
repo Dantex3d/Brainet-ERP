@@ -58,13 +58,15 @@
 
             background-position:center;
 
-            background-attachment:fixed;
+            background-repeat:no-repeat;
 
             display:flex;
 
             flex-direction:column;
 
             position:relative;
+
+            transition: background-image 1.2s ease-in-out;
 
         }
 
@@ -1192,6 +1194,23 @@ if (installBtn) {
         installPrompt.style.display = 'none';
     });
 }
+
+// Landing hero background slideshow
+const heroSection = document.querySelector('.hero-section');
+const heroImages = [
+    "{% static 'images/baground1.jpeg' %}",
+    "{% static 'images/baground2.jpeg' %}",
+    "{% static 'images/baground3.jpeg' %}"
+];
+let heroIndex = 0;
+
+function rotateHeroBackground() {
+    if (!heroSection) return;
+    heroIndex = (heroIndex + 1) % heroImages.length;
+    heroSection.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.65), rgba(0,0,0,0.75)), url('${heroImages[heroIndex]}')`;
+}
+
+setInterval(rotateHeroBackground, 8000);
 
 if (webInstallBtn) {
     webInstallBtn.addEventListener('click', () => {

@@ -153,7 +153,12 @@
                                         </div>
                                         <div class="col-md-6 col-lg-4">
                                             <small class="text-muted">Receipt</small>
-                                            <div>{{ payment.invoice }}</div>
+                                            <div class="d-flex flex-column gap-1">
+                                                <span>{{ payment.invoice }}</span>
+                                                {% if payment.receipt_url %}
+                                                <a href="{{ payment.receipt_url }}" target="_blank" class="btn btn-outline-secondary btn-sm rounded-3 mt-1">View Receipt</a>
+                                                {% endif %}
+                                            </div>
                                         </div>
                                         <div class="col-12 col-lg-4">
                                             <small class="text-muted">Processed By</small>

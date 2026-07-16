@@ -44,6 +44,44 @@ from reportlab.graphics.charts.lineplots import LinePlot
 from reportlab.graphics.shapes import Drawing, Circle
 
 User = get_user_model()
+
+
+def get_school_login_domain(school):
+    """Return a short sanitized login domain for a school."""
+    if not school or not getattr(school, "name", None):
+        return "school"
+
+    words = re.findall(r"[a-z0-9]+", school.name.lower())
+    if not words:
+        return "school"
+
+    first = words[0][:5]
+    last = words[-1]
+
+    generic_suffixes = {
+        "school",
+        "academy",
+        "college",
+        "institute",
+        "primary",
+        "infants",
+        "nursery",
+        "high",
+        "junior",
+    }
+
+    if len(words) > 1 and last in generic_suffixes:
+        second = words[-2][:3]
+        return f"{first}{second}"
+
+    second = last[:3]
+    return f"{first}{second}"
+
+
+def student_login_email(admission_number, school):
+    return f"{admission_number}@{get_school_login_domain(school)}.school"
+
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from users.models import CustomUser
@@ -2044,7 +2082,7 @@ def add_student(request):
         # =========================
         # EMAIL LOGIN SYSTEM
         # =========================
-        email = f"{admission_number}@{school.name.lower().replace(' ', '')}.school"
+        email = student_login_email(admission_number, school)
 
         if User.objects.filter(email=email).exists():
             messages.error(request, "Student already exists")
@@ -2271,7 +2309,7 @@ def import_students_from_excel(request):
             if default_stream:
                 stream = default_stream
 
-        email = f"{admission_number}@{school.name.lower().replace(' ', '')}.school"
+        email = student_login_email(admission_number, school)
         user = User.objects.create_user(
             email=email,
             password=admission_number,
@@ -2438,6 +2476,16 @@ def student_dashboard(request):
         total_score = sum([float(mark.marks) for mark in marks if mark.marks is not None])
         average = round(total_score / marks.count(), 1) if marks.count() else 0
 
+    # =========================
+    # STUDENT FEE SUMMARY
+    # =========================
+    statement = None
+    try:
+        from fees.views import get_student_statement
+        statement = get_student_statement(student)
+    except Exception:
+        statement = None
+
     online_classes = OnlineClass.objects.filter(
         school=school,
         class_obj=current_class
@@ -2484,6 +2532,7 @@ def student_dashboard(request):
         "performance_chart": performance_chart,
         "subject_performance_chart": subject_performance_chart,
         "online_classes": online_class_view,
+        "statement": statement,
         "notices": SchoolNotice.objects.filter(school=school).filter(recipient_type__in=['students','all']).order_by('-created_at'),
     })
 
@@ -6196,7 +6245,7 @@ def export_class_report(request, class_id, term_id, exam_id):
             login_email = (
                 student.user.email
                 if hasattr(student, 'user') and getattr(student.user, 'email', None)
-                else f"{student.admission_number}@{school.name.lower().replace(' ', '')}.school"
+                else student_login_email(student.admission_number, school)
             )
             login_text = (
                 f"Scan the QR code to login.<br/>"

@@ -1,24 +1,47 @@
-<h2>Edit Teacher</h2>
-<form method="post">
-  {% csrf_token %}
-  <label>Name:</label>
-  <input type="text" name="name" value="{{ teacher.name }}" required><br><br>
+{% extends 'dashboards/base.html' %}
 
-  <label>Email:</label>
-  <input type="email" name="email" value="{{ teacher.user.email }}" required><br><br>
+{% block content %}
+<div class="container py-4">
+    <div class="card shadow rounded-4">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">Edit Teacher</h4>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
 
-  <label>Phone:</label>
-  <input type="text" name="phone" value="{{ teacher.phone }}" required><br><br>
+                <div class="mb-3">
+                    <label class="form-label">Name</label>
+                    <input type="text" name="name" value="{{ teacher.name }}" class="form-control" required>
+                </div>
 
-  <label>Role:</label>
-  <select name="role" required>
-    <option value="subject" {% if teacher.role == "subject" %}selected{% endif %}>Subject Teacher</option>
-    <option value="class" {% if teacher.role == "class" %}selected{% endif %}>Class Teacher</option>
-  </select><br><br>
+                <div class="mb-3">
+                    <label class="form-label">Email</label>
+                    <input type="email" name="email" value="{{ teacher.user.email }}" class="form-control" required>
+                </div>
 
-  <div class="alert alert-info">
-    Teacher assignment is managed separately from edit. Use the Assign page from Manage Teachers to assign classes and subjects.
-  </div>
+                <div class="mb-3">
+                    <label class="form-label">Phone</label>
+                    <input type="text" name="phone" value="{{ teacher.phone }}" class="form-control" required>
+                </div>
 
-  <button type="submit" class="btn btn-primary">Update</button>
-</form>
+                <div class="mb-3">
+                    <label class="form-label">Role</label>
+                    <select name="role" class="form-select" required>
+                        <option value="subject" {% if teacher.role == "subject" %}selected{% endif %}>Subject Teacher</option>
+                        <option value="class" {% if teacher.role == "class" %}selected{% endif %}>Class Teacher</option>
+                        <option value="both" {% if teacher.role == "both" %}selected{% endif %}>Class + Subject Teacher</option>
+                    </select>
+                </div>
+
+                <div class="alert alert-info">
+                    Teacher assignment is managed separately from edit. Use the Assign page from Manage Teachers to assign classes and subjects.
+                </div>
+
+                <button type="submit" class="btn btn-primary">Update Teacher</button>
+                <a href="{% url 'manage_teachers' %}" class="btn btn-secondary ms-2">Back</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

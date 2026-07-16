@@ -433,6 +433,7 @@ def get_student_statement(student):
             "served_by": served_by_text,
             "term": payment.account.term or "N/A",
             "invoice": payment.invoice.receipt_number if payment.invoice else "Quick Pay",
+            "receipt_url": reverse("invoice_receipt_pdf", kwargs={"invoice_id": payment.invoice.pk}) if payment.invoice else None,
             "balance_after": balance_after,
         })
 
@@ -993,6 +994,11 @@ def student_fee_statement(request):
     school = get_school(request.user)
     student = None
 
+    if not admission_number and getattr(request.user, 'role', None) == 'student':
+        student = Student.objects.filter(user=request.user).first()
+        if student:
+            admission_number = student.admission_number
+
     if admission_number:
         student = Student.objects.filter(admission_number__iexact=admission_number).first()
         if student:
@@ -1007,6 +1013,11 @@ def student_fee_statement(request):
 @login_required
 def student_fee_statement_pdf(request):
     admission_number = request.GET.get("admission_number", "").strip()
+    if not admission_number and getattr(request.user, 'role', None) == 'student':
+        student = Student.objects.filter(user=request.user).first()
+        if student:
+            admission_number = student.admission_number
+
     if not admission_number:
         return HttpResponseBadRequest("Admission number is required.")
 

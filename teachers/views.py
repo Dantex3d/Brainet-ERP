@@ -524,6 +524,7 @@ def edit_teacher(request, teacher_id):
         email = request.POST.get("email", teacher.email).strip()
         teacher.name = request.POST["name"]
         teacher.phone = request.POST["phone"]
+        teacher.role = request.POST.get("role", teacher.role)
 
         if email and email != teacher.email:
             if CustomUser.objects.exclude(id=teacher.user_id).filter(email=email).exists():
