@@ -32,21 +32,37 @@
         body {
             background: #f4f7fc;
             font-family: 'Segoe UI', sans-serif;
+            font-size: 0.96rem;
         }
         .navbar {
             box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            padding-top: 0.6rem;
+            padding-bottom: 0.6rem;
+        }
+        .navbar-brand {
+            font-size: 1.05rem;
+        }
+        .nav-link {
+            font-size: 0.92rem;
+            padding: 0.35rem 0.6rem !important;
         }
         .card {
-            border-radius: 18px;
+            border-radius: 16px;
         }
         .table {
             vertical-align: middle;
+            font-size: 0.92rem;
+        }
+        main.container-fluid {
+            padding-top: 0.75rem !important;
+            padding-bottom: 0.75rem !important;
         }
         footer {
-            margin-top: 50px;
-            padding: 20px;
+            margin-top: 24px;
+            padding: 16px 20px;
             text-align: center;
             color: gray;
+            font-size: 0.9rem;
         }
     </style>
 </head>
@@ -164,7 +180,7 @@
     </div>
 
     <!-- MAIN CONTENT -->
-    <main class="container-fluid py-4">
+    <main class="container-fluid py-2">
         {% block content %}
         {% endblock %}
     </main>
@@ -173,7 +189,7 @@
     <footer>
         <strong>Brainet Analytics System</strong><br>
         School Management System<br>
-        <small>Developed by Daniel Merkouin</small>
+        <small>Developed by Daniel Merkou</small>
     </footer>
 
     <!-- Bootstrap JS -->

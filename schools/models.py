@@ -8,7 +8,14 @@ from django.contrib.auth import get_user_model
 from users.models import CustomUser
 from classes.models import Class
 from subjects.models import Subject
-from cloudinary.models import CloudinaryField
+
+try:
+    from cloudinary.models import CloudinaryField
+except ImportError:  # pragma: no cover - exercised when cloudinary is not installed
+    class CloudinaryField(models.ImageField):
+        def __init__(self, *args, **kwargs):
+            kwargs.setdefault("upload_to", "uploads")
+            super().__init__(*args, **kwargs)
 
 User = get_user_model()
 

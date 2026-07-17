@@ -1,4 +1,4 @@
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
 from brainet.templatetags.text_filters import register
@@ -8,6 +8,14 @@ from students.models import Student
 from schools.views import assign_competition_ranks, generate_progress_chart, get_student_term_performance_history, get_combined_mark_for_reporting
 from schools.promotion_service import PromotionService
 from users.models import CustomUser
+
+
+class SchoolModelImportTests(SimpleTestCase):
+    def test_school_models_import_without_cloudinary_dependency(self):
+        from schools import models
+
+        self.assertTrue(hasattr(models, "School"))
+        self.assertTrue(hasattr(models, "DirectorOfStudies"))
 
 
 class PromotionStageTests(TestCase):

@@ -12,8 +12,9 @@
 
     <!-- PWA Manifest -->
     <link rel="manifest" href="{% static 'manifest.json' %}">
-    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'images/brainet-icon-192.png' %}">
-    <link rel="mask-icon" href="{% static 'images/brainet-icon-512.png' %}" color="#0d6efd">
+    <link rel="icon" href="{% static 'images/brainet.ico' %}" type="image/x-icon">
+    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'images/brainet.ico' %}">
+    <link rel="mask-icon" href="{% static 'images/brainet.ico' %}" color="#0d6efd">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#0d6efd">
@@ -50,9 +51,9 @@
 
         .hero-section{
             min-height:100vh;
-            background:
+            background-image:
             linear-gradient(rgba(0,0,0,0.65), rgba(0,0,0,0.75)),
-            url("{% static 'images/baground1.jpeg' %}");
+            var(--hero-bg-image, url("{% static 'images/baground1.jpeg' %}"));
 
             background-size:cover;
 
@@ -233,25 +234,28 @@
 
             text-align:center;
 
-            padding:40px;
+            padding:30px 20px 50px;
 
         }
 
         .hero-box{
 
-            max-width:1000px;
+            width:min(900px, 75vw);
+
+            max-width:900px;
 
         }
 
         .hero-title{
 
-            font-size:4rem;
+            font-size:clamp(2.3rem, 3.2vw, 3.6rem);
 
             font-weight:900;
 
             color:#fff;
 
-            margin-bottom:20px;
+            margin-bottom:16px;
+            line-height:1.1;
 
             animation:fadeDown 1s ease;
 
@@ -259,11 +263,13 @@
 
         .hero-subtitle{
 
-            font-size:1.35rem;
+            font-size:clamp(1rem, 1.2vw, 1.2rem);
 
             color:#d1d5db;
 
-            margin-bottom:40px;
+            margin:0 auto 28px;
+            max-width:760px;
+            line-height:1.6;
 
             animation:fadeUp 1.5s ease;
 
@@ -271,13 +277,13 @@
 
         .hero-buttons .btn{
 
-            padding:15px 35px;
+            padding:12px 24px;
 
-            font-size:1.1rem;
+            font-size:0.98rem;
 
             border-radius:40px;
 
-            margin:10px;
+            margin:8px;
 
             font-weight:700;
 
@@ -1199,8 +1205,10 @@ if (installBtn) {
 const heroSection = document.querySelector('.hero-section');
 const heroImages = [
     "{% static 'images/baground1.jpeg' %}",
-    "{% static 'images/baground2.jpeg' %}",
-    "{% static 'images/baground3.jpeg' %}"
+    "{% static 'images/baground2.png' %}",
+    "{% static 'images/baground3.png' %}",
+    "{% static 'images/baground4.png' %}",
+    "{% static 'images/baground5.png' %}"
 ];
 let heroIndex = 0;
 
