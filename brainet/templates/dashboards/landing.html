@@ -1180,20 +1180,29 @@ function shouldSuppressInstallPrompt() {
     return sessionStorage.getItem(INSTALL_PROMPT_DISMISS_KEY) === '1';
 }
 
+function setInstallPromptVisibility(visible) {
+    if (!installPrompt) {
+        return;
+    }
+
+    installPrompt.hidden = !visible;
+    installPrompt.style.display = visible ? 'flex' : 'none';
+    installPrompt.setAttribute('aria-hidden', visible ? 'false' : 'true');
+    installPrompt.classList.toggle('d-flex', visible);
+    installPrompt.classList.toggle('flex-column', visible);
+}
+
 function hideInstallPrompt() {
     sessionStorage.setItem(INSTALL_PROMPT_DISMISS_KEY, '1');
-    if (installPrompt) {
-        installPrompt.style.display = 'none';
-        installPrompt.classList.remove('d-flex', 'flex-column');
-    }
+    setInstallPromptVisibility(false);
 }
 
 function showInstallPrompt() {
     if (shouldSuppressInstallPrompt() || !installPrompt) {
+        setInstallPromptVisibility(false);
         return;
     }
-    installPrompt.style.display = 'flex';
-    installPrompt.classList.add('d-flex', 'flex-column');
+    setInstallPromptVisibility(true);
 }
 
 // Listen for the beforeinstallprompt event
@@ -1252,7 +1261,14 @@ if (webInstallBtn) {
 // Hide install prompt after dismissal
 document.addEventListener('DOMContentLoaded', () => {
     if (dismissInstallBtn) {
-        dismissInstallBtn.addEventListener('click', hideInstallPrompt);
+        dismissInstallBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            hideInstallPrompt();
+        });
+    }
+
+    if (shouldSuppressInstallPrompt()) {
+        setInstallPromptVisibility(false);
     }
 });
 

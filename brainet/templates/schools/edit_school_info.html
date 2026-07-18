@@ -6,7 +6,7 @@
 <div class="container py-4">
 
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 class="fw-bold">⚙️ Edit School Information</h3>
+        <h3 class="fw-bold">⚙️ Edit School Details</h3>
         <a href="{% url 'principal_dashboard' %}" class="btn btn-outline-secondary">
             ← Back
         </a>
@@ -89,26 +89,6 @@
                                        class="form-control form-control-lg rounded-3"
                                        value="{{ school.phone }}"
                                        required>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6 mb-4">
-                                <label class="form-label fw-bold">Bank Name</label>
-                                <input type="text"
-                                       name="bank_name"
-                                       class="form-control form-control-lg rounded-3"
-                                       value="{{ school.bank_name|default:'' }}"
-                                       placeholder="e.g., ABC Bank">
-                            </div>
-
-                            <div class="col-md-6 mb-4">
-                                <label class="form-label fw-bold">Account Number</label>
-                                <input type="text"
-                                       name="account_number"
-                                       class="form-control form-control-lg rounded-3"
-                                       value="{{ school.account_number|default:'' }}"
-                                       placeholder="e.g., 1234567890">
                             </div>
                         </div>
 

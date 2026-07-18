@@ -208,18 +208,29 @@
         return sessionStorage.getItem(INSTALL_PROMPT_DISMISS_KEY) === '1';
     }
 
+    function setInstallBannerVisibility(visible) {
+        if (!installBanner) {
+            return;
+        }
+
+        installBanner.hidden = !visible;
+        installBanner.style.display = visible ? 'flex' : 'none';
+        installBanner.setAttribute('aria-hidden', visible ? 'false' : 'true');
+        installBanner.classList.toggle('d-flex', visible);
+        installBanner.classList.toggle('flex-wrap', visible);
+    }
+
     function hideInstallBanner() {
         sessionStorage.setItem(INSTALL_PROMPT_DISMISS_KEY, '1');
-        if (installBanner) {
-            installBanner.style.display = 'none';
-        }
+        setInstallBannerVisibility(false);
     }
 
     function showInstallBanner() {
         if (shouldSuppressInstallPrompt() || !installBanner) {
+            setInstallBannerVisibility(false);
             return;
         }
-        installBanner.style.display = 'flex';
+        setInstallBannerVisibility(true);
     }
 
     window.addEventListener('beforeinstallprompt', (event) => {
@@ -246,7 +257,14 @@
     }
 
     if (dismissInstallBannerButton) {
-        dismissInstallBannerButton.addEventListener('click', hideInstallBanner);
+        dismissInstallBannerButton.addEventListener('click', (event) => {
+            event.preventDefault();
+            hideInstallBanner();
+        });
+    }
+
+    if (shouldSuppressInstallPrompt()) {
+        setInstallBannerVisibility(false);
     }
 
     window.addEventListener('appinstalled', () => {

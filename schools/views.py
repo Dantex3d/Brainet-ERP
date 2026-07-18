@@ -53,6 +53,41 @@ def get_superuser_emails():
     )
 
 
+def resolve_exam_window_state(request, school):
+    """Return the current exam-window state, preferring the latest session action when present."""
+    if not school:
+        return False, 0
+
+    active_exams = Exam.objects.filter(school=school, is_active=True)
+    session_key = f"exam_window_state_{getattr(school, 'id', None)}"
+
+    if session_key in request.session:
+        is_open = request.session[session_key] == "open"
+        return is_open, active_exams.count()
+
+    return active_exams.exists(), active_exams.count()
+
+
+def set_exam_window_state(request, school, is_open):
+    """Keep the latest exam-window action in the session for compatibility with other views."""
+    if not school:
+        return
+
+    session_key = f"exam_window_state_{school.id}"
+    request.session[session_key] = "open" if is_open else "closed"
+    request.session.modified = True
+
+
+def clear_exam_window_state(request, school):
+    """Remove any stale exam-window session override for the current school."""
+    if not school:
+        return
+
+    session_key = f"exam_window_state_{school.id}"
+    request.session.pop(session_key, None)
+    request.session.modified = True
+
+
 def get_school_login_domain(school):
     """Return a short sanitized login domain for a school."""
     if not school or not getattr(school, "name", None):
@@ -1603,9 +1638,7 @@ def dos_dashboard(request):
     subjects = Subject.objects.filter(school=school)
     exams = Exam.objects.filter(school=school).order_by("-created_at")
 
-    active_exams = exams.filter(is_active=True)
-    exam_window_open = active_exams.exists()
-    active_exam_count = active_exams.count()
+    exam_window_open, active_exam_count = resolve_exam_window_state(request, school)
 
     # =========================
     # DOS MESSAGES (both sent and received)
@@ -1670,8 +1703,7 @@ def principal_dashboard(request):
         .order_by("subject__name")
     )
 
-    active_exams = Exam.objects.filter(school=school, is_active=True)
-    exam_window_open = active_exams.exists()
+    exam_window_open, active_exam_count = resolve_exam_window_state(request, school)
 
     return render(request, "dashboards/principal.html", {
         "school": school,
@@ -1682,7 +1714,7 @@ def principal_dashboard(request):
         "notices_sent": SchoolNotice.objects.filter(school=school).order_by('-created_at'),
         "notices": SchoolNotice.objects.filter(school=school).order_by('-created_at'),
         "exam_window_open": exam_window_open,
-        "active_exam_count": active_exams.count(),
+        "active_exam_count": active_exam_count,
     })
 
 @login_required
@@ -4008,8 +4040,10 @@ def open_exam_window(request):
 
     if active_count > 0:
         messages.info(request, "Exam window is already open.")
+        set_exam_window_state(request, school, True)
     else:
         exams.update(is_active=True)
+        set_exam_window_state(request, school, True)
         messages.success(request, "Exam window opened successfully. Marks entry is now available.")
 
     next_url = request.POST.get("next") or request.GET.get("next")
@@ -4028,8 +4062,10 @@ def close_exam_window(request):
 
     if active_count == 0:
         messages.info(request, "Exam window is already closed.")
+        set_exam_window_state(request, school, False)
     else:
         exams.update(is_active=False)
+        set_exam_window_state(request, school, False)
         messages.warning(request, "Exam window closed. Contact admin to enter or update results if this was a mistake.")
 
     next_url = request.POST.get("next") or request.GET.get("next")
@@ -4191,7 +4227,7 @@ def enter_marks(request):
     selected_exam_obj = None
     existing_marks = {}
     exam_closed_warning = None
-    exam_window_open = Exam.objects.filter(school=school, is_active=True).exists()
+    exam_window_open, _ = resolve_exam_window_state(request, school)
 
     # =========================
     # LOAD STREAMS AND STUDENTS SAFELY

@@ -1,4 +1,4 @@
-from django.test import SimpleTestCase, TestCase
+from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 
 from brainet.templatetags.text_filters import register
@@ -323,6 +323,7 @@ class MarksEntryDisplayTests(TestCase):
         self.assertContains(response, 'name="mark_')
 
 
+@override_settings(STATICFILES_STORAGE='django.contrib.staticfiles.storage.StaticFilesStorage')
 class ExamWindowTests(TestCase):
     def setUp(self):
         self.school = School.objects.create(
@@ -362,6 +363,19 @@ class ExamWindowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.exam.refresh_from_db()
         self.assertFalse(self.exam.is_active)
+
+    def test_dashboard_uses_session_exam_window_state_when_present(self):
+        self.exam.is_active = False
+        self.exam.save(update_fields=["is_active"])
+        self.client.force_login(self.user)
+        self.client.session[f"exam_window_state_{self.school.id}"] = "open"
+        self.client.session.save()
+
+        response = self.client.get(reverse("dos_dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context["exam_window_open"])
+        self.assertContains(response, "Open")
 
     def test_enter_marks_shows_warning_when_exam_is_closed(self):
         self.exam.is_active = False

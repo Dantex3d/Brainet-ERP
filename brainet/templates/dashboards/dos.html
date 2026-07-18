@@ -4,219 +4,116 @@
 
 {% block content %}
 
-<div class="container-fluid py-4">
+<style>
+    .dos-shell {
+        background: linear-gradient(135deg, #f7fbff 0%, #f3f6fb 100%);
+        min-height: 100vh;
+        padding-bottom: 2rem;
+    }
 
-    <!-- ================= TOPBAR ================= -->
-    <div class="card border-0 shadow-sm rounded-4 mb-4">
+    .dos-sidebar-card {
+        position: sticky;
+        top: 1rem;
+        border: 0;
+        border-radius: 1.25rem;
+        box-shadow: 0 12px 35px rgba(15, 23, 42, 0.08);
+        background: rgba(255, 255, 255, 0.95);
+    }
 
+    .dos-soft-card {
+        border: 0;
+        border-radius: 1.25rem;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+        background: rgba(255, 255, 255, 0.95);
+    }
+</style>
+
+<div class="container-fluid py-4 dos-shell">
+
+    <div class="card border-0 shadow-sm rounded-4 mb-4 dos-soft-card">
         <div class="card-body">
-
             <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
-
-                <!-- LEFT -->
                 <div class="d-flex align-items-center gap-3">
-
                     {% if school.logo %}
-                        <img src="{{ school.logo.url }}"
-                             alt="{{ school.name }} logo"
-                             width="70"
-                             height="70"
-                             class="rounded-circle shadow">
+                        <img src="{{ school.logo.url }}" alt="{{ school.name }} logo" width="70" height="70" class="rounded-circle shadow">
                     {% else %}
-                        <img src="{% static 'images/school.png' %}"
-                             width="80"
-                             height="80"
-                             class="rounded-circle shadow">
+                        <img src="{% static 'images/school.png' %}" width="80" height="80" class="rounded-circle shadow">
                     {% endif %}
-
                     <div>
-                        <h4 class="fw-bold text-primary mb-0">
-                            {{ school.name }}
-                        </h4>
-
-                        <small class="text-muted">
-                            Director of Studies Portal
-                        </small>
+                        <h4 class="fw-bold text-primary mb-0">{{ school.name }}</h4>
+                        <small class="text-muted">Director of Studies Portal</small>
                     </div>
-
                 </div>
 
-                <!-- RIGHT -->
                 <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <button class="btn btn-primary rounded-3" onclick="window.location.reload();">🔄 Refresh</button>
+                    <a href="{% url 'request_voucher' %}" class="btn btn-outline-success rounded-3">💳 Request Voucher</a>
 
-                    <button class="btn btn-primary rounded-3"
-                            onclick="window.location.reload();">
-                        🔄 Refresh
-                    </button>
-
-
-                    <a href="{% url 'request_voucher' %}"
-                       class="btn btn-outline-success rounded-3">
-                        💳 Request Voucher
-                    </a>
-
-                    <!-- Notifications -->
                     <div class="dropdown">
-
-                        <button class="btn btn-light border position-relative"
-                                data-bs-toggle="dropdown">
-
-                            🔔
-
+                        <button class="btn btn-light border position-relative" data-bs-toggle="dropdown">🔔
                             {% if unread_messages > 0 %}
-                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                                {{ unread_messages }}
-                            </span>
+                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">{{ unread_messages }}</span>
                             {% endif %}
-
                         </button>
-
-                        <div class="dropdown-menu dropdown-menu-end shadow border-0 rounded-4 p-3"
-                             style="width:350px;">
-
+                        <div class="dropdown-menu dropdown-menu-end shadow border-0 rounded-4 p-3" style="width:350px;">
                             <div class="d-flex justify-content-between align-items-center mb-3">
-
-                                <h6 class="fw-bold mb-0">
-                                    Notifications
-                                </h6>
-
-                                <a href="{% url 'clear_notifications' %}"
-                                   class="btn btn-sm btn-outline-danger">
-                                    Clear
-                                </a>
-
+                                <h6 class="fw-bold mb-0">Notifications</h6>
+                                <a href="{% url 'clear_notifications' %}" class="btn btn-sm btn-outline-danger">Clear</a>
                             </div>
-
                             {% for n in dos_messages|slice:":5" %}
-
-                            <div class="border-bottom pb-2 mb-2">
-
-                                <div class="fw-semibold text-primary">
-                                    {{ n.subject|default:"Message" }}
+                                <div class="border-bottom pb-2 mb-2">
+                                    <div class="fw-semibold text-primary">{{ n.subject|default:"Message" }}</div>
+                                    <small class="text-muted">{{ n.message|truncatechars:60 }}</small>
                                 </div>
-
-                                <small class="text-muted">
-                                    {{ n.message|truncatechars:60 }}
-                                </small>
-
-                            </div>
-
                             {% empty %}
-
-                            <div class="text-muted text-center py-3">
-                                No notifications
-                            </div>
-
+                                <div class="text-muted text-center py-3">No notifications</div>
                             {% endfor %}
-
                         </div>
-
                     </div>
 
-                    <a href="{% url 'logout' %}"
-                       class="btn btn-danger rounded-3">
-                        Logout
-                    </a>
-
+                    <a href="{% url 'logout' %}" class="btn btn-danger rounded-3">Logout</a>
                 </div>
-
             </div>
-
         </div>
-
     </div>
 
-    <!-- ================= STATS ================= -->
     <div class="row g-4 mb-4">
-
         <div class="col-lg-3 col-md-6">
-
-            <div class="card border-0 shadow-sm rounded-4 h-100">
-
+            <div class="card border-0 shadow-sm rounded-4 h-100 dos-soft-card">
                 <div class="card-body">
-
-                    <small class="text-muted">
-                        Students
-                    </small>
-
-                    <h2 class="fw-bold text-primary">
-                        {{ students|length }}
-                    </h2>
-
+                    <small class="text-muted">Students</small>
+                    <h2 class="fw-bold text-primary">{{ students|length }}</h2>
                 </div>
-
             </div>
-
         </div>
-
         <div class="col-lg-3 col-md-6">
-
-            <div class="card border-0 shadow-sm rounded-4 h-100">
-
+            <div class="card border-0 shadow-sm rounded-4 h-100 dos-soft-card">
                 <div class="card-body">
-
-                    <small class="text-muted">
-                        Classes
-                    </small>
-
-                    <h2 class="fw-bold text-success">
-                        {{ classes|length }}
-                    </h2>
-
+                    <small class="text-muted">Classes</small>
+                    <h2 class="fw-bold text-success">{{ classes|length }}</h2>
                 </div>
-
             </div>
-
         </div>
-
         <div class="col-lg-3 col-md-6">
-
-            <div class="card border-0 shadow-sm rounded-4 h-100">
-
+            <div class="card border-0 shadow-sm rounded-4 h-100 dos-soft-card">
                 <div class="card-body">
-
-                    <small class="text-muted">
-                        Subjects
-                    </small>
-
-                    <h2 class="fw-bold text-warning">
-                        {{ subjects|length }}
-                    </h2>
-
+                    <small class="text-muted">Subjects</small>
+                    <h2 class="fw-bold text-warning">{{ subjects|length }}</h2>
                 </div>
-
             </div>
-
         </div>
-
         <div class="col-lg-3 col-md-6">
-
-            <div class="card border-0 shadow-sm rounded-4 h-100">
-
+            <div class="card border-0 shadow-sm rounded-4 h-100 dos-soft-card">
                 <div class="card-body">
-
-                    <small class="text-muted">
-                        Exam Window
-                    </small>
-
-                    <h2 class="fw-bold {% if exam_window_open %}text-success{% else %}text-warning{% endif %}">
-                        {% if exam_window_open %}OPEN{% else %}CLOSED{% endif %}
-                    </h2>
-
-                    <small class="text-muted">
-                        {% if exam_window_open %}{{ active_exam_count }} open exam(s){% else %}Marks entry blocked{% endif %}
-                    </small>
-
+                    <small class="text-muted">Exam Window</small>
+                    <h2 class="fw-bold {% if exam_window_open %}text-success{% else %}text-warning{% endif %}">{% if exam_window_open %}OPEN{% else %}CLOSED{% endif %}</h2>
+                    <small class="text-muted">{% if exam_window_open %}{{ active_exam_count }} open exam(s){% else %}Marks entry blocked{% endif %}</small>
                 </div>
-
             </div>
-
         </div>
-
     </div>
 
-    <!-- ANNOUNCEMENTS -->
-    <div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="card border-0 shadow-sm rounded-4 mb-4 dos-soft-card">
         <div class="card-header bg-info text-white rounded-top-4">
             <h5 class="mb-0">📢 Announcements</h5>
         </div>
@@ -234,248 +131,230 @@
         </div>
     </div>
 
-    <!-- ================= NAVIGATION BAR ================= -->
-    <div class="card border-0 shadow-sm rounded-4 mb-4">
-
-        <div class="card-body">
-
-            <!-- Horizontal scrollable toolbar to avoid wrapping/grouping -->
-            <div style="display:flex; gap:0.5rem; align-items:center; overflow-x:auto; white-space:nowrap; padding:4px;">
-
-                <a style="flex:0 0 auto;" href="{% url 'manage_students' %}" class="btn btn-outline-primary btn-sm rounded-3">
-                    👨‍🎓 Students
-                </a>
-
-              
-
-                <a style="flex:0 0 auto;" href="{% url 'manage_classes' %}" class="btn btn-outline-warning btn-sm rounded-3">
-                    🏫 Classes
-                </a>
-
-                <a style="flex:0 0 auto;" href="{% url 'class_list_selector' %}" class="btn btn-outline-info btn-sm rounded-3">
-                    📋 Class Lists
-                </a>
-
-                <a style="flex:0 0 auto;" href="{% url 'manage_subjects' %}" class="btn btn-outline-dark btn-sm rounded-3">
-                    📘 Subjects
-                </a>
-
-                <a style="flex:0 0 auto;" href="{% url 'enter_marks' %}" class="btn btn-outline-danger btn-sm rounded-3">
-                    📊 Marks Entry Form
-                </a>
-
-                <a style="flex:0 0 auto;" href="{% url 'manage_exams' %}" class="btn btn-outline-info btn-sm rounded-3">
-                    📝 Exams settings
-                </a>
-
-                <a style="flex:0 0 auto;" href="{% url 'marksheet_center' %}" class="btn btn-outline-secondary btn-sm rounded-3">
-                    📂 Exam Results Generator
-                </a>
-
-                <a style="flex:0 0 auto;" href="{% url 'manage_grading' %}" class="btn btn-outline-success btn-sm rounded-3">
-                    ⭐ Grade Settings
-                </a>
-                <a style="flex:0 0 auto;" href="{% url 'manage_terms' %}" class="btn btn-outline-primary btn-sm rounded-3">
-                    📅 Term Settings
-                </a>
-
-                <a style="flex:0 0 auto;" href="{% url 'promotion_center' %}" class="btn btn-outline-purple btn-sm rounded-3">
-                    🎓 Promotion Center
-                </a>
-
-                <a style="flex:0 0 auto;" href="{% url 'promotion_center' %}" class="btn btn-outline-success btn-sm rounded-3">
-                    🚀 Promotion Pannel
-                </a>
-
+    <div class="row g-4">
+        <div class="col-lg-3">
+            <div class="card border-0 dos-sidebar-card">
+                <div class="card-header bg-dark text-white rounded-top-4">
+                    <h6 class="mb-0">Quick Navigation</h6>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="{% url 'manage_students' %}" class="list-group-item list-group-item-action">👨‍🎓 Students</a>
+                    <a href="{% url 'manage_classes' %}" class="list-group-item list-group-item-action">🏫 Classes</a>
+                    <a href="{% url 'manage_subjects' %}" class="list-group-item list-group-item-action">📘 Subjects</a>
+                    <a href="{% url 'enter_marks' %}" class="list-group-item list-group-item-action">📊 Marks Entry</a>
+                    <a href="{% url 'manage_exams' %}" class="list-group-item list-group-item-action">📝 Exams</a>
+                    <a href="{% url 'marksheet_center' %}" class="list-group-item list-group-item-action">📂 Results</a>
+                    <a href="{% url 'promotion_center' %}" class="list-group-item list-group-item-action">🎓 Promotion</a>
+                </div>
             </div>
-
         </div>
 
-    </div>
-
-    <!-- ================= ACADEMIC CONTROLS ================= -->
-    <div class="row">
-
-        <!-- MAIN -->
-        <div class="col-lg-12">
-
-            <div class="card border-0 shadow-sm rounded-4 mb-4">
-
-                <div class="card-header bg-success text-white rounded-top-4">
-
-                    <h5 class="mb-0">
-                        Examination Controls
-                    </h5>
-
-                </div>
-
+        <div class="col-lg-9">
+            <div class="card border-0 rounded-4 mb-4 dos-soft-card">
                 <div class="card-body">
-
-                    <div class="row g-3">
-
-                        <div class="col-md-6">
-
-                            <form method="post"
-                                  action="{% url 'open_exam_window' %}">
-
-                                {% csrf_token %}
-
-                                <button class="btn btn-success w-100 py-3">
-                                    ✅ Open Exams
-                                </button>
-
-                            </form>
-
+                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
+                        <div>
+                            <p class="text-muted mb-1">Examination Window</p>
+                            <h4 id="exam-window-status-title" class="fw-bold {% if exam_window_open %}text-success{% else %}text-warning{% endif %}">{% if exam_window_open %}Open{% else %}Closed{% endif %}</h4>
                         </div>
-
-                        <div class="col-md-6">
-
-                            <form method="post"
-                                  action="{% url 'close_exam_window' %}">
-
-                                {% csrf_token %}
-
-                                <button class="btn btn-danger w-100 py-3">
-                                    ❌ Close Exams
-                                </button>
-
-                            </form>
-
-                        </div>
-
+                        <span id="exam-window-status-badge" class="badge rounded-pill {% if exam_window_open %}bg-success{% else %}bg-warning text-dark{% endif %}">{% if exam_window_open %}Accepting marks{% else %}Marks blocked{% endif %}</span>
                     </div>
 
-                </div>
+                    <p id="exam-window-status-copy" class="text-muted mb-3">
+                        {% if exam_window_open %}
+                            Marks entry is currently active.
+                        {% else %}
+                            Marks entry is currently closed. Use the controls below to open it when the school is ready.
+                        {% endif %}
+                    </p>
 
+                    <div id="exam-window-open-form" class="{% if exam_window_open %}d-none{% endif %}">
+                        <form method="post" action="{% url 'open_exam_window' %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="{{ request.path }}">
+                            <button class="btn btn-success rounded-3">🔓 Open Exam Window</button>
+                        </form>
+                    </div>
+
+                    <div id="exam-window-close-form" class="{% if not exam_window_open %}d-none{% endif %}">
+                        <form method="post" action="{% url 'close_exam_window' %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="{{ request.path }}">
+                            <button class="btn btn-danger rounded-3">🔒 Close Exam Window</button>
+                        </form>
+                    </div>
+                </div>
             </div>
 
-            <!-- MESSAGE CENTER -->
-            <!-- COMPOSE MESSAGE -->
-            <div class="card border-0 shadow-sm rounded-4 mb-4">
-
+            <div class="card border-0 rounded-4 mb-4 dos-soft-card">
                 <div class="card-header bg-primary text-white rounded-top-4">
-
-                    <h5 class="mb-0">✉️ Compose Message to Superuser</h5>
-
+                    <h5 class="mb-0">⚙️ Quick Actions</h5>
                 </div>
-
                 <div class="card-body">
+                    <div class="accordion" id="dosQuickActions">
+                        <div class="accordion-item border-0 rounded-4 overflow-hidden mb-3">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSchool">
+                                    School Management
+                                </button>
+                            </h2>
+                            <div id="collapseSchool" class="accordion-collapse collapse" data-bs-parent="#dosQuickActions">
+                                <div class="accordion-body">
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <a href="{% url 'manage_students' %}" class="btn btn-outline-primary rounded-3">👨‍🎓 Students</a>
+                                        <a href="{% url 'manage_classes' %}" class="btn btn-outline-warning rounded-3">🏫 Classes</a>
+                                        <a href="{% url 'manage_subjects' %}" class="btn btn-outline-dark rounded-3">📘 Subjects</a>
+                                        <a href="{% url 'class_list_selector' %}" class="btn btn-outline-info rounded-3">📋 Class Lists</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
+                        <div class="accordion-item border-0 rounded-4 overflow-hidden mb-3">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAcademic">
+                                    Academic & Exam Tools
+                                </button>
+                            </h2>
+                            <div id="collapseAcademic" class="accordion-collapse collapse" data-bs-parent="#dosQuickActions">
+                                <div class="accordion-body">
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <a href="{% url 'enter_marks' %}" class="btn btn-outline-danger rounded-3">📊 Marks Entry</a>
+                                        <a href="{% url 'manage_exams' %}" class="btn btn-outline-info rounded-3">📝 Exam Settings</a>
+                                        <a href="{% url 'marksheet_center' %}" class="btn btn-outline-secondary rounded-3">📂 Results</a>
+                                        <a href="{% url 'manage_grading' %}" class="btn btn-outline-success rounded-3">⭐ Grade Settings</a>
+                                        <a href="{% url 'manage_terms' %}" class="btn btn-outline-primary rounded-3">📅 Term Settings</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="accordion-item border-0 rounded-4 overflow-hidden">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOps">
+                                    Promotion & Communication
+                                </button>
+                            </h2>
+                            <div id="collapseOps" class="accordion-collapse collapse" data-bs-parent="#dosQuickActions">
+                                <div class="accordion-body">
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <a href="{% url 'promotion_center' %}" class="btn btn-outline-success rounded-3">🎓 Promotion Center</a>
+                                        <a href="{% url 'request_voucher' %}" class="btn btn-outline-success rounded-3">💳 Request Voucher</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm rounded-4 mb-4 dos-soft-card">
+                <div class="card-header bg-primary text-white rounded-top-4">
+                    <h5 class="mb-0">✉️ Compose Message to Superuser</h5>
+                </div>
+                <div class="card-body">
                     <form method="post" action="{% url 'send_query' %}">
                         {% csrf_token %}
-
                         <div class="row g-2 align-items-center">
-
                             <div class="col-md-4">
                                 <input type="text" name="subject" class="form-control" placeholder="Subject" required>
                             </div>
-
                             <div class="col-md-6">
                                 <input type="text" name="message" class="form-control" placeholder="Type your message to the superuser..." required>
                             </div>
-
                             <div class="col-md-2 d-grid">
                                 <button class="btn btn-light">Send</button>
                             </div>
-
                         </div>
-
                     </form>
-
                 </div>
-
             </div>
-            <div class="card border-0 shadow-sm rounded-4">
 
+            <div class="card border-0 shadow-sm rounded-4 dos-soft-card">
                 <div class="card-header bg-dark text-white rounded-top-4 d-flex justify-content-between align-items-center">
-
-                    <h5 class="mb-0">
-                        📨 DOS Inbox
-                    </h5>
-
-                    <a href="{% url 'clear_notifications' %}"
-                       class="btn btn-sm btn-outline-light">
-                        Clear All
-                    </a>
-
+                    <h5 class="mb-0">📨 DOS Inbox</h5>
+                    <a href="{% url 'clear_notifications' %}" class="btn btn-sm btn-outline-light">Clear All</a>
                 </div>
-
                 <div class="card-body">
-
                     {% for msg in dos_messages %}
-
-                    <div class="border rounded-4 p-3 mb-3">
-
-                        <div class="d-flex justify-content-between flex-wrap gap-2">
-
-                            <div>
-
-                                <h6 class="fw-bold text-primary">
-                                    {{ msg.subject }}
-                                </h6>
-
-                                <p class="mb-2">
-                                    {{ msg.message }}
-                                </p>
-
-                                <small class="text-muted">
-                                    {{ msg.created_at }}
-                                </small>
-
-                            </div>
-
-                            <div>
-
-                                {% if msg.status == "replied" %}
-                                    <span class="badge bg-success">
-                                        Replied
-                                    </span>
-                                {% else %}
-                                    <span class="badge bg-warning text-dark">
-                                        Pending
-                                    </span>
-                                {% endif %}
-
-                            </div>
-
-                        </div>
-
-                        <div class="d-flex gap-2 mt-3">
-
-                            <form method="post" action="{% url 'reply_message' msg.id %}" class="flex-grow-1">
-                                {% csrf_token %}
-                                <div class="input-group">
-                                    <input type="text" name="message" class="form-control" placeholder="Type reply..." required>
-                                    <button class="btn btn-primary">Send</button>
+                        <div class="border rounded-4 p-3 mb-3">
+                            <div class="d-flex justify-content-between flex-wrap gap-2">
+                                <div>
+                                    <h6 class="fw-bold text-primary">{{ msg.subject }}</h6>
+                                    <p class="mb-2">{{ msg.message }}</p>
+                                    <small class="text-muted">{{ msg.created_at }}</small>
                                 </div>
-                            </form>
-
-                            <form method="post" action="{% url 'delete_single_message' msg.id %}">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-outline-danger">Delete</button>
-                            </form>
-
+                                <div>
+                                    {% if msg.status == "replied" %}
+                                        <span class="badge bg-success">Replied</span>
+                                    {% else %}
+                                        <span class="badge bg-warning text-dark">Pending</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="d-flex gap-2 mt-3">
+                                <form method="post" action="{% url 'reply_message' msg.id %}" class="flex-grow-1">
+                                    {% csrf_token %}
+                                    <div class="input-group">
+                                        <input type="text" name="message" class="form-control" placeholder="Type reply..." required>
+                                        <button class="btn btn-primary">Send</button>
+                                    </div>
+                                </form>
+                                <form method="post" action="{% url 'delete_single_message' msg.id %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-outline-danger">Delete</button>
+                                </form>
+                            </div>
                         </div>
-
-                    </div>
-
                     {% empty %}
-
-                    <div class="text-center text-muted py-5">
-                        No messages available
-                    </div>
-
+                        <div class="text-center text-muted py-5">No messages available</div>
                     {% endfor %}
-
                 </div>
-
             </div>
-
         </div>
-
     </div>
-
 </div>
 
 {% endblock %}
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const openFormContainer = document.getElementById('exam-window-open-form');
+        const closeFormContainer = document.getElementById('exam-window-close-form');
+        const title = document.getElementById('exam-window-status-title');
+        const badge = document.getElementById('exam-window-status-badge');
+        const copy = document.getElementById('exam-window-status-copy');
+
+        if (!title || !badge || !copy) return;
+
+        function renderState(isOpen) {
+            title.textContent = isOpen ? 'Open' : 'Closed';
+            title.className = 'fw-bold ' + (isOpen ? 'text-success' : 'text-warning');
+
+            badge.textContent = isOpen ? 'Accepting marks' : 'Marks blocked';
+            badge.className = 'badge rounded-pill ' + (isOpen ? 'bg-success' : 'bg-warning text-dark');
+
+            copy.textContent = isOpen
+                ? 'Marks entry is currently active.'
+                : 'Marks entry is currently closed.';
+
+            if (openFormContainer) {
+                openFormContainer.classList.toggle('d-none', isOpen);
+            }
+            if (closeFormContainer) {
+                closeFormContainer.classList.toggle('d-none', !isOpen);
+            }
+        }
+
+        renderState({% if exam_window_open %}true{% else %}false{% endif %});
+
+        [openFormContainer, closeFormContainer].forEach(function (container) {
+            if (!container) return;
+            container.querySelector('form')?.addEventListener('submit', function () {
+                const isOpening = this.action.includes('/open-exams/');
+                renderState(isOpening);
+            });
+        });
+    });
+</script>
 

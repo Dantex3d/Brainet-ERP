@@ -5,12 +5,12 @@
 <div class="container-fluid py-4">
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
         <div>
-            <h3 class="fw-bold mb-1">👨‍💼 Principal Manager</h3>
-            <p class="text-muted mb-0">Register principals and edit their school, identity, and login details in one place.</p>
+            <h3 class="fw-bold mb-1">👨‍💼 School Admin Manager</h3>
+            <p class="text-muted mb-0">Register school admins and edit their school, identity, and login details in one place.</p>
         </div>
         <div class="d-flex gap-2">
             <a href="{% url 'superuser_dashboard' %}" class="btn btn-outline-secondary rounded-3">← Back to Dashboard</a>
-            <a href="#principal-form" class="btn btn-primary rounded-3">Add Principal</a>
+            <a href="#principal-form" class="btn btn-primary rounded-3">Add School Admin</a>
         </div>
     </div>
 
@@ -26,7 +26,7 @@
         <div class="col-lg-5">
             <div class="card border-0 shadow-lg rounded-4 sticky-top" style="top: 1rem;">
                 <div class="card-header bg-primary text-white rounded-top-4">
-                    <h5 class="mb-0" id="principal-form">➕ Add / Edit Principal</h5>
+                    <h5 class="mb-0" id="principal-form">➕ Add / Edit School Admin</h5>
                 </div>
                 <div class="card-body">
                     <form method="post">
@@ -57,9 +57,9 @@
                         <div class="mb-3">
                             <label class="form-label fw-bold">Password</label>
                             <input type="password" name="password" class="form-control rounded-3">
-                            <small class="text-muted">Required when creating a principal. Optional when editing.</small>
+                            <small class="text-muted">Required when creating a school admin. Optional when editing.</small>
                         </div>
-                        <button type="submit" class="btn btn-primary rounded-3 w-100">Save Principal</button>
+                        <button type="submit" class="btn btn-primary rounded-3 w-100">Save School Admin</button>
                     </form>
                 </div>
             </div>
@@ -68,7 +68,7 @@
         <div class="col-lg-7">
             <div class="card border-0 shadow-lg rounded-4">
                 <div class="card-header bg-dark text-white rounded-top-4 d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Existing Principals</h5>
+                    <h5 class="mb-0">Existing School Admins</h5>
                     <span class="badge bg-light text-dark">{{ principals.count }}</span>
                 </div>
                 <div class="card-body">
@@ -76,7 +76,7 @@
                         <table class="table align-middle">
                             <thead>
                                 <tr>
-                                    <th>Principal</th>
+                                    <th>School Admin</th>
                                     <th>School</th>
                                     <th>Contact</th>
                                     <th></th>
@@ -93,7 +93,7 @@
                                     </td>
                                     <td class="text-end">
                                         <a href="{% url 'edit_principal_by_superuser' principal.id %}" class="btn btn-sm btn-outline-primary">Edit</a>
-                                        <form method="post" action="{% url 'delete_principal_by_superuser' principal.id %}" class="d-inline-block" onsubmit="return confirm('Delete this principal account? This will also remove the linked login account.');">
+                                        <form method="post" action="{% url 'delete_principal_by_superuser' principal.id %}" class="d-inline-block" onsubmit="return confirm('Delete this school admin account? This will also remove the linked login account.');">
                                             {% csrf_token %}
                                             <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
                                         </form>
@@ -101,7 +101,7 @@
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="4" class="text-center text-muted py-4">No principals found.</td>
+                                    <td colspan="4" class="text-center text-muted py-4">No school admins found.</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
