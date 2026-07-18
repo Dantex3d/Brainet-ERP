@@ -25,6 +25,12 @@ urlpatterns = [
     ),
 
     path(
+        'superuser/two-factor/',
+        views.superuser_two_factor,
+        name='superuser_two_factor'
+    ),
+
+    path(
         'account/',
         views.account_profile,
         name='account_profile'

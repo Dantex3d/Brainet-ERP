@@ -28,6 +28,7 @@ urlpatterns = [
     path("superuser/users/<int:user_id>/manual-verify/", views.manual_verify_user, name="manual_verify_user"),
     path("superuser/pending-verification/", views.pending_verification, name="pending_verification"),
     path("superuser/pending-verification/count/", views.pending_verification_count, name="pending_verification_count"),
+    path("superuser/security-logs/", views.security_logs, name="security_logs"),
     path("superuser/error-reports/", views.error_reports, name="error_reports"),
     path("superuser/error-reports/<int:report_id>/read/", views.mark_error_report_read, name="mark_error_report_read"),
     path("superuser/users/<int:user_id>/resend-verification/", views.resend_verification_email, name="resend_verification_email"),
@@ -180,6 +181,7 @@ urlpatterns = [
       # Contact admin for deactivated schools (non-privileged users)
       path("contact-admin/", views.contact_admin, name="contact_admin"),
       path("contact/submit/", views.contact_submit, name="contact_submit"),
+      path("contact/reply/<int:message_id>/", views.superuser_contact_reply, name="superuser_contact_reply"),
     
     # =====================================================
     # LICENSE & DEACTIVATION

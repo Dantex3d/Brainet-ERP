@@ -1,6 +1,7 @@
 from pathlib import Path
 import importlib
 import os
+import sys
 from django.core.exceptions import ImproperlyConfigured
 
 dotenv = importlib.util.find_spec('dotenv')
@@ -34,6 +35,7 @@ SECRET_KEY = os.environ.get(
 
 # DEBUG mode (default False in production)
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+TESTING = 'test' in sys.argv
 
 ALLOWED_HOSTS = [
     "brainetanalytics.co.ke",
@@ -221,11 +223,15 @@ WHITENOISE_ROOT = BASE_DIR / 'static'
 
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+STATICFILES_STORAGE = (
+    'django.contrib.staticfiles.storage.StaticFilesStorage'
+    if TESTING else
+    'whitenoise.storage.CompressedManifestStaticFilesStorage'
+)
 
 STORAGES = {
     'staticfiles': {
-        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+        'BACKEND': STATICFILES_STORAGE,
     }
 }
 
@@ -253,7 +259,7 @@ if USE_CLOUDINARY:
             'BACKEND': 'cloudinary_storage.storage.MediaCloudinaryStorage',
         },
         'staticfiles': {
-            'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+            'BACKEND': STATICFILES_STORAGE,
         }
     }
     CLOUDINARY_STORAGE = {

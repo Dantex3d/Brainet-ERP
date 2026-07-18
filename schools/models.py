@@ -373,6 +373,32 @@ class Notification(models.Model):
         return self.title      
 
 
+class SecurityLog(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="security_logs"
+    )
+    event_type = models.CharField(max_length=80)
+    message = models.TextField(blank=True, default="")
+    path = models.CharField(max_length=500, blank=True, null=True)
+    ip_address = models.CharField(max_length=45, blank=True, null=True)
+    user_agent = models.TextField(blank=True, default="")
+    browser = models.CharField(max_length=120, blank=True, default="")
+    location = models.CharField(max_length=200, blank=True, default="")
+    status_code = models.IntegerField(default=0)
+    details = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.event_type} @ {self.created_at}" 
+
+
 class ErrorReport(models.Model):
     school = models.ForeignKey(
         "School",
@@ -410,7 +436,11 @@ class ContactMessage(models.Model):
     email = models.EmailField()
     phone = models.CharField(max_length=30, blank=True, null=True)
     message = models.TextField()
+    browser_used = models.CharField(max_length=500, blank=True, null=True)
+    ip_address = models.CharField(max_length=45, blank=True, null=True)
+    reply = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    replied_at = models.DateTimeField(blank=True, null=True)
     handled = models.BooleanField(default=False)
 
     def __str__(self):

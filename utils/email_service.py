@@ -1,8 +1,12 @@
 import os
 import traceback
 
-import sib_api_v3_sdk
-from sib_api_v3_sdk.rest import ApiException
+try:
+    import sib_api_v3_sdk
+    from sib_api_v3_sdk.rest import ApiException
+except ImportError:  # pragma: no cover - runtime fallback for environments without the SDK
+    sib_api_v3_sdk = None
+    ApiException = Exception
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 
@@ -63,6 +67,9 @@ def _extract_api_exception_message(exception):
 
 def send_email_with_brevo(to_email, subject, message, recipient_name=None, html=True):
     """Send transactional email via Brevo / SendinBlue API."""
+    if sib_api_v3_sdk is None:
+        raise RuntimeError('sib_api_v3_sdk is not installed')
+
     api_key = _get_api_key()
     if not api_key:
         raise ValueError('Missing BREVO_API_KEY or SENDINBLUE_API_KEY')

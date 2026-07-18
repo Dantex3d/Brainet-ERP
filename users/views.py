@@ -1,3 +1,6 @@
+import json
+import secrets
+import urllib.request
 from datetime import timedelta
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
@@ -8,9 +11,96 @@ from django.core.mail import get_connection
 from django.urls import reverse, reverse_lazy
 from django.conf import settings
 from django.utils import timezone
-from schools.models import School
+from django.views.decorators.csrf import csrf_protect
+from schools.models import School, SecurityLog
 from utils.email_service import send_email
 from .forms import CustomAuthenticationForm
+
+
+def _get_client_ip(request):
+    x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
+    if x_forwarded_for:
+        return x_forwarded_for.split(",")[0].strip()
+    return request.META.get("REMOTE_ADDR", "")
+
+
+def _get_browser_name(user_agent):
+    if not user_agent:
+        return "Unknown"
+    user_agent_lower = user_agent.lower()
+    if "edg/" in user_agent_lower:
+        return "Edge"
+    if "chrome" in user_agent_lower:
+        return "Chrome"
+    if "firefox" in user_agent_lower:
+        return "Firefox"
+    if "safari" in user_agent_lower:
+        return "Safari"
+    if "opera" in user_agent_lower:
+        return "Opera"
+    if "curl" in user_agent_lower or "wget" in user_agent_lower:
+        return "CLI"
+    return "Unknown"
+
+
+def _resolve_location(ip_address):
+    if not ip_address or ip_address in {"127.0.0.1", "localhost", "::1"}:
+        return "Local environment"
+
+    try:
+        with urllib.request.urlopen(f"https://ipapi.co/{ip_address}/json/", timeout=3) as response:
+            payload = json.load(response)
+            city = payload.get("city") or ""
+            region = payload.get("region") or ""
+            country = payload.get("country_name") or payload.get("country") or ""
+            parts = [part for part in [city, region, country] if part]
+            return ", ".join(parts) if parts else "Unknown"
+    except Exception:
+        return "Unknown"
+
+
+def _record_security_event(request, user=None, event_type="", message="", status_code=0, details=None):
+    ip_address = _get_client_ip(request)
+    browser = _get_browser_name(request.META.get("HTTP_USER_AGENT", ""))
+    location = _resolve_location(ip_address)
+    return SecurityLog.objects.create(
+        user=user,
+        event_type=event_type,
+        message=message,
+        path=getattr(request, "path", None),
+        ip_address=ip_address,
+        user_agent=request.META.get("HTTP_USER_AGENT", ""),
+        browser=browser,
+        location=location,
+        status_code=status_code,
+        details=json.dumps(details or {}, default=str),
+    )
+
+
+def _send_login_security_email(user, event_type, details):
+    if not user or not getattr(user, "email", None):
+        return
+
+    subject = "Security warning: unusual login activity on your Brainet account"
+    ip_address = details.get("ip_address") or "Unknown"
+    browser = details.get("browser") or "Unknown"
+    location = details.get("location") or "Unknown"
+    message = (
+        f"Hello {user.get_full_name() or user.email},\n\n"
+        f"We detected {event_type.replace('_', ' ')} for your Brainet account.\n\n"
+        f"Time: {timezone.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+        f"IP address: {ip_address}\n"
+        f"Browser: {browser}\n"
+        f"Location: {location}\n\n"
+        "If this was not you, please change your password immediately and contact support."
+    )
+    send_email(
+        to_email=user.email,
+        subject=subject,
+        message=message,
+        recipient_name=user.get_full_name() or user.email,
+        html=False,
+    )
 
 
 # =========================================================
@@ -25,17 +115,21 @@ class CustomLoginView(LoginView):
     def form_valid(self, form):
         """Override form_valid to check verification status"""
         user = form.get_user()
-        
+
+        if user.is_superuser:
+            self._start_superuser_two_factor(user)
+            return redirect('superuser_two_factor')
+
         # For DOS/Principal/Teacher, require email verification before allowing login
         if user.role in ['dos', 'principal', 'teacher'] and not user.email_verified:
             role_map = {'dos': 'DOS', 'principal': 'Principal', 'teacher': 'Teacher'}
             role_name = role_map.get(user.role, user.role)
             messages.warning(
-                self.request, 
+                self.request,
                 f"Your {role_name} account requires verification. Please check your email for the verification code."
             )
             return redirect(f"{reverse('verify_user_code')}?email={user.email}")
-        
+
         # Normal login flow
         login(self.request, user)
 
@@ -46,6 +140,72 @@ class CustomLoginView(LoginView):
             self.request.session.set_expiry(0)
 
         return redirect(self.get_success_url())
+
+    def form_invalid(self, form):
+        email = (self.request.POST.get("username") or "").strip()
+        user = None
+        if email:
+            try:
+                user = User.objects.get(email__iexact=email)
+            except User.DoesNotExist:
+                user = None
+        details = {"username": email}
+        self._record_security_log(
+            event_type="login_failed",
+            message="Invalid login attempt",
+            user=user,
+            status_code=400,
+            details=details,
+        )
+        return super().form_invalid(form)
+
+    def _start_superuser_two_factor(self, user):
+        code = f"{secrets.randbelow(900000) + 100000}"
+        self.request.session["pending_superuser_login_user_id"] = user.pk
+        self.request.session["pending_superuser_login_code"] = code
+        self.request.session["pending_superuser_login_attempts"] = 0
+        self.request.session.set_expiry(300)
+
+        message = (
+            f"Your Brainet security code is {code}. "
+            "Enter it to continue to the superuser dashboard."
+        )
+        send_email(
+            to_email=user.email,
+            subject="Brainet superuser verification code",
+            message=message,
+            recipient_name=user.get_full_name() or user.email,
+            html=False,
+        )
+        self._record_security_log(
+            event_type="superuser_login_requested",
+            message="Superuser verification code sent",
+            user=user,
+            status_code=302,
+            details={"email": user.email},
+        )
+
+    def _record_security_log(self, event_type, message, user=None, status_code=0, details=None):
+        try:
+            log_record = _record_security_event(
+                self.request,
+                user=user,
+                event_type=event_type,
+                message=message,
+                status_code=status_code,
+                details=details,
+            )
+            if event_type in {"login_failed", "superuser_two_factor_failed", "superuser_two_factor_locked"} and user:
+                _send_login_security_email(user, event_type, {
+                    "ip_address": log_record.ip_address,
+                    "browser": log_record.browser,
+                    "location": log_record.location,
+                })
+        except Exception:
+            pass
+
+    def _get_client_ip(self):
+        return _get_client_ip(self.request)
 
     def get_success_url(self):
 
@@ -121,6 +281,69 @@ def custom_logout(request):
     from django.contrib.auth import logout
     logout(request)
     return redirect('home')
+
+
+@csrf_protect
+def superuser_two_factor(request):
+    if request.method == "POST":
+        code = (request.POST.get("code") or "").strip()
+        expected_code = request.session.get("pending_superuser_login_code")
+        user_id = request.session.get("pending_superuser_login_user_id")
+
+        if not expected_code or not user_id:
+            messages.error(request, "Your verification session has expired. Please log in again.")
+            return redirect('login')
+
+        attempts = int(request.session.get("pending_superuser_login_attempts", 0)) + 1
+        request.session["pending_superuser_login_attempts"] = attempts
+        request.session.modified = True
+
+        try:
+            user = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            messages.error(request, "Your verification session is invalid. Please log in again.")
+            return redirect('login')
+
+        if code != expected_code:
+            if attempts >= 3:
+                request.session.pop("pending_superuser_login_code", None)
+                request.session.pop("pending_superuser_login_user_id", None)
+                request.session.pop("pending_superuser_login_attempts", None)
+                _record_security_event(
+                    request,
+                    user=user,
+                    event_type="superuser_two_factor_locked",
+                    message="Superuser 2FA attempts exceeded",
+                    status_code=400,
+                )
+                messages.error(request, "Too many failed verification attempts. Please log in again.")
+                return redirect('login')
+
+            _record_security_event(
+                request,
+                user=user,
+                event_type="superuser_two_factor_failed",
+                message="Incorrect 2FA code",
+                status_code=400,
+            )
+            messages.error(request, "The verification code is incorrect. Please try again.")
+            return render(request, "users/superuser_two_factor.html")
+
+        request.session.pop("pending_superuser_login_code", None)
+        request.session.pop("pending_superuser_login_user_id", None)
+        request.session.pop("pending_superuser_login_attempts", None)
+        login(request, user)
+        request.session.set_expiry(settings.SESSION_COOKIE_AGE)
+        _record_security_event(
+            request,
+            user=user,
+            event_type="superuser_login_completed",
+            message="Superuser verified and logged in",
+            status_code=200,
+        )
+        return redirect('superuser_dashboard')
+
+    return render(request, 'users/superuser_two_factor.html')
 
 @login_required
 def account_profile(request):

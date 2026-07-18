@@ -22,7 +22,7 @@ from django.urls import reverse
 
 import students
 import subjects
-from .models import DOSMessage, DOSQuery, Notification, School, DirectorOfStudies, Dormitory, Term, Class, Subject, GradingPolicy, StudentMark, StudentPromotion, SchoolNotice, ErrorReport
+from .models import DOSMessage, DOSQuery, Notification, School, DirectorOfStudies, Dormitory, Term, Class, Subject, GradingPolicy, StudentMark, StudentPromotion, SchoolNotice, ErrorReport, SecurityLog, ContactMessage
 from django.db import IntegrityError
 from collections import defaultdict
 from students.models import Student
@@ -368,7 +368,14 @@ def contact_submit(request):
 
     try:
         from .models import ContactMessage
-        ContactMessage.objects.create(name=name, email=email, phone=phone, message=message_text)
+        ContactMessage.objects.create(
+            name=name,
+            email=email,
+            phone=phone,
+            message=message_text,
+            browser_used=request.META.get('HTTP_USER_AGENT', '')[:500],
+            ip_address=request.META.get('REMOTE_ADDR', '')[:45],
+        )
 
         support = getattr(settings, 'SUPPORT_EMAIL', None) or getattr(settings, 'DEFAULT_FROM_EMAIL', None)
         subject = f"Website contact from {name}"
@@ -386,6 +393,26 @@ def contact_submit(request):
         messages.error(request, f'Could not send message: {str(e)}')
 
     return redirect('landing_page')
+
+
+@login_required
+@superuser_required
+def superuser_contact_reply(request, message_id):
+    message = get_object_or_404(ContactMessage, id=message_id)
+
+    if request.method == 'POST':
+        reply_text = (request.POST.get('reply') or '').strip()
+
+        if not reply_text:
+            messages.error(request, 'Reply text cannot be empty.')
+        else:
+            message.reply = reply_text
+            message.handled = True
+            message.replied_at = timezone.now()
+            message.save(update_fields=['reply', 'handled', 'replied_at'])
+            messages.success(request, 'Support reply saved.')
+
+    return redirect('superuser_dashboard')
 
 
 @login_required
@@ -589,6 +616,11 @@ def superuser_dashboard(request):
 
     error_reports = ErrorReport.objects.order_by("-created_at")
     unread_error_reports = error_reports.filter(is_read=False).count()
+    security_logs = SecurityLog.objects.select_related("user").order_by("-created_at")[:6]
+    for log in security_logs:
+        log.browser = log.browser or "Unknown"
+        log.location = log.location or ("Local environment" if log.ip_address in {"127.0.0.1", "::1", "localhost"} else "Unknown")
+    contact_messages = ContactMessage.objects.order_by("-created_at")[:10]
 
     # ----------------------------
     # CONTEXT
@@ -622,6 +654,8 @@ def superuser_dashboard(request):
         "pending_renewals_count": pending_renewals.count(),
         "principals": principals,
         "doss": doss,
+        "security_logs": security_logs,
+        "contact_messages": contact_messages,
     }
 
     return render(
@@ -629,6 +663,18 @@ def superuser_dashboard(request):
         "dashboards/superuser.html",
         context
     )
+
+
+@login_required
+@superuser_required
+def security_logs(request):
+    logs = SecurityLog.objects.select_related("user").order_by("-created_at")
+    for log in logs:
+        log.browser = log.browser or "Unknown"
+        log.location = log.location or ("Local environment" if log.ip_address in {"127.0.0.1", "::1", "localhost"} else "Unknown")
+    return render(request, "dashboards/security_logs.html", {
+        "security_logs": logs,
+    })
 
 
 @login_required

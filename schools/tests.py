@@ -82,6 +82,25 @@ class ContactMessageFlowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(ContactMessage.objects.filter(email="jane@example.com").exists())
 
+    def test_contact_submit_stores_browser_and_ip(self):
+        response = self.client.post(
+            reverse("contact_submit"),
+            {
+                "name": "Jane Doe",
+                "email": "jane@example.com",
+                "phone": "0712345678",
+                "message": "Need help with setup",
+            },
+            HTTP_USER_AGENT="Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+            REMOTE_ADDR="203.0.113.10",
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        message = ContactMessage.objects.get(email="jane@example.com")
+        self.assertIn("Mozilla/5.0", message.browser_used)
+        self.assertEqual(message.ip_address, "203.0.113.10")
+
     def test_superuser_can_reply_to_contact_message(self):
         message = ContactMessage.objects.create(
             name="Jane Doe",
