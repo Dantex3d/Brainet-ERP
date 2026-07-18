@@ -32,8 +32,8 @@ SECRET_KEY = os.environ.get(
     "django-insecure-development-key"
 )
 
-# DEBUG mode (default True for development)
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+# DEBUG mode (default False in production)
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = [
     "brainetanalytics.co.ke",

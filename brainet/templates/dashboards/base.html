@@ -14,7 +14,7 @@
     <meta name="description" content="Brainet Analytics school management system for administration, exams, reports and finance.">
     <title>Brainet Analytics System </title>
 
-    <link rel="manifest" href="{% static 'manifest.json' %}">
+    <link rel="manifest" href="/manifest.json">
     <link rel="apple-touch-icon" sizes="180x180" href="{% static 'images/brainet-icon-192.png' %}">
     <link rel="mask-icon" href="{% static 'images/brainet-icon-512.png' %}" color="#0d6efd">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -175,7 +175,10 @@
     <div class="container py-2">
         <div id="pwa-install-banner" class="alert alert-info rounded-3 d-flex align-items-center justify-content-between flex-wrap gap-2" style="display:none;">
             <span><i class="bi bi-phone"></i> Install Brainet Analytics on your phone for faster access.</span>
-            <button id="pwa-install-btn" class="btn btn-primary btn-sm">Install App</button>
+            <div class="d-flex gap-2">
+                <button id="pwa-install-btn" class="btn btn-primary btn-sm">Install App</button>
+                <button id="pwa-dismiss-btn" type="button" class="btn btn-outline-secondary btn-sm">Dismiss</button>
+            </div>
         </div>
     </div>
 
@@ -198,13 +201,31 @@
     let deferredPrompt = null;
     const installBanner = document.getElementById('pwa-install-banner');
     const installButton = document.getElementById('pwa-install-btn');
+    const dismissInstallBannerButton = document.getElementById('pwa-dismiss-btn');
+    const INSTALL_PROMPT_DISMISS_KEY = 'brainet-install-prompt-dismissed';
+
+    function shouldSuppressInstallPrompt() {
+        return sessionStorage.getItem(INSTALL_PROMPT_DISMISS_KEY) === '1';
+    }
+
+    function hideInstallBanner() {
+        sessionStorage.setItem(INSTALL_PROMPT_DISMISS_KEY, '1');
+        if (installBanner) {
+            installBanner.style.display = 'none';
+        }
+    }
+
+    function showInstallBanner() {
+        if (shouldSuppressInstallPrompt() || !installBanner) {
+            return;
+        }
+        installBanner.style.display = 'flex';
+    }
 
     window.addEventListener('beforeinstallprompt', (event) => {
         event.preventDefault();
         deferredPrompt = event;
-        if (installBanner) {
-            installBanner.style.display = 'flex';
-        }
+        showInstallBanner();
     });
 
     if (installButton) {
@@ -220,12 +241,16 @@
             deferredPrompt.prompt();
             await deferredPrompt.userChoice;
             deferredPrompt = null;
-            if (installBanner) installBanner.style.display = 'none';
+            hideInstallBanner();
         });
     }
 
+    if (dismissInstallBannerButton) {
+        dismissInstallBannerButton.addEventListener('click', hideInstallBanner);
+    }
+
     window.addEventListener('appinstalled', () => {
-        if (installBanner) installBanner.style.display = 'none';
+        hideInstallBanner();
     });
 
     // Update notification banner
@@ -242,7 +267,7 @@
 
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('{% static "service-worker.js" %}', { scope: '/' })
+            navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
                 .then((registration) => {
                     console.log('Service Worker registered successfully:', registration);
                     

@@ -8,6 +8,26 @@ from django.conf.urls.static import static
 from django.contrib.auth.views import LoginView, LogoutView
 from django.contrib.sitemaps.views import sitemap
 from sitemaps import StaticSitemap
+from django.http import FileResponse, Http404
+import mimetypes
+from pathlib import Path
+
+
+def serve_static_file(request, filepath):
+    static_root = Path(settings.BASE_DIR) / 'static'
+    file_path = (static_root / filepath).resolve()
+    if not str(file_path).startswith(str(static_root.resolve())):
+        raise Http404
+    if not file_path.exists() or not file_path.is_file():
+        raise Http404
+    content_type, _ = mimetypes.guess_type(str(file_path))
+    return FileResponse(file_path.open('rb'), content_type=content_type or 'application/octet-stream')
+
+
+def serve_pwa_file(request, filename):
+    if filename not in {'manifest.json', 'service-worker.js'}:
+        raise Http404
+    return serve_static_file(request, filename)
 
 
 urlpatterns = [
@@ -25,6 +45,11 @@ urlpatterns = [
 
     # admin panel
     path('admin/', admin.site.urls),
+
+    # PWA assets served directly from the project static folder
+    path('manifest.json', serve_pwa_file, {'filename': 'manifest.json'}),
+    path('service-worker.js', serve_pwa_file, {'filename': 'service-worker.js'}),
+    path('static/<path:filepath>', serve_static_file, name='serve_static_file'),
 
     # landing page (public entry)
     path('', landing_page, name='landing'),

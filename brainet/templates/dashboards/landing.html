@@ -575,7 +575,7 @@
     <p class="mb-2">Add Brainet to your home screen for quick access!</p>
     <div class="d-flex gap-2">
         <button id="installBtn" class="btn btn-sm btn-primary">Install</button>
-        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="alert">Dismiss</button>
+        <button id="dismissInstallBtn" type="button" class="btn btn-sm btn-secondary">Dismiss</button>
     </div>
 </div>
 
@@ -1173,15 +1173,34 @@ let deferredPrompt;
 const installBtn = document.getElementById('installBtn');
 const webInstallBtn = document.getElementById('webInstallBtn');
 const installPrompt = document.getElementById('installPrompt');
+const dismissInstallBtn = document.getElementById('dismissInstallBtn');
+const INSTALL_PROMPT_DISMISS_KEY = 'brainet-install-prompt-dismissed';
+
+function shouldSuppressInstallPrompt() {
+    return sessionStorage.getItem(INSTALL_PROMPT_DISMISS_KEY) === '1';
+}
+
+function hideInstallPrompt() {
+    sessionStorage.setItem(INSTALL_PROMPT_DISMISS_KEY, '1');
+    if (installPrompt) {
+        installPrompt.style.display = 'none';
+        installPrompt.classList.remove('d-flex', 'flex-column');
+    }
+}
+
+function showInstallPrompt() {
+    if (shouldSuppressInstallPrompt() || !installPrompt) {
+        return;
+    }
+    installPrompt.style.display = 'flex';
+    installPrompt.classList.add('d-flex', 'flex-column');
+}
 
 // Listen for the beforeinstallprompt event
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
-    
-    // Show the install prompt
-    installPrompt.style.display = 'flex';
-    installPrompt.classList.add('d-flex', 'flex-column');
+    showInstallPrompt();
 });
 
 // Handle install button clicks
@@ -1191,13 +1210,13 @@ if (installBtn) {
             alert('App is already installed or not available for your device.');
             return;
         }
-        
+
         deferredPrompt.prompt();
         const { outcome } = await deferredPrompt.userChoice;
         console.log(`User response to the install prompt: ${outcome}`);
-        
+
         deferredPrompt = null;
-        installPrompt.style.display = 'none';
+        hideInstallPrompt();
     });
 }
 
@@ -1232,18 +1251,15 @@ if (webInstallBtn) {
 
 // Hide install prompt after dismissal
 document.addEventListener('DOMContentLoaded', () => {
-    const closeButton = document.querySelector('#installPrompt button[data-bs-dismiss]');
-    if (closeButton) {
-        closeButton.addEventListener('click', () => {
-            installPrompt.style.display = 'none';
-        });
+    if (dismissInstallBtn) {
+        dismissInstallBtn.addEventListener('click', hideInstallPrompt);
     }
 });
 
 // Listen for app installed event
 window.addEventListener('appinstalled', () => {
     console.log('PWA was installed');
-    installPrompt.style.display = 'none';
+    hideInstallPrompt();
     deferredPrompt = null;
 });
 
@@ -1262,7 +1278,7 @@ document.body.insertBefore(updateBanner, document.body.firstChild);
 // Register Service Worker for PWA
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('{% static "service-worker.js" %}', { scope: '/' })
+        navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
             .then((registration) => {
                 console.log('Service Worker registered successfully:', registration);
                 
