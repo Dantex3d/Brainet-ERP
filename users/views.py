@@ -15,54 +15,16 @@ from django.views.decorators.csrf import csrf_protect
 from schools.models import School, SecurityLog
 from utils.email_service import send_email
 from .forms import CustomAuthenticationForm
-
-
-def _get_client_ip(request):
-    x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
-    if x_forwarded_for:
-        return x_forwarded_for.split(",")[0].strip()
-    return request.META.get("REMOTE_ADDR", "")
-
-
-def _get_browser_name(user_agent):
-    if not user_agent:
-        return "Unknown"
-    user_agent_lower = user_agent.lower()
-    if "edg/" in user_agent_lower:
-        return "Edge"
-    if "chrome" in user_agent_lower:
-        return "Chrome"
-    if "firefox" in user_agent_lower:
-        return "Firefox"
-    if "safari" in user_agent_lower:
-        return "Safari"
-    if "opera" in user_agent_lower:
-        return "Opera"
-    if "curl" in user_agent_lower or "wget" in user_agent_lower:
-        return "CLI"
-    return "Unknown"
-
-
-def _resolve_location(ip_address):
-    if not ip_address or ip_address in {"127.0.0.1", "localhost", "::1"}:
-        return "Local environment"
-
-    try:
-        with urllib.request.urlopen(f"https://ipapi.co/{ip_address}/json/", timeout=3) as response:
-            payload = json.load(response)
-            city = payload.get("city") or ""
-            region = payload.get("region") or ""
-            country = payload.get("country_name") or payload.get("country") or ""
-            parts = [part for part in [city, region, country] if part]
-            return ", ".join(parts) if parts else "Unknown"
-    except Exception:
-        return "Unknown"
-
+from utils.ip_utils import (
+    get_client_ip,
+    get_browser_name,
+    resolve_location,
+)
 
 def _record_security_event(request, user=None, event_type="", message="", status_code=0, details=None):
-    ip_address = _get_client_ip(request)
-    browser = _get_browser_name(request.META.get("HTTP_USER_AGENT", ""))
-    location = _resolve_location(ip_address)
+    ip_address = get_client_ip(request)
+    browser = get_browser_name(request.META.get("HTTP_USER_AGENT", ""))
+    location = resolve_location(ip_address)
     return SecurityLog.objects.create(
         user=user,
         event_type=event_type,
@@ -205,7 +167,7 @@ class CustomLoginView(LoginView):
             pass
 
     def _get_client_ip(self):
-        return _get_client_ip(self.request)
+        return get_client_ip(self.request)
 
     def get_success_url(self):
 
