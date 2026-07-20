@@ -5916,6 +5916,12 @@ def export_class_report(request, class_id, term_id, exam_id):
     if stream_id:
         selected_stream = get_object_or_404(Stream, id=stream_id, class_group=class_obj)
 
+    # Allow combining multiple exam marks for the same term when requested via query params
+    combine_requested = False
+    combine_param = request.GET.get("combine") or request.GET.get("combine_requested")
+    if combine_param is not None:
+        combine_requested = str(combine_param).lower() in ["1", "true", "yes", "on"]
+
     student_query = Student.objects.filter(
         school=school,
         current_class_id=class_id
