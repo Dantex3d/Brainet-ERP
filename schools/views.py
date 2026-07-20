@@ -3932,23 +3932,56 @@ def register_school(request):
         address = request.POST.get("address")
         phone = request.POST.get("phone")
         email = request.POST.get("email")
+        admin_name = request.POST.get("admin_name")
+        admin_email = request.POST.get("admin_email")
+        admin_phone = request.POST.get("admin_phone")
+        admin_password = request.POST.get("admin_password") or request.POST.get("password")
 
-        if not name or not address or not phone or not email:
-            messages.error(request, "Please fill in all required fields.")
+        if not all([name, address, phone, email, admin_name, admin_email, admin_phone, admin_password]):
+            messages.error(request, "Please fill in all required school and admin details.")
             return render(request, "schools/register_school.html", {
                 "name": name,
                 "address": address,
                 "phone": phone,
                 "email": email,
+                "admin_name": admin_name,
+                "admin_email": admin_email,
+                "admin_phone": admin_phone,
             })
 
         if School.objects.filter(email=email).exists():
-            messages.error(request, "A school with this email already exists.")
+            messages.error(request, "Email already taken.")
             return render(request, "schools/register_school.html", {
                 "name": name,
                 "address": address,
                 "phone": phone,
                 "email": email,
+                "admin_name": admin_name,
+                "admin_email": admin_email,
+                "admin_phone": admin_phone,
+            })
+
+        if CustomUser.objects.filter(email=admin_email).exists():
+            return render(request, "schools/register_school.html", {
+                "name": name,
+                "address": address,
+                "phone": phone,
+                "email": email,
+                "admin_name": admin_name,
+                "admin_email": admin_email,
+                "admin_phone": admin_phone,
+            })
+
+        if Principal.objects.filter(phone=admin_phone).exists():
+            messages.error(request, "This admin phone number is already in use.")
+            return render(request, "schools/register_school.html", {
+                "name": name,
+                "address": address,
+                "phone": phone,
+                "email": email,
+                "admin_name": admin_name,
+                "admin_email": admin_email,
+                "admin_phone": admin_phone,
             })
 
         school = School.objects.create(
@@ -3956,10 +3989,45 @@ def register_school(request):
             address=address,
             phone=phone,
             email=email,
-            is_active=False,
+            is_active=True,
+            is_verified=True,
+            license_status='active',
+            license_expiry=timezone.now().date() + timedelta(days=5),
+        )
+
+        user = CustomUser.objects.create_user(
+            email=admin_email,
+            password=admin_password,
+            role="principal",
+            school=school,
+            email_verified=True,
+        )
+        Principal.objects.create(
+            user=user,
+            school=school,
+            name=admin_name,
+            email=admin_email,
+            phone=admin_phone,
         )
 
         send_school_verification_email(school, request=request)
+
+        login_link = request.build_absolute_uri(reverse("login")) if request else reverse("login")
+        admin_message = (
+            f"Hello {admin_name},\n\n"
+            f"Your Brainet school admin account for {school.name} has been created.\n"
+            f"Email: {admin_email}\n"
+            f"Temporary password: {admin_password}\n\n"
+            f"Use this link to sign in: {login_link}\n\n"
+            "Please change your password after your first login."
+        )
+        send_email(
+            to_email=admin_email,
+            subject="Your Brainet school admin account",
+            message=admin_message,
+            recipient_name=admin_name,
+            html=False,
+        )
 
         try:
             superusers = User.objects.filter(is_superuser=True)
@@ -3967,7 +4035,7 @@ def register_school(request):
             title = "New school registration request"
             message_text = (
                 f"A new school registration request has been submitted for '{school.name}'. "
-                f"Contact: {phone}, {email}."
+                f"School admin: {admin_name} ({admin_email})."
             )
             for su in superusers:
                 Notification.objects.create(
@@ -3993,7 +4061,7 @@ def register_school(request):
 
         messages.success(
             request,
-            "Thank you. Your school registration request has been submitted. An admin will activate it within 48 hours."
+            f"Thank you. Your school trial account has been created for {school.name}. The free trial ends after 5 days on {school.license_expiry}. The school admin login details were sent to the admin email."
         )
         return redirect("register_school_success")
 
@@ -4026,8 +4094,6 @@ def edit_school(request, school_id):
         school.address = request.POST.get("address")
         school.phone = request.POST.get("phone")
         school.email = request.POST.get("email")
-        school.bank_name = request.POST.get("bank_name", school.bank_name)
-        school.account_number = request.POST.get("account_number", school.account_number)
         school.save()
 
         messages.success(request, "School details updated successfully.")

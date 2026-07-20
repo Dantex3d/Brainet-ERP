@@ -2,11 +2,14 @@
 {% block content %}
 <div class="container py-5">
     <div class="row justify-content-center">
-        <div class="col-lg-6">
+        <div class="col-lg-7">
             <div class="card border-0 shadow rounded-4 p-4 text-center">
-                <h3 class="text-success">Registration Submitted</h3>
+                <h3 class="text-success">Free Trial Started</h3>
                 <p class="lead">Thank you for registering your school with Brainet.</p>
-                <p>Your request has been received and will be activated by an administrator within 48 hours.</p>
+                <div class="alert alert-warning rounded-3 my-3">
+                    <strong>Important:</strong> Your free trial lasts for 5 days only. After the trial ends, access will stop and your data will be removed unless the account is renewed.
+                </div>
+                <p>The school admin login details were sent to the email address you provided.</p>
                 <p>If you need support, contact us via WhatsApp/SMS at <strong>0700 269 517</strong> or <strong>0736 645 038</strong>, or email <strong>merkoudaniel@gmail.com</strong>.</p>
                 <a href="{% url 'landing' %}" class="btn btn-primary mt-3">Return to Home</a>
             </div>

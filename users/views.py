@@ -21,6 +21,21 @@ from utils.ip_utils import (
     resolve_location,
 )
 
+
+def _get_trusted_device_key(user, request):
+    ip_address = get_client_ip(request)
+    browser = get_browser_name(request.META.get("HTTP_USER_AGENT", ""))
+    return f"trusted_device_{user.pk}_{ip_address}_{browser}"
+
+
+def _is_trusted_device(user, request):
+    return bool(request.session.get(_get_trusted_device_key(user, request)))
+
+
+def _trust_device(user, request):
+    request.session[_get_trusted_device_key(user, request)] = True
+    request.session.modified = True
+
 def _record_security_event(request, user=None, event_type="", message="", status_code=0, details=None):
     ip_address = get_client_ip(request)
     browser = get_browser_name(request.META.get("HTTP_USER_AGENT", ""))
@@ -79,6 +94,10 @@ class CustomLoginView(LoginView):
         user = form.get_user()
 
         if user.is_superuser:
+            if _is_trusted_device(user, self.request):
+                login(self.request, user)
+                self.request.session.set_expiry(settings.SESSION_COOKIE_AGE)
+                return redirect(self.get_success_url())
             self._start_superuser_two_factor(user)
             return redirect('superuser_two_factor')
 
@@ -294,6 +313,9 @@ def superuser_two_factor(request):
         request.session.pop("pending_superuser_login_code", None)
         request.session.pop("pending_superuser_login_user_id", None)
         request.session.pop("pending_superuser_login_attempts", None)
+        trust_device = request.POST.get("trust_device") == "on"
+        if trust_device:
+            _trust_device(user, request)
         login(request, user)
         request.session.set_expiry(settings.SESSION_COOKIE_AGE)
         _record_security_event(

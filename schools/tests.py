@@ -1,3 +1,4 @@
+from django.core import mail
 from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 
@@ -120,6 +121,75 @@ class ContactMessageFlowTests(TestCase):
         message.refresh_from_db()
         self.assertTrue(message.handled)
         self.assertEqual(message.reply, "We will help shortly.")
+
+
+class SuperuserSchoolEditTests(TestCase):
+    def setUp(self):
+        self.school = School.objects.create(
+            name="Edit School",
+            address="Test Address",
+            phone="0712345678",
+            email="edit@example.com",
+            bank_name="ABC Bank",
+            account_number="1234567890",
+            is_active=True,
+            is_verified=True,
+        )
+        self.superuser = CustomUser.objects.create_user(
+            email="superedit@example.com",
+            password="testpass123",
+            role="superuser",
+            school=self.school,
+            email_verified=True,
+        )
+        self.superuser.is_superuser = True
+        self.superuser.save(update_fields=["is_superuser"])
+
+    def test_superuser_school_edit_form_excludes_bank_fields(self):
+        self.client.force_login(self.superuser)
+
+        response = self.client.get(reverse("edit_school", args=[self.school.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Bank Name")
+        self.assertNotContains(response, "Account Number")
+
+
+@override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+class SchoolRegistrationFlowTests(TestCase):
+    def test_public_school_registration_creates_school_admin_and_sends_login_email(self):
+        response = self.client.post(
+            reverse("register_school"),
+            {
+                "name": "Bright Future School",
+                "address": "123 Main Street",
+                "phone": "0712345678",
+                "email": "bright@example.com",
+                "admin_name": "Alice Maina",
+                "admin_email": "admin@example.com",
+                "admin_phone": "0723456789",
+                "admin_password": "StrongPass123",
+            },
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        school = School.objects.get(email="bright@example.com")
+        self.assertTrue(school.principals.exists())
+
+        principal = school.principals.get()
+        self.assertEqual(principal.name, "Alice Maina")
+        self.assertEqual(principal.email, "admin@example.com")
+        self.assertIsNotNone(principal.user)
+        self.assertTrue(principal.user.email_verified)
+
+        sent_messages = [message.subject for message in mail.outbox]
+        self.assertIn("Verify your school registration on Brainet", sent_messages)
+        self.assertIn("Your Brainet school admin account", sent_messages)
+
+        login_email = next(message for message in mail.outbox if message.to == ["admin@example.com"])
+        self.assertIn("Temporary password", login_email.body)
+        self.assertIn("/login/", login_email.body)
 
 
 class SchoolLogoStorageTests(TestCase):

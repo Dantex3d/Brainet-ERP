@@ -8,7 +8,7 @@
             <div class="card border-0 shadow rounded-4">
                 <div class="card-header bg-primary text-white rounded-top-4">
                     <h4 class="mb-0">📘 Register Your School</h4>
-                    <small>Submit your school details and our team will activate your account.</small>
+                    <small>Enter school details and the school admin account details in one step.</small>
                 </div>
                 <div class="card-body p-4">
                     {% if messages %}
@@ -37,8 +37,29 @@
                             <label class="form-label fw-bold">Address</label>
                             <textarea name="address" class="form-control rounded-3" rows="4" required>{{ address|default:'' }}</textarea>
                         </div>
+
+                        <hr class="my-4">
+
+                        <h5 class="fw-bold mb-3">School Admin Details</h5>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Admin Full Name</label>
+                            <input type="text" name="admin_name" class="form-control rounded-3" value="{{ admin_name|default:'' }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Admin Email</label>
+                            <input type="email" name="admin_email" class="form-control rounded-3" value="{{ admin_email|default:'' }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Admin Phone</label>
+                            <input type="text" name="admin_phone" class="form-control rounded-3" value="{{ admin_phone|default:'' }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Temporary Password</label>
+                            <input type="password" name="admin_password" class="form-control rounded-3" required>
+                        </div>
+
                         <div class="alert alert-warning rounded-3 mb-4">
-                            ⚠ Your school account must be activated within 48 hours. Contact support if you need assistance.
+                            ⚠ Your school account must be activated within 48 hours. The school admin will receive login details and a temporary password immediately.
                         </div>
                         <div class="d-flex justify-content-between align-items-center gap-2">
                             <a href="{% url 'landing' %}" class="btn btn-outline-secondary rounded-3">Cancel</a>

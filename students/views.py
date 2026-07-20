@@ -31,8 +31,24 @@ def register_student(request):
         dormitory_id = request.POST.get('dormitory_id')
         parent_phone = request.POST.get('parent_phone')
 
-        total_students = Student.objects.filter(school=school).count() + 1
-        admission_number = f"{school.id}STD{total_students:04d}"
+        normalized_name = " ".join(part.capitalize() for part in name.strip().split())
+
+        existing_numbers = set(
+            Student.objects.filter(school=school).values_list('admission_number', flat=True)
+        )
+
+        sequence = 1
+        while True:
+            candidate = f"{school.id}STD{sequence:03d}"
+            if candidate not in existing_numbers:
+                admission_number = candidate
+                break
+            sequence += 1
+            if sequence >= 1000:
+                candidate = f"{school.id}STD{sequence:03d}"
+                if candidate not in existing_numbers:
+                    admission_number = candidate
+                    break
 
         password = "123456"
 
@@ -47,7 +63,7 @@ def register_student(request):
             user=user,
             school=school,
             admission_number=admission_number,
-            name=name,
+            name=normalized_name,
             gender=gender,
             current_class_id=class_id,
             stream_id=stream_id if stream_id else None,

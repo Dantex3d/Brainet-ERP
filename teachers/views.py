@@ -25,7 +25,10 @@ from .models import (
 
 
 def _can_manage_teachers(request):
-    return request.user.is_superuser or getattr(request.user, "role", "") == "principal"
+    role = getattr(request.user, "role", "")
+    return request.user.is_superuser or role in {"principal", "dos"}
+
+
 def _resolve_class_stream(class_obj, stream_id=None):
     if stream_id:
         return get_object_or_404(Stream, id=stream_id, class_group=class_obj)
@@ -48,20 +51,37 @@ def assign_teacher_class(request):
         teacher_id = request.POST.get("teacher")
         class_id = request.POST.get("class")
         stream_id = request.POST.get("stream")
+        override = request.POST.get("override") == "1"
 
         teacher = get_object_or_404(Teacher, id=teacher_id, school=school)
         class_obj = get_object_or_404(Class, id=class_id, school=school)
 
         stream = _resolve_class_stream(class_obj, stream_id)
 
-        # update or create assignment for the selected class+stream
-        assignment, created = ClassTeacherAssignment.objects.update_or_create(
+        existing_assignment = ClassTeacherAssignment.objects.filter(
             class_obj=class_obj,
             stream=stream,
-            defaults={
-                'school': school,
-                'teacher': teacher
-            }
+            school=school,
+        ).exclude(teacher=teacher).first()
+
+        if existing_assignment and not override:
+            messages.warning(
+                request,
+                f"This class/stream is already assigned to {existing_assignment.teacher.name}. To override it, submit the assignment again with the override option enabled."
+            )
+            return redirect("manage_teachers")
+
+        ClassTeacherAssignment.objects.filter(
+            class_obj=class_obj,
+            stream=stream,
+            school=school,
+        ).delete()
+
+        ClassTeacherAssignment.objects.create(
+            school=school,
+            teacher=teacher,
+            class_obj=class_obj,
+            stream=stream,
         )
 
         messages.success(request, "Class assigned successfully")

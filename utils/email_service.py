@@ -156,10 +156,19 @@ def send_email_with_django(to_email, subject, message, recipient_name=None, html
 
 
 def send_email(to_email, subject, message, recipient_name=None, html=True):
-    """Send email using Brevo if configured, otherwise use Django backend."""
+    """Send email using Brevo when configured, but fall back to Django in test/debug environments."""
+    email_backend = getattr(settings, 'EMAIL_BACKEND', '') or ''
+    if email_backend.endswith('locmem.EmailBackend') or getattr(settings, 'DEBUG', False):
+        return send_email_with_django(to_email, subject, message, recipient_name=recipient_name, html=html)
+
     api_key = _get_api_key()
     if api_key:
-        return send_email_with_brevo(to_email, subject, message, recipient_name=recipient_name, html=html)
+        try:
+            return send_email_with_brevo(to_email, subject, message, recipient_name=recipient_name, html=html)
+        except Exception:
+            if getattr(settings, 'DEBUG', False):
+                raise
+            return send_email_with_django(to_email, subject, message, recipient_name=recipient_name, html=html)
 
     return send_email_with_django(to_email, subject, message, recipient_name=recipient_name, html=html)
       
