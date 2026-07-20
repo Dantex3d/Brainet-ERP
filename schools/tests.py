@@ -4,7 +4,7 @@ from django.urls import reverse
 
 from brainet.templatetags.text_filters import register
 from exams.models import Exam
-from schools.models import School, Term, Subject, StudentMark, ContactMessage
+from schools.models import School, Term, Subject, StudentMark, ContactMessage, DOSMessage, Notification
 from students.models import Student
 from schools.views import assign_competition_ranks, generate_progress_chart, get_student_term_performance_history, get_combined_mark_for_reporting
 from schools.promotion_service import PromotionService
@@ -153,6 +153,52 @@ class SuperuserSchoolEditTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "Bank Name")
         self.assertNotContains(response, "Account Number")
+
+
+class SuperuserNotificationClearTests(TestCase):
+    def setUp(self):
+        self.school = School.objects.create(
+            name="Notify School",
+            address="Test Address",
+            phone="0712345678",
+            email="notify@example.com",
+            is_active=True,
+            is_verified=True,
+        )
+        self.superuser = CustomUser.objects.create_user(
+            email="notify-super@example.com",
+            password="testpass123",
+            role="superuser",
+            school=self.school,
+            email_verified=True,
+        )
+        self.superuser.is_superuser = True
+        self.superuser.save(update_fields=["is_superuser"])
+        self.notification = Notification.objects.create(
+            school=self.school,
+            sender=self.superuser,
+            recipient=self.superuser,
+            title="System update",
+            message="A new update is available",
+        )
+        self.message = DOSMessage.objects.create(
+            school=self.school,
+            sender=self.superuser,
+            receiver=self.superuser,
+            subject="Pending review",
+            message="A message needs attention",
+            status="pending",
+        )
+
+    def test_reset_notification_count_clears_superuser_notifications(self):
+        self.client.force_login(self.superuser)
+
+        response = self.client.post(reverse("reset_notification_count"), follow=True)
+
+        self.assertRedirects(response, reverse("superuser_dashboard"))
+        self.assertEqual(Notification.objects.filter(recipient=self.superuser).count(), 0)
+        self.message.refresh_from_db()
+        self.assertEqual(self.message.status, "cleared")
 
 
 @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")

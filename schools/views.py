@@ -1616,22 +1616,23 @@ def principal_school_manager(request):
 
 @login_required
 def reset_notification_count(request):
-    """Reset notification counts to zero"""
+    """Clear the notifications visible in the dashboard for the current user."""
     if request.method == "POST":
         user = request.user
-        # Mark all unread/pending messages as read
+
+        Notification.objects.filter(recipient=user).delete()
+
         DOSMessage.objects.filter(
             receiver=user,
             status__in=['pending', 'new']
         ).update(status="cleared")
-        
-        messages.success(request, "✓ Notifications reset to zero!")
-        
+
+        messages.success(request, "✓ Notifications cleared.")
+
         if user.is_superuser:
             return redirect("superuser_dashboard")
-        else:
-            return redirect("dos_dashboard")
-    
+        return redirect("dos_dashboard")
+
     return redirect(request.META.get('HTTP_REFERER', '/'))
 
     
