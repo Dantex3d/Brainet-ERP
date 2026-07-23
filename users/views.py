@@ -92,12 +92,20 @@ class CustomLoginView(LoginView):
     def form_valid(self, form):
         """Override form_valid to check verification status"""
         user = form.get_user()
+        remember_me = bool(form.cleaned_data.get("remember_me"))
+        trust_device = bool(form.cleaned_data.get("trust_device"))
 
         if user.is_superuser:
-            if _is_trusted_device(user, self.request):
+            if _is_trusted_device(user, self.request) or trust_device:
+                if trust_device:
+                    _trust_device(user, self.request)
                 login(self.request, user)
-                self.request.session.set_expiry(settings.SESSION_COOKIE_AGE)
+                if remember_me or trust_device:
+                    self.request.session.set_expiry(settings.SESSION_COOKIE_AGE)
+                else:
+                    self.request.session.set_expiry(0)
                 return redirect(self.get_success_url())
+
             self._start_superuser_two_factor(user)
             return redirect('superuser_two_factor')
 
@@ -151,16 +159,25 @@ class CustomLoginView(LoginView):
             f"Your Brainet security code is {code}. "
             "Enter it to continue to the superuser dashboard."
         )
-        send_email(
-            to_email=user.email,
-            subject="Brainet superuser verification code",
-            message=message,
-            recipient_name=user.get_full_name() or user.email,
-            html=False,
-        )
+        try:
+            email_sent = send_email(
+                to_email=user.email,
+                subject="Brainet superuser verification code",
+                message=message,
+                recipient_name=user.get_full_name() or user.email,
+                html=False,
+            )
+        except Exception:
+            email_sent = False
+
+        if email_sent:
+            status_message = "Superuser verification code sent"
+        else:
+            status_message = "Superuser verification code prepared locally; email delivery failed"
+
         self._record_security_log(
             event_type="superuser_login_requested",
-            message="Superuser verification code sent",
+            message=status_message,
             user=user,
             status_code=302,
             details={"email": user.email},

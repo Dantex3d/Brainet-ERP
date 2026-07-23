@@ -26,6 +26,13 @@ class CustomAuthenticationForm(AuthenticationForm):
         label=_("Remember me"),
     )
 
+    trust_device = forms.BooleanField(
+        required=False,
+        initial=False,
+        widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        label=_("Trust this device for superuser logins"),
+    )
+
     error_messages = {
         "invalid_login": _("Wrong credentials. Please check your email and password."),
         "inactive": _("This account is inactive."),

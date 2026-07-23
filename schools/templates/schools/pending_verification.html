@@ -20,9 +20,10 @@
             <table class="table mb-0">
                 <thead>
                     <tr>
-                        <th>Name</th>
-                        <th>Email</th>
+                        <th>Item</th>
+                        <th>Type</th>
                         <th>Role</th>
+                        <th>School</th>
                         <th>Sent At</th>
                         <th>Attempts</th>
                         <th></th>
@@ -31,18 +32,32 @@
                 <tbody>
                     {% for u in users %}
                     <tr>
-                        <td>{{ u.get_full_name|default:u.email }}</td>
-                        <td>{{ u.email }}</td>
+                        <td>
+                            <strong>{{ u.display_name }}</strong>
+                            <div class="text-muted small">{{ u.email }}</div>
+                        </td>
+                        <td>
+                            {% if u.kind == 'school' %}
+                            <span class="badge bg-info text-dark">School</span>
+                            {% else %}
+                            <span class="badge bg-secondary">User</span>
+                            {% endif %}
+                        </td>
                         <td>{{ u.role }}</td>
-                        <td>{{ u.email_verification_sent_at }}</td>
-                        <td>{{ u.verification_attempts }}</td>
+                        <td>{{ u.school_name|default:"—" }}</td>
+                        <td>{{ u.sent_at }}</td>
+                        <td>{{ u.attempts }}</td>
                         <td class="text-end">
+                            {% if u.kind == 'user' %}
                             <a href="{% url 'manual_verify_user' u.id %}" class="btn btn-sm btn-success">Verify Manually</a>
                             <a href="{% url 'resend_verification_email' u.id %}" class="btn btn-sm btn-outline-primary">Resend Email</a>
+                            {% else %}
+                            <span class="text-muted small">Awaiting school verification</span>
+                            {% endif %}
                         </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="6" class="text-center p-4">No pending verifications</td></tr>
+                    <tr><td colspan="7" class="text-center p-4">No pending verifications</td></tr>
                     {% endfor %}
                 </tbody>
             </table>

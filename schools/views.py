@@ -134,6 +134,47 @@ def superuser_required(view_func):
     return user_passes_test(lambda u: u.is_superuser)(view_func)
 
 
+def get_pending_verification_items():
+    items = []
+
+    for user in (
+        User.objects.filter(email_verified=False)
+        .order_by('-email_verification_sent_at')
+    ):
+        if getattr(user, 'role', None) == 'student' or hasattr(user, 'student_profile'):
+            continue
+
+        items.append({
+            'kind': 'user',
+            'id': user.pk,
+            'email': user.email,
+            'display_name': user.get_full_name() or user.email,
+            'role': user.role,
+            'school_name': getattr(user.school, 'name', None),
+            'sent_at': user.email_verification_sent_at,
+            'attempts': user.verification_attempts,
+            'status': 'Pending verification',
+            'sort_date': user.email_verification_sent_at or timezone.now(),
+        })
+
+    for school in School.objects.filter(is_verified=False).order_by('-created_at'):
+        items.append({
+            'kind': 'school',
+            'id': school.pk,
+            'email': school.email,
+            'display_name': school.name,
+            'role': 'school',
+            'school_name': school.name,
+            'sent_at': school.created_at,
+            'attempts': 0,
+            'status': 'School registration pending',
+            'sort_date': school.created_at or timezone.now(),
+        })
+
+    items.sort(key=lambda item: item['sort_date'], reverse=True)
+    return items
+
+
 def exam_controller_required(view_func):
     return user_passes_test(
         lambda u: u.is_superuser or getattr(u, "role", None) in ["dos", "principal"]
@@ -306,21 +347,22 @@ def send_school_verification_email(school, request=None):
 
 @superuser_required
 def pending_verification(request):
-    """Superuser view: list users pending email verification with search and filters."""
+    """Superuser view: list pending verification items for users and schools."""
     q = request.GET.get('q', '').strip()
     filter_type = request.GET.get('filter', '')
 
-    users = User.objects.filter(email_verified=False)
+    items = get_pending_verification_items()
 
     if q:
-        users = users.filter(Q(email__icontains=q) | Q(first_name__icontains=q) | Q(last_name__icontains=q))
+        items = [
+            item for item in items
+            if q.lower() in (item['display_name'] or '').lower() or q.lower() in (item['email'] or '').lower()
+        ]
 
     if filter_type == 'failed':
-        users = users.filter(verification_attempts__gt=0)
+        items = [item for item in items if item['kind'] == 'user' and item['attempts'] > 0]
 
-    users = users.order_by('-email_verification_sent_at')
-
-    paginator = Paginator(users, 25)
+    paginator = Paginator(items, 25)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
@@ -333,7 +375,7 @@ def pending_verification(request):
 
 @superuser_required
 def pending_verification_count(request):
-    count = User.objects.filter(email_verified=False).count()
+    count = get_pending_verification_items().__len__()
     return JsonResponse({'count': count})
 
 
@@ -630,6 +672,9 @@ def superuser_dashboard(request):
     pending_renewals = LicenseRenewal.objects.filter(status="pending").select_related("school", "requested_by").order_by("-requested_at")
     principals = Principal.objects.select_related("school").all()
     doss = DirectorOfStudies.objects.select_related("school").all()
+    unverified_accounts = get_pending_verification_items()[:12]
+    active_school_enrollments = Student.objects.filter(school__is_active=True).count()
+    inactive_school_enrollments = Student.objects.filter(school__is_active=False).count()
 
     context = {
 
@@ -654,6 +699,8 @@ def superuser_dashboard(request):
         "pending_renewals_count": pending_renewals.count(),
         "principals": principals,
         "doss": doss,
+        "unverified_accounts": unverified_accounts,
+        "active_school_enrollments": active_school_enrollments,
         "security_logs": security_logs,
         "contact_messages": contact_messages,
     }

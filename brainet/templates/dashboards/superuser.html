@@ -211,6 +211,22 @@
         </div>
 
         <div class="col-md-3">
+            <div class="card border-0 shadow-lg rounded-4 bg-info text-dark h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase mb-2">Enrollments</h6>
+                            <h2 class="fw-bold mb-0">{{ active_school_enrollments }}</h2>
+                        </div>
+                        <div style="font-size: 2.5rem; opacity: 0.3;">👥</div>
+                    </div>
+                    <small>Active schools</small>
+                    <div class="small mt-2">Inactive: {{ inactive_school_enrollments }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
             <div class="card border-0 shadow-lg rounded-4 bg-warning text-dark h-100">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
@@ -333,7 +349,8 @@
                     <table class="table align-middle mb-0">
                         <thead>
                             <tr>
-                                <th>User</th>
+                                <th>Item</th>
+                                <th>Type</th>
                                 <th>Role</th>
                                 <th>School</th>
                                 <th>Status</th>
@@ -344,17 +361,28 @@
                             {% for account in unverified_accounts %}
                             <tr>
                                 <td>
-                                    <strong>{{ account.email }}</strong>
-                                    <div class="text-muted small">{{ account.get_full_name|default:account.email }}</div>
+                                    <strong>{{ account.display_name }}</strong>
+                                    <div class="text-muted small">{{ account.email }}</div>
+                                </td>
+                                <td>
+                                    {% if account.kind == 'school' %}
+                                    <span class="badge bg-info text-dark">School</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary text-uppercase">User</span>
+                                    {% endif %}
                                 </td>
                                 <td><span class="badge bg-secondary text-uppercase">{{ account.role }}</span></td>
-                                <td>{{ account.school.name|default:"No school" }}</td>
-                                <td><span class="badge bg-warning text-dark">Not verified</span></td>
+                                <td>{{ account.school_name|default:"—" }}</td>
+                                <td><span class="badge bg-warning text-dark">{{ account.status }}</span></td>
                                 <td class="text-end">
+                                    {% if account.kind == 'user' %}
                                     <form method="post" action="{% url 'manual_verify_user' account.id %}" class="d-inline-block" onsubmit="return confirm('Mark {{ account.email }} as verified manually?');">
                                         {% csrf_token %}
                                         <button type="submit" class="btn btn-sm btn-success">Manual Verify</button>
                                     </form>
+                                    {% else %}
+                                    <span class="text-muted small">Awaiting school verification</span>
+                                    {% endif %}
                                 </td>
                             </tr>
                             {% endfor %}
