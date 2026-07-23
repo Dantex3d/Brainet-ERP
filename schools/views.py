@@ -700,7 +700,6 @@ def superuser_dashboard(request):
         "principals": principals,
         "doss": doss,
         "unverified_accounts": unverified_accounts,
-        "active_school_enrollments": active_school_enrollments,
         "security_logs": security_logs,
         "contact_messages": contact_messages,
     }
