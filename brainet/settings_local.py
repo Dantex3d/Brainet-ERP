@@ -46,7 +46,6 @@ DATABASES = {
 # =========================================================
 SITE_NAME = os.environ.get('SITE_NAME', globals().get('SITE_NAME', 'Brainet'))
 SUPPORT_EMAIL = os.environ.get('SUPPORT_EMAIL', globals().get('SUPPORT_EMAIL', os.environ.get('DEFAULT_FROM_EMAIL', globals().get('EMAIL_HOST_USER', 'support@brainet.local'))))
-EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
 EMAIL_HOST = os.environ.get('EMAIL_HOST', globals().get('EMAIL_HOST', 'smtp.zoho.com'))
 EMAIL_PORT = int(os.environ.get('EMAIL_PORT', globals().get('EMAIL_PORT', 587)))
 EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', str(globals().get('EMAIL_USE_TLS', True))) in ('True', 'true', '1')
@@ -54,6 +53,17 @@ EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', globals().get('EMAIL_HOST_US
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', globals().get('EMAIL_HOST_PASSWORD'))
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', globals().get('DEFAULT_FROM_EMAIL', 'no-reply@brainet.local'))
 EMAIL_TIMEOUT = int(os.environ.get('EMAIL_TIMEOUT', globals().get('EMAIL_TIMEOUT', 10)))
+
+# Auto-select an email backend for local dev:
+# - If `EMAIL_BACKEND` is explicitly set in env, use it.
+# - Else if SMTP credentials are present, use SMTP backend.
+# - Otherwise fall back to console backend to avoid accidental sends.
+EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND')
+if not EMAIL_BACKEND:
+    if EMAIL_HOST_USER and EMAIL_HOST_PASSWORD:
+        EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    else:
+        EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # =========================================================
 # CACHE - Use Dummy Cache for Testing

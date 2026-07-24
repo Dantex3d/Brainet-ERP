@@ -41,6 +41,7 @@ ALLOWED_HOSTS = [
     "brainetanalytics.co.ke",
     "www.brainetanalytics.co.ke",
     "127.0.0.1",
+    'http://localhost:8000.',
 ]
 
 CSRF_TRUSTED_ORIGINS = [

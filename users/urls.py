@@ -29,6 +29,11 @@ urlpatterns = [
         views.superuser_two_factor,
         name='superuser_two_factor'
     ),
+    path(
+        'superuser/two-factor/resend/',
+        views.superuser_two_factor_resend,
+        name='superuser_two_factor_resend'
+    ),
 
     path(
         'account/',

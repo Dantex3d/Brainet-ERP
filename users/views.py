@@ -29,7 +29,8 @@ def _get_trusted_device_key(user, request):
 
 
 def _is_superuser_trusted_device_feature_enabled():
-    return getattr(settings, 'SUPERUSER_TRUSTED_DEVICE_ENABLED', True)
+    # Default to False to require verification every superuser login
+    return getattr(settings, 'SUPERUSER_TRUSTED_DEVICE_ENABLED', False)
 
 
 def _is_trusted_device(user, request):
@@ -362,6 +363,59 @@ def superuser_two_factor(request):
         return redirect('superuser_dashboard')
 
     return render(request, 'users/superuser_two_factor.html')
+
+
+@csrf_protect
+def superuser_two_factor_resend(request):
+    """Resend the superuser 2FA code for the pending login session."""
+    user_id = request.session.get("pending_superuser_login_user_id")
+    if not user_id:
+        messages.error(request, "No pending superuser verification session found. Please log in again.")
+        return redirect('login')
+
+    try:
+        user = User.objects.get(pk=user_id)
+    except User.DoesNotExist:
+        messages.error(request, "Invalid verification session. Please log in again.")
+        return redirect('login')
+
+    # Generate a fresh code and reset attempts
+    code = f"{secrets.randbelow(900000) + 100000}"
+    request.session["pending_superuser_login_code"] = code
+    request.session["pending_superuser_login_attempts"] = 0
+    request.session.set_expiry(300)
+
+    message = (
+        f"Your Brainet security code is {code}. "
+        "Enter it to continue to the superuser dashboard."
+    )
+    try:
+        email_sent = send_email(
+            to_email=user.email,
+            subject="Brainet superuser verification code",
+            message=message,
+            recipient_name=user.get_full_name() or user.email,
+            html=False,
+        )
+    except Exception:
+        email_sent = False
+
+    if email_sent:
+        messages.success(request, "A new verification code has been sent to your email.")
+        status_message = "Superuser verification code resent"
+    else:
+        messages.error(request, "Could not send verification email right now. Please try again later.")
+        status_message = "Superuser verification code resend failed"
+
+    _record_security_event(
+        request,
+        user=user,
+        event_type="superuser_login_code_resent",
+        message=status_message,
+        status_code=302,
+    )
+
+    return redirect('superuser_two_factor')
 
 @login_required
 def account_profile(request):
