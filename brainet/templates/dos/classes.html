@@ -1,583 +1,150 @@
-{% extends 'dashboards/base.html' %}
+﻿{% extends 'dashboards/base.html' %}
 {% load static %}
 
 {% block content %}
-
 <div class="container-fluid py-4">
-    <h3 class="fw-bold mb-4 text-primary">📚 Class Management Center</h3>
-
-    <!-- ADD CLASS SECTION -->
-    <div class="card shadow-sm rounded-3 mb-4 border-0">
-        <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-            <h6 class="mb-0">➕ Create New Class</h6>
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <h3 class="fw-bold text-primary">📚 Manage Classes</h3>
+            <p class="text-muted">Add classes and edit them right here on the same page.</p>
         </div>
-        <div class="card-body">
-            <form method="post" action="{% url 'add_class' %}">
-                {% csrf_token %}
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <label class="form-label fw-semibold small">Class Name</label>
-                        <input type="text" name="name" class="form-control form-control-sm" placeholder="e.g. Grade 9, Form 2" required>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label fw-semibold small">Stream (Optional)</label>
-                        <input type="text" name="stream" class="form-control form-control-sm" placeholder="e.g. East, West, A, B">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label fw-semibold small">Level</label>
-                        <input type="number" name="level" class="form-control form-control-sm" placeholder="e.g. 9" required>
-                    </div>
-                    <div class="col-md-2 d-flex align-items-end">
-                        <button type="submit" class="btn btn-sm btn-primary w-100">Create</button>
-                    </div>
-                </div>
-            </form>
+        <div class="col-lg-4 text-lg-end align-self-center">
+            <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">⬅ Back to Dashboard</a>
         </div>
     </div>
 
-    <!-- ALL CLASSES TABLE -->
-    <div class="card shadow-sm rounded-3 border-0 mb-4">
-        <div class="card-header bg-light border-bottom">
-            <h6 class="mb-0">Class Catalog</h6>
-        </div>
-        <div class="card-body table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>#</th>
-                        <th>Class</th>
-                        <th>Streams</th>
-                        <th>Assigned Subjects</th>
-                        <th>Class Master</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for c in classes %}
-                    <tr>
-                        <td>{{ forloop.counter }}</td>
-                        <td>{{ c.name }}</td>
-                        <td>
-                            {% if c.streams.all %}
-                                {% for s in c.streams.all %}
-                                <span class="stream-badge">{{ s.name }}</span>
-                                {% endfor %}
-                            {% else %}
-                                <span class="text-muted">None</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% with assignments=c.classsubject_set.all %}
-                                {% if assignments %}
-                                    {% for assignment in assignments|slice:":3" %}
-                                    <span class="subject-badge">{{ assignment.subject.name }}</span>
-                                    {% endfor %}
-                                    {% if assignments|length > 3 %}
-                                    <small class="text-muted">+{{ assignments|length|add:"-3" }} more</small>
-                                    {% endif %}
-                                {% else %}
-                                    <span class="text-muted">None</span>
-                                {% endif %}
-                            {% endwith %}
-                        </td>
-                        <td>
-                            {% if c.class_master %}
-                                {% if c.class_master.name %}
-                                    {{ c.class_master.name }}
-                                {% elif c.class_master.user.get_full_name %}
-                                    {{ c.class_master.user.get_full_name }}
-                                {% else %}
-                                    {{ c.class_master.user.email }}
-                                {% endif %}
-                            {% else %}
-                                <span class="text-muted">None</span>
-                            {% endif %}
-                        </td>
-                        <td class="text-nowrap">
-                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectClass({{ c.id }})">Manage</button>
-                            <a href="{% url 'edit_class' c.id %}" class="btn btn-sm btn-warning">Edit</a>
-                            <form method="post" action="{% url 'delete_class' c.id %}" class="d-inline-block ms-1" onsubmit="return confirm('Delete this class permanently?');">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
-                            </form>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="7" class="text-center text-muted">No classes registered yet.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- CLASS SELECTOR & DETAILS -->
     <div class="row g-4">
-        <div class="col-lg-12">
-            <div class="card shadow-sm rounded-3 border-0">
+        <div class="col-lg-6">
+            <div class="card shadow-sm rounded-4 mb-4">
                 <div class="card-header bg-light border-bottom">
-                    <label class="form-label fw-bold mb-0">Select Class to Manage</label>
+                    <h5 class="mb-0">Add New Class</h5>
                 </div>
                 <div class="card-body">
-                    <select id="classSelector" class="form-select form-select-lg" onchange="loadClassDetails(this.value)">
-                        <option value="">-- Choose a Class --</option>
-                        {% for c in classes %}
-                        <option value="{{ c.id }}" data-name="{{ c.name }}" data-level="{{ c.level }}" data-master="{{ c.class_master.id|default:'' }}" data-master-name="{% if c.class_master %}{% if c.class_master.name %}{{ c.class_master.name }}{% elif c.class_master.user.get_full_name %}{{ c.class_master.user.get_full_name }}{% else %}{{ c.class_master.user.email }}{% endif %}{% else %}None{% endif %}">
-                            {{ c.name }} - {{ c.streams.count }} Stream(s){% if c.class_master %} • Master: {% if c.class_master.name %}{{ c.class_master.name }}{% elif c.class_master.user.get_full_name %}{{ c.class_master.user.get_full_name }}{% else %}{{ c.class_master.user.email }}{% endif %}{% endif %}
-                        </option>
-                        {% endfor %}
-                    </select>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div id="detailsPanel" style="display: none;" class="mt-4">
-        <div class="row g-4">
-            <div class="col-lg-5">
-                <div class="card shadow-sm rounded-3 border-0 mb-4">
-                    <div class="card-header bg-info text-white">
-                        <h6 class="mb-0" id="classInfoTitle">Class Details</h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <small class="text-muted fw-semibold">Class Name</small>
-                            <p id="classNameDisplay" class="h5 mb-0 text-primary">-</p>
+                    <form method="post" action="{% url 'add_class' %}" class="row g-3">
+                        {% csrf_token %}
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Class Name</label>
+                            <input type="text" name="name" class="form-control" placeholder="e.g. Grade 9" required>
                         </div>
-                        <div class="mb-3">
-                            <small class="text-muted fw-semibold">Level</small>
-                            <p id="classLevelDisplay" class="h6 mb-0">-</p>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Stream</label>
+                            <input type="text" name="stream" class="form-control" placeholder="e.g. A, B, East">
                         </div>
-                        <div class="mb-3">
-                            <small class="text-muted fw-semibold">Current Class Master</small>
-                            <p id="classMasterDisplay" class="h6 mb-0 text-secondary">-</p>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Level</label>
+                            <input type="number" name="level" class="form-control" placeholder="e.g. 9" required>
                         </div>
-                    </div>
-                </div>
-
-                <div class="card shadow-sm rounded-3 border-0 mb-4">
-                    <div class="card-header bg-secondary text-white">
-                        <h6 class="mb-0">✏ Edit Class Details</h6>
-                    </div>
-                    <div class="card-body">
-                        <form method="post" action="{% url 'edit_class' 0 %}" id="editClassForm" class="row g-3">
-                            {% csrf_token %}
-                            <div class="col-12">
-                                <label class="form-label fw-semibold small">Class Name</label>
-                                <input type="text" name="name" id="editClassName" class="form-control form-control-sm" required>
-                            </div>
-                            <div class="col-6">
-                                <label class="form-label fw-semibold small">Level</label>
-                                <input type="number" name="level" id="editClassLevel" class="form-control form-control-sm" required>
-                            </div>
-                            <div class="col-6">
-                                <label class="form-label fw-semibold small">Class Master</label>
-                                <select name="class_master" id="editClassMaster" class="form-select form-select-sm">
-                                    <option value="">-- None --</option>
-                                    {% for teacher in teachers %}
-                                    <option value="{{ teacher.id }}">{% if teacher.name %}{{ teacher.name }}{% elif teacher.user.get_full_name %}{{ teacher.user.get_full_name }}{% else %}{{ teacher.user.email }}{% endif %}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="col-12 d-flex gap-2">
-                                <button type="submit" class="btn btn-sm btn-primary">Save Changes</button>
-                                <button type="button" class="btn btn-sm btn-outline-danger" id="deleteClassBtn">Delete Class</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-
-                <div class="card shadow-sm rounded-3 border-0">
-                    <div class="card-header bg-success text-white">
-                        <h6 class="mb-0">👨‍🏫 Class Master</h6>
-                    </div>
-                    <div class="card-body">
-                        <form method="post" action="{% url 'assign_class_master' %}" id="masterForm" class="d-flex gap-2">
-                            {% csrf_token %}
-                            <input type="hidden" name="class_id" id="classId">
-                            <select name="stream_id" id="masterStreamSelect" class="form-select form-select-sm">
-                                <option value="">-- Entire Class --</option>
-                            </select>
-                            <select name="class_master" class="form-select form-select-sm" id="masterSelect">
-                                <option value="">-- Select Teacher --</option>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Class Master</label>
+                            <select name="class_master" class="form-select">
+                                <option value="">-- Optional teacher --</option>
                                 {% for teacher in teachers %}
-                                <option value="{{ teacher.id }}">{% if teacher.name %}{{ teacher.name }}{% elif teacher.user.get_full_name %}{{ teacher.user.get_full_name }}{% else %}{{ teacher.user.email }}{% endif %}</option>
+                                <option value="{{ teacher.id }}">{% if teacher.name %}{{ teacher.name }}{% else %}{{ teacher.user.get_full_name }}{% endif %}</option>
                                 {% endfor %}
                             </select>
-                            <button type="submit" class="btn btn-sm btn-success">Assign</button>
-                        </form>
-                        <div class="mt-2">
-                            <small class="text-muted">Current assignment preview:</small>
-                            <p id="masterAssignmentDisplay" class="mb-0 text-secondary">Entire class / no teacher selected.</p>
                         </div>
-                    </div>
+                        <div class="col-12 text-end">
+                            <button type="submit" class="btn btn-primary">Save Class</button>
+                        </div>
+                    </form>
                 </div>
             </div>
 
-            <div class="col-lg-7">
-                <div class="card shadow-sm rounded-3 border-0 mb-4">
-                    <div class="card-header bg-warning text-dark">
-                        <h6 class="mb-0">🌊 Streams / Divisions</h6>
-                    </div>
-                    <div class="card-body">
-                        <form method="post" action="{% url 'add_stream' %}" class="d-flex gap-2 mb-3">
-                            {% csrf_token %}
-                            <input type="hidden" name="class_id" id="classIdStream">
-                            <input type="text" name="stream_name" class="form-control form-control-sm" placeholder="Add stream (e.g., A, B, East)" id="streamInput">
-                            <button type="submit" class="btn btn-sm btn-warning">Add</button>
-                        </form>
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold small">Linked Streams</label>
-                            <select id="linkedStreamSelect" class="form-select form-select-sm">
-                                <option value="">-- Select linked stream --</option>
+            <div id="editCard" class="card shadow-sm rounded-4" style="display:none;">
+                <div class="card-header bg-warning border-bottom">
+                    <h5 class="mb-0">Edit Class</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'edit_class' 0 %}" id="editClassForm" class="row g-3">
+                        {% csrf_token %}
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Class Name</label>
+                            <input type="text" name="name" id="editName" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Level</label>
+                            <input type="number" name="level" id="editLevel" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Class Master</label>
+                            <select name="class_master" id="editMaster" class="form-select">
+                                <option value="">-- Optional teacher --</option>
+                                {% for teacher in teachers %}
+                                <option value="{{ teacher.id }}">{% if teacher.name %}{{ teacher.name }}{% else %}{{ teacher.user.get_full_name }}{% endif %}</option>
+                                {% endfor %}
                             </select>
                         </div>
-                        <div id="streamsList" class="d-flex flex-wrap gap-2">
-                            <small class="text-muted">No streams yet...</small>
+                        <div class="col-12 d-flex justify-content-between">
+                            <button type="button" class="btn btn-secondary" onclick="hideEditCard()">Cancel</button>
+                            <button type="submit" class="btn btn-success">Update Class</button>
                         </div>
-                    </div>
-                </div>
-
-                <div class="card shadow-sm rounded-3 border-0">
-                    <div class="card-header bg-primary text-white">
-                        <h6 class="mb-0">📖 Assign Subjects (Ctrl+Click to select multiple)</h6>
-                    </div>
-                    <div class="card-body" style="max-height: 350px; overflow-y: auto;">
-                        <form method="post" action="{% url 'add_class_subject' %}" id="subjectForm">
-                            {% csrf_token %}
-                            <input type="hidden" name="class_id" id="classIdSubject">
-                            <div id="subjectsList" class="subject-list">
-                                {% for subject in subjects %}
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input subject-checkbox" type="checkbox" name="subject_id" value="{{ subject.id }}" id="subject_{{ subject.id }}" onchange="toggleSubject(this)">
-                                    <label class="form-check-label w-100" for="subject_{{ subject.id }}">
-                                        <span class="fw-semibold">{{ subject.name }}</span>
-                                        <small class="text-muted">({{ subject.short_name }})</small>
-                                    </label>
-                                </div>
-                                {% empty %}
-                                <p class="text-muted mb-0">No subjects available. Create subjects first.</p>
-                                {% endfor %}
-                            </div>
-
-                            <div id="assignedSubjectsList" class="mt-3 pt-3 border-top">
-                                <small class="fw-semibold text-muted">Assigned Subjects:</small>
-                                <div id="assignedList" class="d-flex flex-wrap gap-2 mt-2">
-                                    <small class="text-muted">None</small>
-                                </div>
-                            </div>
-
-                            <div class="mt-3">
-                                <button type="button" class="btn btn-sm btn-primary" onclick="submitSelectedSubjects()">
-                                    ✓ Save Selected Subjects
-                                </button>
-                            </div>
-                        </form>
-                    </div>
+                    </form>
                 </div>
             </div>
         </div>
 
-        <div class="mt-4">
-            <div class="card shadow-sm rounded-3 border-0">
-                <div class="card-header bg-secondary text-white">
-                    <h6 class="mb-0">⚙️ Actions</h6>
+        <div class="col-lg-6">
+            <div class="card shadow-sm rounded-4">
+                <div class="card-header bg-light border-bottom">
+                    <h5 class="mb-0">Class List</h5>
                 </div>
-                <div class="card-body">
-                    <div class="d-grid gap-2 d-sm-flex">
-                        <a href="#" id="viewStudentsBtn" class="btn btn-outline-primary btn-sm">👨‍🎓 View Students</a>
-                        <a href="#" id="classListPdfBtn" class="btn btn-outline-success btn-sm">📄 Class List PDF</a>
-                        <a href="#" id="marksheetBtn" class="btn btn-outline-dark btn-sm">📊 Marksheets</a>
-                        <button type="button" id="deleteClassBtnLarge" class="btn btn-outline-danger btn-sm">🗑 Delete Class</button>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Class</th>
+                                    <th>Level</th>
+                                    <th>Stream</th>
+                                    <th>Teacher</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for c in classes %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>{{ c.name }}</td>
+                                    <td>{{ c.level }}</td>
+                                    <td>{% if c.streams.all %}{% for stream in c.streams.all %}{{ stream.name }}{% if not forloop.last %}, {% endif %}{% endfor %}{% else %}—{% endif %}</td>
+                                    <td>{% if c.class_master %}{% if c.class_master.name %}{{ c.class_master.name }}{% else %}{{ c.class_master.user.get_full_name }}{% endif %}{% else %}—{% endif %}</td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="showEditCard({{ c.id }}, '{{ c.name|escapejs }}', '{{ c.level }}', '{{ c.class_master_id|default:'' }}')">Edit</button>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-4">No classes yet. Add one with the form on the left.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <form id="deleteClassForm" method="post" action="{% url 'delete_class' 0 %}" style="display:none;">
-        {% csrf_token %}
-    </form>
 </div>
 
 <style>
-    .bg-gradient {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    }
-    .card {
-        transition: all 0.3s ease;
-    }
-    .card:hover {
-        transform: translateY(-2px);
-    }
-    .form-check-input:checked {
-        background-color: #667eea;
-        border-color: #667eea;
-    }
-    .form-check-input {
-        cursor: pointer;
-        width: 1.25em;
-        height: 1.25em;
-    }
-    .form-check-label {
-        cursor: pointer;
-        padding-left: 0.5rem;
-    }
-    .subject-checkbox {
-        margin-top: 0.35em;
-    }
-    .subject-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.35rem 0.75rem;
-        background-color: #e7f3ff;
-        border: 1px solid #b3d9ff;
-        border-radius: 20px;
-        font-size: 0.85rem;
-    }
-    .subject-badge .remove-btn {
-        cursor: pointer;
-        font-weight: bold;
-        color: #dc3545;
-        margin-left: 0.35rem;
-    }
-    .stream-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.5rem 1rem;
-        background-color: #fff3cd;
-        border: 1px solid #ffc107;
-        border-radius: 20px;
-        font-size: 0.9rem;
-        font-weight: 500;
-    }
-    .form-select-lg {
-        padding: 0.75rem 1rem;
-        font-size: 1rem;
-    }
+    .form-label { font-size: 0.95rem; }
+    .btn-sm { min-width: 90px; }
 </style>
 
 <script>
-function toTitleCase(value) {
-    if (!value || typeof value !== 'string') return '';
-    return value
-        .trim()
-        .split(/\s+/)
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-        .join(' ');
+function showEditCard(classId, name, level, masterId) {
+    document.getElementById('editCard').style.display = 'block';
+    document.getElementById('editName').value = name;
+    document.getElementById('editLevel').value = level;
+    document.getElementById('editMaster').value = masterId || '';
+    const form = document.getElementById('editClassForm');
+    form.action = form.action.replace('/0/', `/${classId}/`);
+    window.scrollTo({ top: document.getElementById('editCard').offsetTop - 20, behavior: 'smooth' });
 }
 
-function selectClass(classId) {
-    const selector = document.getElementById('classSelector');
-    selector.value = classId;
-    loadClassDetails(classId);
-    selector.scrollIntoView({ behavior: 'smooth', block: 'center' });
+function hideEditCard() {
+    document.getElementById('editCard').style.display = 'none';
 }
-
-let selectedSubjects = {};
-let lastClassData = null;
-
-function loadClassDetails(classId) {
-    if (!classId) {
-        document.getElementById('detailsPanel').style.display = 'none';
-        return;
-    }
-
-    document.getElementById('detailsPanel').style.display = 'block';
-    const selector = document.getElementById('classSelector');
-    const option = selector.options[selector.selectedIndex];
-    const className = option.dataset.name || option.text;
-    const level = option.dataset.level;
-
-    document.getElementById('classNameDisplay').textContent = className;
-    document.getElementById('classLevelDisplay').textContent = `Level ${level}`;
-    document.getElementById('classMasterDisplay').textContent = option.dataset.masterName || 'None';
-    document.getElementById('classInfoTitle').textContent = className;
-    document.getElementById('classId').value = classId;
-    document.getElementById('classIdStream').value = classId;
-    document.getElementById('classIdSubject').value = classId;
-
-    const editForm = document.getElementById('editClassForm');
-    const deleteForm = document.getElementById('deleteClassForm');
-    if (editForm) {
-        editForm.action = `{% url 'edit_class' 0 %}`.replace('/0/', `/${classId}/`);
-        document.getElementById('editClassName').value = className;
-        document.getElementById('editClassLevel').value = level;
-    }
-    if (deleteForm) {
-        deleteForm.action = `{% url 'delete_class' 0 %}`.replace('/0/', `/${classId}/`);
-    }
-    const deleteBtn = document.getElementById('deleteClassBtn');
-    const deleteBtnLarge = document.getElementById('deleteClassBtnLarge');
-    [deleteBtn, deleteBtnLarge].forEach(button => {
-        if (!button) return;
-        button.onclick = () => {
-            if (confirm('Delete this class permanently?')) {
-                deleteForm.submit();
-            }
-        };
-    });
-
-    loadStreamsUI(classId);
-    selectedSubjects = {};
-    document.querySelectorAll('.subject-checkbox').forEach(cb => cb.checked = false);
-    updateAssignedList();
-}
-
-function loadStreamsUI(classId) {
-    const streamsList = document.getElementById('streamsList');
-    streamsList.innerHTML = '<small class="text-muted">Loading streams...</small>';
-
-    fetch(`{% url 'class_details_json' 0 %}`.replace('/0/', `/${classId}/`))
-        .then(res => res.json())
-        .then(data => {
-            if (data.streams && data.streams.length) {
-                let html = '';
-                data.streams.forEach(s => {
-                    html += `<span class="stream-badge" data-id="${s.id}">${s.name}</span>`;
-                });
-                streamsList.innerHTML = html;
-
-                const linkedStreamSelect = document.getElementById('linkedStreamSelect');
-                if (linkedStreamSelect) {
-                    linkedStreamSelect.innerHTML = '<option value="">-- Select linked stream --</option>';
-                    data.streams.forEach(s => {
-                        linkedStreamSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`;
-                    });
-                }
-
-                const masterStreamSelect = document.getElementById('masterStreamSelect');
-                if (masterStreamSelect) {
-                    masterStreamSelect.innerHTML = '<option value="">-- Entire Class --</option>';
-                    data.streams.forEach(s => {
-                        masterStreamSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`;
-                    });
-                    masterStreamSelect.onchange = syncMasterSelectByStream;
-                }
-            } else {
-                streamsList.innerHTML = '<small class="text-muted">No streams for this class</small>';
-                const linkedStreamSelect = document.getElementById('linkedStreamSelect');
-                if (linkedStreamSelect) {
-                    linkedStreamSelect.innerHTML = '<option value="">-- No linked streams --</option>';
-                }
-            }
-
-            lastClassData = data;
-            const masterSelect = document.getElementById('masterSelect');
-            if (masterSelect) {
-                masterSelect.value = data.class_master_id || '';
-            }
-            const editClassMaster = document.getElementById('editClassMaster');
-            if (editClassMaster) {
-                editClassMaster.value = data.class_master_id || '';
-            }
-
-            syncMasterSelectByStream();
-
-            if (data.assigned_subjects && data.assigned_subjects.length) {
-                const assignedIds = data.assigned_subjects.map(s => s['subject__id']);
-                document.querySelectorAll('.subject-checkbox').forEach(cb => {
-                    cb.checked = assignedIds.includes(parseInt(cb.value));
-                    if (cb.checked) {
-                        selectedSubjects[cb.value] = cb.nextElementSibling.textContent.trim().split('\n')[0];
-                    }
-                });
-                updateAssignedList();
-            }
-        })
-        .catch(err => {
-            streamsList.innerHTML = '<small class="text-muted">Unable to load streams</small>';
-            console.error(err);
-        });
-}
-
-function syncMasterSelectByStream() {
-    const masterStreamSelect = document.getElementById('masterStreamSelect');
-    const masterSelect = document.getElementById('masterSelect');
-    const masterAssignmentDisplay = document.getElementById('masterAssignmentDisplay');
-    const classMasterDisplay = document.getElementById('classMasterDisplay');
-
-    if (!masterStreamSelect || !masterSelect || !lastClassData) {
-        return;
-    }
-
-    const selectedStreamId = masterStreamSelect.value;
-    if (selectedStreamId) {
-        const assignment = (lastClassData.stream_master_assignments || []).find(a => a.stream_id === parseInt(selectedStreamId, 10));
-        if (assignment) {
-            masterSelect.value = assignment.teacher_id || '';
-            masterAssignmentDisplay.textContent = `Stream ${assignment.stream_name} master: ${assignment.teacher_name}`;
-        } else {
-            masterSelect.value = '';
-            masterAssignmentDisplay.textContent = 'Stream master not assigned yet.';
-        }
-    } else {
-        masterSelect.value = lastClassData.class_master_id || '';
-        masterAssignmentDisplay.textContent = lastClassData.class_master_name ? `Class master: ${lastClassData.class_master_name}` : 'Entire class master not assigned yet.';
-    }
-
-    if (classMasterDisplay) {
-        classMasterDisplay.textContent = lastClassData.class_master_name || 'None';
-    }
-}
-
-function toggleSubject(checkbox) {
-    const subjectId = checkbox.value;
-    const subjectName = checkbox.nextElementSibling.textContent.trim().split('\n')[0];
-
-    if (checkbox.checked) {
-        selectedSubjects[subjectId] = subjectName;
-    } else {
-        delete selectedSubjects[subjectId];
-    }
-
-    updateAssignedList();
-}
-
-function updateAssignedList() {
-    const assignedList = document.getElementById('assignedList');
-    const subjectIds = Object.keys(selectedSubjects);
-
-    if (subjectIds.length === 0) {
-        assignedList.innerHTML = '<small class="text-muted">None</small>';
-    } else {
-        let html = '';
-        subjectIds.forEach(id => {
-            html += `<span class="subject-badge">${selectedSubjects[id]}</span>`;
-        });
-        assignedList.innerHTML = html;
-    }
-}
-
-function submitSelectedSubjects() {
-    const form = document.getElementById('subjectForm');
-    const selectedCheckboxes = Array.from(document.querySelectorAll('.subject-checkbox:checked'));
-
-    if (selectedCheckboxes.length === 0) {
-        alert('Please select at least one subject');
-        return;
-    }
-
-    form.submit();
-}
-
-window.addEventListener('load', () => {
-    document.querySelector('.container-fluid').scrollIntoView();
-
-    const classNameInput = document.querySelector('input[name="name"]');
-    const classStreamInput = document.querySelector('input[name="stream"]');
-    const editClassName = document.getElementById('editClassName');
-    const streamInput = document.getElementById('streamInput');
-
-    [classNameInput, classStreamInput, editClassName, streamInput].forEach(input => {
-        if (!input) return;
-        input.addEventListener('blur', () => {
-            input.value = toTitleCase(input.value);
-        });
-    });
-});
 </script>
-
 {% endblock %}

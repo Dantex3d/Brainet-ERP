@@ -2047,17 +2047,21 @@ def add_class(request):
     if request.method == "POST":
         name = request.POST.get("name")
         level = request.POST.get("level")
-        stream = request.POST.get("stream")  # <-- capture stream
-        # Save class and optional stream
+        stream = request.POST.get("stream")
+        teacher_id = request.POST.get("class_master")
         school = request.user.school
+
+        class_master = None
+        if teacher_id:
+            class_master = Teacher.objects.filter(id=teacher_id, school=school).first()
 
         new_class = Class.objects.create(
             name=name,
             level=level,
-            school=school
+            school=school,
+            class_master=class_master,
         )
 
-        # create a Stream if provided
         if stream:
             from classes.models import Stream
             Stream.objects.create(class_group=new_class, name=stream)
@@ -2073,14 +2077,12 @@ def edit_class(request, class_id):
     if request.method == "POST":
         c.name = request.POST.get("name")
         c.level = request.POST.get("level")
-        c.stream = request.POST.get("stream")
-        teacher_id = request.POST.get("teacher")
-        c.teacher_id = teacher_id if teacher_id else None
+        teacher_id = request.POST.get("class_master")
+        c.class_master = Teacher.objects.filter(id=teacher_id, school=request.user.school).first() if teacher_id else None
         c.save()
         messages.success(request, "Class updated successfully!")
         return redirect("manage_classes")
 
-    # Pass class object + teachers to template
     return render(request, "dos/edit_class.html", {
         "class_obj": c,
         "teachers": teachers
