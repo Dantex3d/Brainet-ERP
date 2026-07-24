@@ -1923,6 +1923,53 @@ def manage_classes(request):
     teachers = Teacher.objects.filter(school=school)
     subjects = Subject.objects.filter(school=school)
 
+    selected_class = None
+    class_subjects = []
+    assigned_subject_ids = []
+
+    if request.method == "POST" and request.POST.get("class_id"):
+        class_id = request.POST.get("class_id")
+        class_obj = get_object_or_404(Class, id=class_id, school=school)
+        subject_ids = request.POST.getlist("subject_id")
+        teacher_id = request.POST.get("teacher_id")
+
+        teacher = None
+        if teacher_id:
+            teacher = get_object_or_404(Teacher, id=teacher_id, school=school)
+
+        current_subjects = set(
+            ClassSubject.objects.filter(class_name=class_obj).values_list("subject_id", flat=True)
+        )
+
+        new_subject_ids = set(int(sid) for sid in subject_ids if sid)
+
+        to_remove = current_subjects - new_subject_ids
+        if to_remove:
+            ClassSubject.objects.filter(class_name=class_obj, subject_id__in=to_remove).delete()
+
+        for subject_id in new_subject_ids:
+            subject = get_object_or_404(Subject, id=subject_id, school=school)
+            ClassSubject.objects.update_or_create(
+                school=school,
+                class_name=class_obj,
+                subject=subject,
+                defaults={"teacher": teacher}
+            )
+
+        messages.success(request, "Subject assignments updated successfully.")
+        return redirect(f"{request.path}?class_id={class_obj.id}")
+
+    if request.GET.get("class_id"):
+        class_id = request.GET.get("class_id")
+        selected_class = get_object_or_404(Class, id=class_id, school=school)
+        class_subjects = (
+            ClassSubject.objects
+            .filter(class_name=selected_class)
+            .select_related("subject", "teacher")
+            .order_by("subject__name")
+        )
+        assigned_subject_ids = list(class_subjects.values_list("subject_id", flat=True))
+
     return render(
         request,
         "dos/classes.html",
@@ -1930,6 +1977,9 @@ def manage_classes(request):
             "classes": classes,
             "teachers": teachers,
             "subjects": subjects,
+            "selected_class": selected_class,
+            "class_subjects": class_subjects,
+            "assigned_subject_ids": assigned_subject_ids,
         }
     )
 

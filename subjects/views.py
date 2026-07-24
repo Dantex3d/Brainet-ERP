@@ -109,32 +109,48 @@ def assign_subjects_to_class(request, class_id):
 
     if request.method == "POST":
 
+        assignment_id = request.POST.get("assignment_id")
         subject_id = request.POST.get("subject")
         teacher_id = request.POST.get("teacher")
 
         subject = get_object_or_404(
             Subject,
-            id=subject_id
+            id=subject_id,
+            school=school
         )
 
         from teachers.models import Teacher
 
         teacher = get_object_or_404(
             Teacher,
-            id=teacher_id
+            id=teacher_id,
+            school=school
         )
 
-        ClassSubject.objects.create(
-            school=school,
-            school_class=school_class,
-            subject=subject,
-            teacher=teacher
-        )
-
-        messages.success(
-            request,
-            "Subject assigned successfully."
-        )
+        if assignment_id:
+            assignment = get_object_or_404(
+                ClassSubject,
+                id=assignment_id,
+                school=school
+            )
+            assignment.subject = subject
+            assignment.teacher = teacher
+            assignment.save()
+            messages.success(
+                request,
+                "Subject assignment updated successfully."
+            )
+        else:
+            ClassSubject.objects.create(
+                school=school,
+                school_class=school_class,
+                subject=subject,
+                teacher=teacher
+            )
+            messages.success(
+                request,
+                "Subject assigned successfully."
+            )
 
         return redirect(
             "assign_subjects_to_class",

@@ -112,11 +112,12 @@
             {% endfor %}
         {% endif %}
 
-        <form method="POST">
+        <form method="POST" id="assignmentForm">
 
             {% csrf_token %}
+            <input type="hidden" name="assignment_id" id="assignment_id" value="">
 
-            <select name="subject" required>
+            <select name="subject" id="subjectSelect" required>
 
                 <option value="">
                     Select Subject
@@ -132,7 +133,7 @@
 
             </select>
 
-            <select name="teacher" required>
+            <select name="teacher" id="teacherSelect" required>
 
                 <option value="">
                     Select Teacher
@@ -148,8 +149,12 @@
 
             </select>
 
-            <button type="submit">
+            <button type="submit" id="submitAssignmentBtn">
                 Assign Subject
+            </button>
+
+            <button type="button" id="cancelEditBtn" class="delete-btn" style="display:none; margin-left:10px;" onclick="resetAssignmentForm()">
+                Cancel Edit
             </button>
 
         </form>
@@ -205,15 +210,23 @@
                     </td>
 
                     <td>
+                        <button
+                            type="button"
+                            class="delete-btn"
+                            style="background:#6c757d;"
+                            onclick="selectAssignment({{ item.id }}, {{ item.subject.id }}, {% if item.teacher %}{{ item.teacher.id }}{% else %}null{% endif %})"
+                        >
+                            Select
+                        </button>
 
                         <a
                             href="{% url 'delete_class_subject' item.id %}"
                             class="delete-btn"
                             onclick="return confirm('Delete subject assignment?')"
+                            style="margin-left:8px;"
                         >
                             Delete
                         </a>
-
                     </td>
 
                 </tr>
@@ -237,6 +250,25 @@
     </div>
 
 </div>
+
+<script>
+function selectAssignment(assignmentId, subjectId, teacherId) {
+    document.getElementById('assignment_id').value = assignmentId;
+    document.getElementById('subjectSelect').value = subjectId || '';
+    document.getElementById('teacherSelect').value = teacherId || '';
+    document.getElementById('submitAssignmentBtn').textContent = 'Update Assignment';
+    document.getElementById('cancelEditBtn').style.display = 'inline-block';
+    window.scrollTo({ top: document.getElementById('assignmentForm').offsetTop - 20, behavior: 'smooth' });
+}
+
+function resetAssignmentForm() {
+    document.getElementById('assignment_id').value = '';
+    document.getElementById('subjectSelect').value = '';
+    document.getElementById('teacherSelect').value = '';
+    document.getElementById('submitAssignmentBtn').textContent = 'Assign Subject';
+    document.getElementById('cancelEditBtn').style.display = 'none';
+}
+</script>
 
 </body>
 </html>

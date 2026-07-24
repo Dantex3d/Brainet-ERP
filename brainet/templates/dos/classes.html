@@ -81,6 +81,55 @@
                     </form>
                 </div>
             </div>
+
+            <div id="subjectAssignCard" class="card shadow-sm rounded-4" style="display: {% if selected_class %}block{% else %}none{% endif %};">
+                <div class="card-header bg-info border-bottom">
+                    <h5 class="mb-0">Assign Subjects {% if selected_class %}to {{ selected_class.name }}{% endif %}</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" id="subjectAssignForm" class="row g-3" action="{% if selected_class %}?class_id={{ selected_class.id }}{% endif %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="class_id" value="{% if selected_class %}{{ selected_class.id }}{% endif %}">
+                        <div class="col-12">
+                            <p class="text-muted mb-3">Select one or more subjects and optionally assign a teacher for the selected class.</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Subjects</label>
+                            <select name="subject_id" id="subjectSelect" class="form-select" multiple size="6">
+                                {% for subject in subjects %}
+                                <option value="{{ subject.id }}" {% if subject.id in assigned_subject_ids %}selected{% endif %}>{{ subject.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Teacher</label>
+                            <select name="teacher_id" id="subjectTeacherSelect" class="form-select">
+                                <option value="">-- Optional teacher --</option>
+                                {% for teacher in teachers %}
+                                <option value="{{ teacher.id }}">{% if teacher.name %}{{ teacher.name }}{% else %}{{ teacher.user.get_full_name }}{% endif %}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-12 d-flex justify-content-between">
+                            <button type="button" class="btn btn-secondary" onclick="hideSubjectAssignCard()">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Save Subjects</button>
+                        </div>
+                    </form>
+
+                    {% if class_subjects %}
+                    <div class="mt-4">
+                        <h6 class="fw-semibold">Currently assigned subjects</h6>
+                        <ul class="list-group">
+                            {% for assignment in class_subjects %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>{{ assignment.subject.name }}{% if assignment.teacher %} – {{ assignment.teacher.name }}{% endif %}</span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
         </div>
 
         <div class="col-lg-6">
@@ -103,7 +152,7 @@
                             </thead>
                             <tbody>
                                 {% for c in classes %}
-                                <tr>
+                                <tr {% if selected_class and selected_class.id == c.id %}class="table-primary"{% endif %}>
                                     <td>{{ forloop.counter }}</td>
                                     <td>{{ c.name }}</td>
                                     <td>{{ c.level }}</td>
@@ -111,6 +160,7 @@
                                     <td>{% if c.class_master %}{% if c.class_master.name %}{{ c.class_master.name }}{% else %}{{ c.class_master.user.get_full_name }}{% endif %}{% else %}—{% endif %}</td>
                                     <td>
                                         <button type="button" class="btn btn-sm btn-outline-primary" onclick="showEditCard({{ c.id }}, '{{ c.name|escapejs }}', '{{ c.level }}', '{{ c.class_master_id|default:'' }}')">Edit</button>
+                                        <a href="?class_id={{ c.id }}" class="btn btn-sm btn-outline-success ms-2">Select</a>
                                     </td>
                                 </tr>
                                 {% empty %}
@@ -145,6 +195,12 @@ function showEditCard(classId, name, level, masterId) {
 
 function hideEditCard() {
     document.getElementById('editCard').style.display = 'none';
+}
+
+function hideSubjectAssignCard() {
+    document.getElementById('subjectAssignCard').style.display = 'none';
+    document.getElementById('subjectSelect').value = '';
+    document.getElementById('subjectTeacherSelect').value = '';
 }
 </script>
 {% endblock %}

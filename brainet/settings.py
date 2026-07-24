@@ -103,6 +103,9 @@ LOGIN_REDIRECT_URL = '/teachers/dashboard/'
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 SESSION_COOKIE_AGE = 1209600  # 2 weeks: used when remember me is selected
 
+# Superuser trusted device support. Set to False to require 2FA on every superuser login.
+SUPERUSER_TRUSTED_DEVICE_ENABLED = os.environ.get('SUPERUSER_TRUSTED_DEVICE_ENABLED', 'True') == 'True'
+
 # =========================================================
 # MIDDLEWARE
 # =========================================================

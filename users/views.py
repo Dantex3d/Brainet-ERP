@@ -28,11 +28,19 @@ def _get_trusted_device_key(user, request):
     return f"trusted_device_{user.pk}_{ip_address}_{browser}"
 
 
+def _is_superuser_trusted_device_feature_enabled():
+    return getattr(settings, 'SUPERUSER_TRUSTED_DEVICE_ENABLED', True)
+
+
 def _is_trusted_device(user, request):
+    if not _is_superuser_trusted_device_feature_enabled():
+        return False
     return bool(request.session.get(_get_trusted_device_key(user, request)))
 
 
 def _trust_device(user, request):
+    if not _is_superuser_trusted_device_feature_enabled():
+        return
     request.session[_get_trusted_device_key(user, request)] = True
     request.session.modified = True
 
@@ -96,16 +104,17 @@ class CustomLoginView(LoginView):
         trust_device = bool(form.cleaned_data.get("trust_device"))
 
         if user.is_superuser:
-            if _is_trusted_device(user, self.request) or trust_device:
-                if trust_device:
-                    _trust_device(user, self.request)
+            if _is_trusted_device(user, self.request):
                 login(self.request, user)
-                if remember_me or trust_device:
+                if remember_me:
                     self.request.session.set_expiry(settings.SESSION_COOKIE_AGE)
                 else:
                     self.request.session.set_expiry(0)
                 return redirect(self.get_success_url())
 
+            self.request.session["pending_superuser_login_user_id"] = user.pk
+            self.request.session["pending_superuser_login_remember_me"] = remember_me
+            self.request.session["pending_superuser_login_trust_device"] = trust_device
             self._start_superuser_two_factor(user)
             return redirect('superuser_two_factor')
 
@@ -327,14 +336,22 @@ def superuser_two_factor(request):
             messages.error(request, "The verification code is incorrect. Please try again.")
             return render(request, "users/superuser_two_factor.html")
 
+        pending_remember_me = bool(request.session.pop("pending_superuser_login_remember_me", False))
+        pending_trust_device = bool(request.session.pop("pending_superuser_login_trust_device", False))
         request.session.pop("pending_superuser_login_code", None)
         request.session.pop("pending_superuser_login_user_id", None)
         request.session.pop("pending_superuser_login_attempts", None)
-        trust_device = request.POST.get("trust_device") == "on"
+
+        trust_device = request.POST.get("trust_device") == "on" or pending_trust_device
         if trust_device:
             _trust_device(user, request)
+
         login(request, user)
-        request.session.set_expiry(settings.SESSION_COOKIE_AGE)
+        if pending_remember_me or trust_device:
+            request.session.set_expiry(settings.SESSION_COOKIE_AGE)
+        else:
+            request.session.set_expiry(0)
+
         _record_security_event(
             request,
             user=user,
