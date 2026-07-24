@@ -17,7 +17,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth import authenticate, get_user_model, login
 from django.db import transaction
 from exams.models import Exam, Mark
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.urls import reverse
 
 import students
@@ -51,6 +51,35 @@ def get_superuser_emails():
         User.objects.filter(is_superuser=True, email__isnull=False)
         .values_list('email', flat=True)
     )
+
+
+def notify_superusers_about_school_registration(school, admin_name=None, admin_email=None):
+    superuser_emails = get_superuser_emails()
+    if not superuser_emails:
+        return
+
+    subject = f"New school registered: {school.name}"
+    message = (
+        f"A new school has been registered on Brainet.\n\n"
+        f"School: {school.name}\n"
+        f"Email: {school.email}\n"
+        f"Phone: {school.phone}\n"
+    )
+    if admin_name or admin_email:
+        message += f"Admin contact: {admin_name or 'N/A'} ({admin_email or 'N/A'})\n"
+
+    message += "\nPlease review the registration in the superuser dashboard."
+
+    try:
+        send_email(
+            to_email=superuser_emails,
+            subject=subject,
+            message=message,
+            recipient_name='Superuser',
+            html=False,
+        )
+    except Exception as e:
+        logging.getLogger(__name__).exception("Failed to notify superusers for new school registration: %s", e)
 
 
 def resolve_exam_window_state(request, school):
@@ -675,6 +704,8 @@ def superuser_dashboard(request):
     unverified_accounts = get_pending_verification_items()[:12]
     active_school_enrollments = Student.objects.filter(school__is_active=True).count()
     inactive_school_enrollments = Student.objects.filter(school__is_active=False).count()
+    total_students = Student.objects.count()
+    total_teachers = Teacher.objects.count()
 
     context = {
 
@@ -702,6 +733,8 @@ def superuser_dashboard(request):
         "unverified_accounts": unverified_accounts,
         "security_logs": security_logs,
         "contact_messages": contact_messages,
+        "total_students": total_students,
+        "total_teachers": total_teachers,
     }
 
     return render(
@@ -760,7 +793,9 @@ def server_error(request):
 
 
 def _superuser_management_context():
-    schools = School.objects.all().order_by("-id")
+    schools = School.objects.all().annotate(
+        student_count=Count('student')
+    ).order_by("-id")
     principals = Principal.objects.select_related("school", "user").all().order_by("-id")
     doss = DirectorOfStudies.objects.select_related("school", "user").all().order_by("-id")
 
@@ -773,6 +808,20 @@ def _superuser_management_context():
 
 def _process_school_submission(request):
     action = request.POST.get("action", "create")
+    if action == "bulk_delete":
+        selected_ids = request.POST.getlist("selected_school_ids")
+        if not selected_ids:
+            messages.warning(request, "Select at least one school to delete.")
+            return False
+
+        try:
+            deleted_count, _ = School.objects.filter(id__in=selected_ids).delete()
+            messages.success(request, f"Deleted {deleted_count} selected school(s).")
+            return True
+        except Exception as e:
+            messages.error(request, f"Unable to delete selected schools: {str(e)}")
+            return False
+
     school_id = request.POST.get("school_id")
     name = (request.POST.get("name") or "").strip()
     address = (request.POST.get("address") or "").strip()
@@ -4092,17 +4141,11 @@ def register_school(request):
                     title=title,
                     message=message_text,
                 )
-                if settings.EMAIL_HOST_USER and su.email:
-                    try:
-                        send_email(
-                            to_email=[su.email],
-                            subject=title,
-                            message=message_text,
-                            recipient_name=su.get_full_name() or su.email,
-                            html=False,
-                        )
-                    except Exception:
-                        pass
+            notify_superusers_about_school_registration(
+                school,
+                admin_name=admin_name,
+                admin_email=admin_email,
+            )
         except Exception:
             pass
 

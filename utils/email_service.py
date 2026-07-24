@@ -38,8 +38,11 @@ def _extract_api_exception_message(exception):
         parts = []
         status = getattr(exception, 'status', None)
         body = getattr(exception, 'body', None)
+        reason = getattr(exception, 'reason', None)
         if status is not None:
             parts.append(f'Status {status}')
+        if reason:
+            parts.append(reason)
         if body is not None:
             if isinstance(body, (bytes, bytearray)):
                 try:
@@ -51,8 +54,13 @@ def _extract_api_exception_message(exception):
                 parsed = json.loads(body)
                 if isinstance(parsed, dict):
                     message_text = parsed.get('message') or parsed.get('error') or parsed.get('detail')
+                    code_text = parsed.get('code')
+                    if code_text == 'unauthorized' and message_text and 'Key not found' in message_text:
+                        return 'Brevo API key invalid or not found. Check BREVO_API_KEY.'
                     if message_text:
-                        parts.append(f'Body: {message_text}')
+                        parts.append(message_text)
+                    elif code_text:
+                        parts.append(code_text)
                     else:
                         parts.append(f'Body: {body}')
                 else:
@@ -156,19 +164,14 @@ def send_email_with_django(to_email, subject, message, recipient_name=None, html
 
 
 def send_email(to_email, subject, message, recipient_name=None, html=True):
-    """Send email using Brevo when configured, but fall back to Django in test/debug environments."""
+    """Send email using Brevo when configured, else use the Django email backend."""
     email_backend = getattr(settings, 'EMAIL_BACKEND', '') or ''
     if email_backend.endswith('locmem.EmailBackend') or getattr(settings, 'DEBUG', False):
         return send_email_with_django(to_email, subject, message, recipient_name=recipient_name, html=html)
 
     api_key = _get_api_key()
     if api_key:
-        try:
-            return send_email_with_brevo(to_email, subject, message, recipient_name=recipient_name, html=html)
-        except Exception:
-            if getattr(settings, 'DEBUG', False):
-                raise
-            return send_email_with_django(to_email, subject, message, recipient_name=recipient_name, html=html)
+        return send_email_with_brevo(to_email, subject, message, recipient_name=recipient_name, html=html)
 
     return send_email_with_django(to_email, subject, message, recipient_name=recipient_name, html=html)
       

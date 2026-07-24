@@ -207,8 +207,6 @@ DEFAULT_FROM_EMAIL = "no-reply@brainetanalytics.co.ke"
 SERVER_EMAIL = "no-reply@brainetanalytics.co.ke"
 EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
 
-
-
 # =========================================================
 # STATIC FILES
 # =========================================================
@@ -304,3 +302,9 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
+
+# =========================================================
+# BREVO API KEY
+# =========================================================
+
+BREVO_API_KEY = os.environ.get('BREVO_API_KEY')
