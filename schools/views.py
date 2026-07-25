@@ -415,7 +415,7 @@ def resend_verification_email(request, user_id):
     try:
         sent = send_user_verification_email(user, request=request)
         if sent:
-            messages.success(request, f"Verification email resent to {user.email}.")
+            messages.success(request, f"Verification code sent to {user.email}.")
         else:
             support = getattr(settings, 'SUPPORT_EMAIL', None) or getattr(settings, 'DEFAULT_FROM_EMAIL', None) or 'support@brainet.local'
             messages.error(request, f"Could not resend verification to {user.email}. Contact: {support}")

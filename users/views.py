@@ -502,7 +502,7 @@ def _verification_contact_message(request=None):
     except Exception:
         contact_path = getattr(settings, 'CONTACT_ADMIN_PATH', '/schools/contact-admin/')
 
-    support_email = getattr(settings, 'SUPPORT_EMAIL', 'merkoudaniel@gmail.com')
+    support_email = getattr(settings, 'SUPPORT_EMAIL', 'support@brainetanalytics.co.ke')
     whatsapp_1 = getattr(settings, 'SUPPORT_WHATSAPP_1', '0700269517')
     whatsapp_2 = getattr(settings, 'SUPPORT_WHATSAPP_2', '0736645038')
     absolute_contact = request.build_absolute_uri(contact_path) if request else contact_path

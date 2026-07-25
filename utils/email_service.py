@@ -16,7 +16,12 @@ def _get_api_key():
 
 
 def _get_from_email():
-    return getattr(settings, 'DEFAULT_FROM_EMAIL', None) or getattr(settings, 'EMAIL_HOST_USER', None)
+    return (
+        os.environ.get('BREVO_FROM_EMAIL')
+        or getattr(settings, 'BREVO_FROM_EMAIL', None)
+        or getattr(settings, 'DEFAULT_FROM_EMAIL', None)
+        or getattr(settings, 'EMAIL_HOST_USER', None)
+    )
 
 
 def _format_recipients(to_email):
@@ -80,10 +85,10 @@ def send_email_with_brevo(to_email, subject, message, recipient_name=None, html=
 
     api_key = _get_api_key()
     if not api_key:
-        raise ValueError('Missing BREVO_API_KEY or SENDINBLUE_API_KEY')
+        raise RuntimeError('Email service is not configured properly. Set BREVO_API_KEY or SENDINBLUE_API_KEY.')
 
     if not to_email:
-        raise ValueError('Missing recipient email address')
+        raise RuntimeError('Missing recipient email address')
 
     configuration = sib_api_v3_sdk.Configuration()
     configuration.api_key['api-key'] = api_key
@@ -92,7 +97,7 @@ def send_email_with_brevo(to_email, subject, message, recipient_name=None, html=
 
     from_email = _get_from_email()
     if not from_email:
-        raise ValueError('Missing DEFAULT_FROM_EMAIL or EMAIL_HOST_USER')
+        raise RuntimeError('Email service is not configured properly. Set DEFAULT_FROM_EMAIL or BREVO_FROM_EMAIL.')
 
     sender_name = getattr(settings, 'SITE_NAME', 'Brainet')
     recipients = _format_recipients(to_email)
@@ -129,11 +134,11 @@ def send_email_with_brevo(to_email, subject, message, recipient_name=None, html=
 def send_email_with_django(to_email, subject, message, recipient_name=None, html=True):
     """Send email via the Django email backend."""
     if not to_email:
-        raise ValueError('Missing recipient email address')
+        raise RuntimeError('Missing recipient email address')
 
     from_email = _get_from_email()
     if not from_email:
-        raise ValueError('Missing DEFAULT_FROM_EMAIL or EMAIL_HOST_USER')
+        raise RuntimeError('Email service is not configured properly. Set DEFAULT_FROM_EMAIL or BREVO_FROM_EMAIL.')
 
     sender_name = getattr(settings, 'SITE_NAME', 'Brainet')
     from_header = f"{sender_name} <{from_email}>" if from_email else from_email
@@ -164,14 +169,22 @@ def send_email_with_django(to_email, subject, message, recipient_name=None, html
 
 
 def send_email(to_email, subject, message, recipient_name=None, html=True):
-    """Send email using Brevo when configured, else use the Django email backend."""
+    """Send email using Brevo when configured, otherwise fall back to Django."""
     email_backend = getattr(settings, 'EMAIL_BACKEND', '') or ''
-    if email_backend.endswith('locmem.EmailBackend') or getattr(settings, 'DEBUG', False):
+    if email_backend.endswith('locmem.EmailBackend'):
         return send_email_with_django(to_email, subject, message, recipient_name=recipient_name, html=html)
 
     api_key = _get_api_key()
     if api_key:
-        return send_email_with_brevo(to_email, subject, message, recipient_name=recipient_name, html=html)
+        try:
+            return send_email_with_brevo(to_email, subject, message, recipient_name=recipient_name, html=html)
+        except Exception as exc:
+            if getattr(settings, 'EMAIL_HOST_USER', None) or getattr(settings, 'EMAIL_HOST_PASSWORD', None):
+                try:
+                    return send_email_with_django(to_email, subject, message, recipient_name=recipient_name, html=html)
+                except Exception as django_exc:
+                    raise RuntimeError(f'Email service failed through Brevo and SMTP fallback: {exc}; {django_exc}') from exc
+            raise RuntimeError(f'Email service is not configured properly: {exc}') from exc
 
     return send_email_with_django(to_email, subject, message, recipient_name=recipient_name, html=html)
       
