@@ -16,6 +16,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth import authenticate, get_user_model, login
 from django.db import transaction
+from django.db.utils import OperationalError, ProgrammingError
 from exams.models import Exam, Mark
 from django.db.models import Count, Q
 from django.urls import reverse
@@ -422,13 +423,20 @@ def request_demo(request):
         messages.error(request, 'Please provide your full name, email, intended school, and position/rank.')
         return redirect('features_demo')
 
-    DemoRequest.objects.create(
-        full_name=full_name,
-        email=email,
-        phone=phone,
-        intended_school=intended_school,
-        position_rank=position_rank,
-    )
+    try:
+        DemoRequest.objects.create(
+            full_name=full_name,
+            email=email,
+            phone=phone,
+            intended_school=intended_school,
+            position_rank=position_rank,
+        )
+    except (OperationalError, ProgrammingError):
+        messages.error(
+            request,
+            'Demo request submission is temporarily unavailable because the request table is not ready. Please contact support.'
+        )
+        return redirect('features_demo')
 
     messages.success(
         request,
@@ -443,7 +451,11 @@ def approve_demo_request(request, demo_request_id):
         messages.error(request, 'Only superusers can approve demo requests.')
         return redirect('landing_page')
 
-    demo_request = get_object_or_404(DemoRequest, id=demo_request_id)
+    try:
+        demo_request = get_object_or_404(DemoRequest, id=demo_request_id)
+    except (OperationalError, ProgrammingError):
+        messages.error(request, 'Demo request review is temporarily unavailable because the request table is not ready.')
+        return redirect('superuser_dashboard')
 
     if request.method != 'POST':
         return redirect('superuser_dashboard')
@@ -781,8 +793,13 @@ def superuser_dashboard(request):
         log.browser = log.browser or "Unknown"
         log.location = log.location or ("Local environment" if log.ip_address in {"127.0.0.1", "::1", "localhost"} else "Unknown")
     contact_messages = ContactMessage.objects.order_by("-created_at")[:10]
-    pending_demo_requests = DemoRequest.objects.filter(status="pending").order_by("-submitted_at")
-    pending_demo_requests_count = pending_demo_requests.count()
+
+    try:
+        pending_demo_requests = DemoRequest.objects.filter(status="pending").order_by("-submitted_at")
+        pending_demo_requests_count = pending_demo_requests.count()
+    except (OperationalError, ProgrammingError):
+        pending_demo_requests = DemoRequest.objects.none()
+        pending_demo_requests_count = 0
 
     # ----------------------------
     # CONTEXT

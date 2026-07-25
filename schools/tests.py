@@ -1,4 +1,7 @@
+from unittest.mock import patch
+
 from django.core import mail
+from django.db.utils import ProgrammingError
 from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 
@@ -67,6 +70,15 @@ class DemoRequestWorkflowTests(TestCase):
         )
         self.superuser.is_superuser = True
         self.superuser.save(update_fields=["is_superuser"])
+
+    def test_superuser_dashboard_handles_missing_demo_request_table(self):
+        self.client.force_login(self.superuser)
+
+        with patch.object(DemoRequest.objects, "filter", side_effect=ProgrammingError("relation does not exist")):
+            response = self.client.get(reverse("superuser_dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "No pending demo requests")
 
     def test_public_demo_request_is_saved_for_superuser_review(self):
         response = self.client.post(
