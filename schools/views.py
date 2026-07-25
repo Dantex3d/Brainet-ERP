@@ -1870,9 +1870,8 @@ def mobile_app(request):
     return render(request, "dashboards/mobile_app.html")
 
 
-@login_required
 def features_demo(request):
-    """Demo page showcasing new features for customers"""
+    """Public demo page showcasing features without requiring login or database submissions."""
     return render(request, "schools/features_demo.html")
 
 

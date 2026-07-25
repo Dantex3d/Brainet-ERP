@@ -11,37 +11,13 @@
 
     <div class="card shadow rounded-4 border-primary mb-5">
         <div class="card-header bg-primary text-white">
-            <h4 class="mb-0">📝 Request a Demo</h4>
+            <h4 class="mb-0">📝 Demo Preview</h4>
         </div>
         <div class="card-body">
-            <p class="text-muted mb-3">Submit only the details needed for a quick review: contact details, intended school, and your position/rank.</p>
-            <form method="post" action="{% url 'request_demo' %}" class="row g-3">
-                {% csrf_token %}
-                <div class="col-md-6">
-                    <label class="form-label">Full name</label>
-                    <input type="text" name="full_name" class="form-control" required>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label">Email</label>
-                    <input type="email" name="email" class="form-control" required>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label">Phone</label>
-                    <input type="text" name="phone" class="form-control">
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label">Intended school</label>
-                    <input type="text" name="intended_school" class="form-control" required>
-                </div>
-                <div class="col-md-12">
-                    <label class="form-label">Position / rank</label>
-                    <input type="text" name="position_rank" class="form-control" required placeholder="Principal, DOS, Admin, etc.">
-                </div>
-                <div class="col-12">
-                    <button type="submit" class="btn btn-primary">Submit for approval</button>
-                    <small class="text-muted d-block mt-2">Your request will be reviewed by a superuser. If approval is delayed, contact admin.</small>
-                </div>
-            </form>
+            <p class="text-muted mb-3">This page is now a public preview of the platform. No login is required and no demo request is submitted.</p>
+            <div class="alert alert-info mb-0">
+                <strong>What you can see here:</strong> a walkthrough of class management, license workflows, student promotions, and reporting tools.
+            </div>
         </div>
     </div>
 
