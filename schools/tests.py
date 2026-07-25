@@ -94,12 +94,99 @@ class DemoRequestWorkflowTests(TestCase):
         )
         self.client.force_login(self.superuser)
 
-        response = self.client.post(reverse("approve_demo_request", args=[demo_request.id]), follow=True)
+        response = self.client.post(
+            reverse("approve_demo_request", args=[demo_request.id]),
+            {"status": "approved", "review_note": "Looks good"},
+            follow=True,
+        )
 
         self.assertEqual(response.status_code, 200)
         demo_request.refresh_from_db()
         self.assertEqual(demo_request.status, "approved")
         self.assertEqual(demo_request.reviewed_by, self.superuser)
+        self.assertTrue(
+            School.objects.filter(name="Bright Grove School", email="jane-demo@example.com").exists()
+        )
+
+    def test_rejected_demo_request_does_not_create_school(self):
+        demo_request = DemoRequest.objects.create(
+            full_name="Jane Demo",
+            email="jane-rejected@example.com",
+            phone="0712345678",
+            intended_school="Rejected School",
+            position_rank="Head Teacher",
+        )
+        self.client.force_login(self.superuser)
+
+        self.client.post(
+            reverse("approve_demo_request", args=[demo_request.id]),
+            {"status": "rejected", "review_note": "Too early"},
+            follow=True,
+        )
+
+        demo_request.refresh_from_db()
+        self.assertEqual(demo_request.status, "rejected")
+        self.assertFalse(School.objects.filter(name="Rejected School").exists())
+
+    def test_superuser_dashboard_reject_action_posts_rejected_status(self):
+        DemoRequest.objects.create(
+            full_name="Jane Demo",
+            email="jane-demo@example.com",
+            phone="0712345678",
+            intended_school="Bright Grove School",
+            position_rank="Principal",
+        )
+        self.client.force_login(self.superuser)
+
+        response = self.client.get(reverse("superuser_dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'name="status" value="rejected"')
+
+    def test_superuser_approval_creates_a_school_from_the_request(self):
+        demo_request = DemoRequest.objects.create(
+            full_name="Jane Demo",
+            email="jane-demo-approval@example.com",
+            phone="0712345680",
+            intended_school="Bright Grove School",
+            position_rank="Principal",
+        )
+        self.client.force_login(self.superuser)
+
+        response = self.client.post(
+            reverse("approve_demo_request", args=[demo_request.id]),
+            {"status": "approved", "review_note": "Approved for onboarding"},
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            School.objects.filter(
+                name="Bright Grove School",
+                email="jane-demo-approval@example.com",
+                phone="0712345680",
+            ).exists()
+        )
+
+    def test_superuser_rejection_discards_the_request_without_creating_school(self):
+        demo_request = DemoRequest.objects.create(
+            full_name="Jane Demo",
+            email="jane-demo-reject@example.com",
+            phone="0712345681",
+            intended_school="Sunshine School",
+            position_rank="Head Teacher",
+        )
+        self.client.force_login(self.superuser)
+
+        self.client.post(
+            reverse("approve_demo_request", args=[demo_request.id]),
+            {"status": "rejected", "review_note": "Not a fit"},
+            follow=True,
+        )
+
+        demo_request.refresh_from_db()
+        self.assertEqual(demo_request.status, "rejected")
+        self.assertFalse(School.objects.filter(name="Sunshine School").exists())
 
 
 class ContactMessageFlowTests(TestCase):

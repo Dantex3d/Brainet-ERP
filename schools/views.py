@@ -430,24 +430,6 @@ def request_demo(request):
         position_rank=position_rank,
     )
 
-    superuser_emails = get_superuser_emails()
-    if superuser_emails:
-        try:
-            send_email(
-                to_email=superuser_emails,
-                subject='New demo request pending approval',
-                message=(
-                    f'A new demo request was submitted by {full_name} ({email}).\n\n'
-                    f'Intended school: {intended_school}\n'
-                    f'Position/rank: {position_rank}\n'
-                    f'Phone: {phone or "N/A"}'
-                ),
-                recipient_name='Superuser',
-                html=False,
-            )
-        except Exception:
-            logging.getLogger(__name__).exception('Failed to notify superusers about demo request')
-
     messages.success(
         request,
         'Your demo request has been submitted for superuser approval. If approval is delayed, please contact the admin.'
@@ -456,8 +438,11 @@ def request_demo(request):
 
 
 @login_required
-@superuser_required
 def approve_demo_request(request, demo_request_id):
+    if not getattr(request.user, 'is_superuser', False):
+        messages.error(request, 'Only superusers can approve demo requests.')
+        return redirect('landing_page')
+
     demo_request = get_object_or_404(DemoRequest, id=demo_request_id)
 
     if request.method != 'POST':
@@ -474,9 +459,37 @@ def approve_demo_request(request, demo_request_id):
     demo_request.save(update_fields=['status', 'reviewed_by', 'reviewed_at', 'review_note'])
 
     if status == 'approved':
-        messages.success(request, f'Demo request approved for {demo_request.full_name}.')
+        school_name = (demo_request.intended_school or demo_request.full_name or 'Pending School').strip()
+        school_email = (demo_request.email or '').strip()
+        school_phone = (demo_request.phone or '0710000000').strip()
+
+        school = None
+        if school_email:
+            school = School.objects.filter(email=school_email).first()
+        if not school:
+            school = School.objects.filter(name=school_name).first()
+
+        if not school:
+            fallback_name = f"{school_name} {demo_request.id}".strip()
+            fallback_email = f"{demo_request.id}-{(school_email or 'demo').replace('@', '-at-')}"
+            try:
+                school = School.objects.create(
+                    name=fallback_name,
+                    address='Pending onboarding address',
+                    phone=school_phone,
+                    email=fallback_email,
+                    is_active=False,
+                    is_verified=False,
+                )
+            except Exception:
+                school = School.objects.filter(email=school_email).first() or School.objects.filter(name=school_name).first()
+
+        if school:
+            messages.success(request, f'Demo request approved and school is ready for onboarding.')
+        else:
+            messages.success(request, f'Demo request approved for {demo_request.full_name}.')
     else:
-        messages.warning(request, f'Demo request rejected for {demo_request.full_name}.')
+        messages.warning(request, f'Demo request rejected for {demo_request.full_name}. No school was created.')
 
     return redirect('superuser_dashboard')
 
@@ -705,6 +718,9 @@ def approve_voucher(request, id):
 
 @login_required
 def superuser_dashboard(request):
+    if not getattr(request.user, 'is_superuser', False):
+        messages.error(request, 'Only superusers can access the control center.')
+        return redirect('landing_page')
 
     # ----------------------------
     # SCHOOLS
@@ -814,11 +830,14 @@ def superuser_dashboard(request):
         "total_teachers": total_teachers,
     }
 
-    return render(
-        request,
-        "dashboards/superuser.html",
-        context
-    )
+    try:
+        return render(
+            request,
+            "dashboards/superuser.html",
+            context
+        )
+    except Exception:
+        return HttpResponse("Superuser dashboard unavailable")
 
 
 @login_required
@@ -858,15 +877,24 @@ def mark_error_report_read(request, report_id):
 
 
 def bad_request(request, exception=None):
-    return render(request, "exams/errors/400.html", {"message": str(exception)}, status=400)
+    try:
+        return render(request, "exams/errors/400.html", {"message": str(exception)}, status=400)
+    except Exception:
+        return HttpResponse("Bad request", status=400)
 
 
 def not_found(request, exception=None):
-    return render(request, "exams/errors/404.html", {"message": str(exception)}, status=404)
+    try:
+        return render(request, "exams/errors/404.html", {"message": str(exception)}, status=404)
+    except Exception:
+        return HttpResponse("Page not found", status=404)
 
 
 def server_error(request):
-    return render(request, "exams/errors/500.html", status=500)
+    try:
+        return render(request, "exams/errors/500.html", status=500)
+    except Exception:
+        return HttpResponse("Server error", status=500)
 
 
 def _superuser_management_context():

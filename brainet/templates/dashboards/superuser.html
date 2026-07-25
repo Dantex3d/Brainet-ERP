@@ -566,7 +566,7 @@
                                             <input type="hidden" name="status" value="approved">
                                             <button type="submit" class="btn btn-sm btn-success">✓ Approve</button>
                                             <input type="text" name="review_note" class="form-control form-control-sm" style="max-width: 180px;" placeholder="Note (optional)">
-                                            <button type="submit" class="btn btn-sm btn-danger" formaction="{% url 'approve_demo_request' request.id %}" formmethod="post">✕ Reject</button>
+                                            <button type="submit" class="btn btn-sm btn-danger" name="status" value="rejected">✕ Reject</button>
                                         </form>
                                     </td>
                                 </tr>

@@ -36,6 +36,7 @@ SECRET_KEY = os.environ.get(
 # DEBUG mode (default False in production)
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 TESTING = 'test' in sys.argv
+SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT', 'False') == 'True'
 
 ALLOWED_HOSTS = [
     "brainetanalytics.co.ke",
