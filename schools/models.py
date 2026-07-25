@@ -428,6 +428,41 @@ class ErrorReport(models.Model):
 
 
 # =========================================================
+# DEMO REQUESTS
+# =========================================================
+
+class DemoRequest(models.Model):
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("approved", "Approved"),
+        ("rejected", "Rejected"),
+    ]
+
+    full_name = models.CharField(max_length=200)
+    email = models.EmailField()
+    phone = models.CharField(max_length=30, blank=True, null=True)
+    intended_school = models.CharField(max_length=255)
+    position_rank = models.CharField(max_length=100)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(blank=True, null=True)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reviewed_demo_requests"
+    )
+    review_note = models.TextField(blank=True, null=True)
+
+    class Meta:
+        ordering = ["-submitted_at"]
+
+    def __str__(self):
+        return f"{self.full_name} - {self.intended_school}"
+
+
+# =========================================================
 # Contact submissions from landing page
 # =========================================================
 

@@ -53,6 +53,8 @@ urlpatterns = [
     # =====================================================
     path("queries/send/", views.send_query, name="send_query"),
     path("queries/<int:query_id>/reply/", views.reply_query, name="reply_query"),
+    path("demo/request/", views.request_demo, name="request_demo"),
+    path("demo/approve/<int:demo_request_id>/", views.approve_demo_request, name="approve_demo_request"),
 
     path("messages/<int:id>/reply/", views.reply_message, name="reply_message"),
     path("messages/clear-replied/", views.clear_replied_count, name="clear_replied_count"),

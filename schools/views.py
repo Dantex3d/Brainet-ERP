@@ -22,7 +22,7 @@ from django.urls import reverse
 
 import students
 import subjects
-from .models import DOSMessage, DOSQuery, Notification, School, DirectorOfStudies, Dormitory, Term, Class, Subject, GradingPolicy, StudentMark, StudentPromotion, SchoolNotice, ErrorReport, SecurityLog, ContactMessage
+from .models import DOSMessage, DOSQuery, Notification, School, DirectorOfStudies, Dormitory, Term, Class, Subject, GradingPolicy, StudentMark, StudentPromotion, SchoolNotice, ErrorReport, SecurityLog, ContactMessage, DemoRequest
 from django.db import IntegrityError
 from collections import defaultdict
 from students.models import Student
@@ -408,6 +408,79 @@ def pending_verification_count(request):
     return JsonResponse({'count': count})
 
 
+def request_demo(request):
+    if request.method != 'POST':
+        return redirect('features_demo')
+
+    full_name = (request.POST.get('full_name') or '').strip()
+    email = (request.POST.get('email') or '').strip()
+    phone = (request.POST.get('phone') or '').strip()
+    intended_school = (request.POST.get('intended_school') or '').strip()
+    position_rank = (request.POST.get('position_rank') or '').strip()
+
+    if not all([full_name, email, intended_school, position_rank]):
+        messages.error(request, 'Please provide your full name, email, intended school, and position/rank.')
+        return redirect('features_demo')
+
+    DemoRequest.objects.create(
+        full_name=full_name,
+        email=email,
+        phone=phone,
+        intended_school=intended_school,
+        position_rank=position_rank,
+    )
+
+    superuser_emails = get_superuser_emails()
+    if superuser_emails:
+        try:
+            send_email(
+                to_email=superuser_emails,
+                subject='New demo request pending approval',
+                message=(
+                    f'A new demo request was submitted by {full_name} ({email}).\n\n'
+                    f'Intended school: {intended_school}\n'
+                    f'Position/rank: {position_rank}\n'
+                    f'Phone: {phone or "N/A"}'
+                ),
+                recipient_name='Superuser',
+                html=False,
+            )
+        except Exception:
+            logging.getLogger(__name__).exception('Failed to notify superusers about demo request')
+
+    messages.success(
+        request,
+        'Your demo request has been submitted for superuser approval. If approval is delayed, please contact the admin.'
+    )
+    return redirect('features_demo')
+
+
+@login_required
+@superuser_required
+def approve_demo_request(request, demo_request_id):
+    demo_request = get_object_or_404(DemoRequest, id=demo_request_id)
+
+    if request.method != 'POST':
+        return redirect('superuser_dashboard')
+
+    status = (request.POST.get('status') or 'approved').strip().lower()
+    if status not in {'approved', 'rejected'}:
+        status = 'approved'
+
+    demo_request.status = status
+    demo_request.reviewed_by = request.user
+    demo_request.reviewed_at = timezone.now()
+    demo_request.review_note = (request.POST.get('review_note') or '').strip()
+    demo_request.save(update_fields=['status', 'reviewed_by', 'reviewed_at', 'review_note'])
+
+    if status == 'approved':
+        messages.success(request, f'Demo request approved for {demo_request.full_name}.')
+    else:
+        messages.warning(request, f'Demo request rejected for {demo_request.full_name}.')
+
+    return redirect('superuser_dashboard')
+
+
 @superuser_required
 def resend_verification_email(request, user_id):
     user = get_object_or_404(User, id=user_id)
@@ -692,6 +765,8 @@ def superuser_dashboard(request):
         log.browser = log.browser or "Unknown"
         log.location = log.location or ("Local environment" if log.ip_address in {"127.0.0.1", "::1", "localhost"} else "Unknown")
     contact_messages = ContactMessage.objects.order_by("-created_at")[:10]
+    pending_demo_requests = DemoRequest.objects.filter(status="pending").order_by("-submitted_at")
+    pending_demo_requests_count = pending_demo_requests.count()
 
     # ----------------------------
     # CONTEXT
@@ -733,6 +808,8 @@ def superuser_dashboard(request):
         "unverified_accounts": unverified_accounts,
         "security_logs": security_logs,
         "contact_messages": contact_messages,
+        "pending_demo_requests": pending_demo_requests,
+        "pending_demo_requests_count": pending_demo_requests_count,
         "total_students": total_students,
         "total_teachers": total_teachers,
     }

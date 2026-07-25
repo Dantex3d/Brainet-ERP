@@ -1,7 +1,7 @@
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
-from django.test import RequestFactory, TestCase
+from django.test import Client, RequestFactory, TestCase
 from django.urls import reverse
 
 from users.views import _get_trusted_device_key
@@ -72,6 +72,40 @@ class SuperuserSecurityTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.request['PATH_INFO'], reverse("superuser_dashboard"))
         self.assertNotIn("pending_superuser_login_user_id", self.client.session)
+
+    @patch("users.views.send_email")
+    def test_superuser_trusted_device_cookie_survives_new_client(self, mock_send_email):
+        mock_send_email.return_value = True
+
+        self.client.post(
+            reverse("login"),
+            {
+                "username": "super@example.com",
+                "password": "StrongPass123!",
+                "trust_device": "on",
+            },
+            follow=True,
+        )
+
+        code = self.client.session["pending_superuser_login_code"]
+        self.client.post(
+            reverse("superuser_two_factor"),
+            {"code": code, "trust_device": "on"},
+            follow=True,
+        )
+
+        fresh_client = Client()
+        for cookie_name, cookie in self.client.cookies.items():
+            fresh_client.cookies[cookie_name] = cookie.value
+
+        response = fresh_client.post(
+            reverse("login"),
+            {"username": "super@example.com", "password": "StrongPass123!"},
+            follow=True,
+        )
+
+        self.assertEqual(response.request['PATH_INFO'], reverse("superuser_dashboard"))
+        self.assertNotIn("pending_superuser_login_user_id", fresh_client.session)
 
     def test_pending_verification_items_exclude_students(self):
         student_user = User.objects.create_user(

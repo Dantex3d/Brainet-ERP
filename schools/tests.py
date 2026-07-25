@@ -4,7 +4,7 @@ from django.urls import reverse
 
 from brainet.templatetags.text_filters import register
 from exams.models import Exam
-from schools.models import School, Term, Subject, StudentMark, ContactMessage, DOSMessage, Notification
+from schools.models import School, Term, Subject, StudentMark, ContactMessage, DOSMessage, Notification, DemoRequest
 from students.models import Student
 from schools.views import assign_competition_ranks, generate_progress_chart, get_student_term_performance_history, get_combined_mark_for_reporting
 from schools.promotion_service import PromotionService
@@ -48,13 +48,67 @@ class PromotionStageTests(TestCase):
         self.assertIsNone(next_stream)
 
 
+class DemoRequestWorkflowTests(TestCase):
+    def setUp(self):
+        self.school = School.objects.create(
+            name="Demo School",
+            address="Test Address",
+            phone="0712345679",
+            email="demoschool-demo@example.com",
+            is_active=True,
+            is_verified=True,
+        )
+        self.superuser = CustomUser.objects.create_user(
+            email="demo-super@example.com",
+            password="testpass123",
+            role="superuser",
+            school=self.school,
+            email_verified=True,
+        )
+        self.superuser.is_superuser = True
+        self.superuser.save(update_fields=["is_superuser"])
+
+    def test_public_demo_request_is_saved_for_superuser_review(self):
+        response = self.client.post(
+            reverse("request_demo"),
+            {
+                "full_name": "Jane Demo",
+                "email": "jane-demo@example.com",
+                "phone": "0712345678",
+                "intended_school": "Bright Grove School",
+                "position_rank": "Principal",
+            },
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(DemoRequest.objects.filter(email="jane-demo@example.com", status="pending").exists())
+
+    def test_superuser_can_approve_demo_request(self):
+        demo_request = DemoRequest.objects.create(
+            full_name="Jane Demo",
+            email="jane-demo@example.com",
+            phone="0712345678",
+            intended_school="Bright Grove School",
+            position_rank="Principal",
+        )
+        self.client.force_login(self.superuser)
+
+        response = self.client.post(reverse("approve_demo_request", args=[demo_request.id]), follow=True)
+
+        self.assertEqual(response.status_code, 200)
+        demo_request.refresh_from_db()
+        self.assertEqual(demo_request.status, "approved")
+        self.assertEqual(demo_request.reviewed_by, self.superuser)
+
+
 class ContactMessageFlowTests(TestCase):
     def setUp(self):
         self.school = School.objects.create(
             name="Support School",
             address="Test Address",
-            phone="0712345678",
-            email="supportschool@example.com",
+            phone="0712345680",
+            email="supportschool-demo@example.com",
             is_active=True,
             is_verified=True,
         )

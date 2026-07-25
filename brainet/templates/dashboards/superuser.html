@@ -531,6 +531,55 @@
 
             </div>
 
+            <div class="card border-0 shadow-lg rounded-4 mb-4" id="demo-requests">
+                <div class="card-header bg-primary text-white rounded-top-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">📝 Pending Demo Requests ({{ pending_demo_requests_count }})</h5>
+                        {% if pending_demo_requests_count > 0 %}
+                        <small class="text-white-50">Approve or reject new demo submissions</small>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if pending_demo_requests %}
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Contact</th>
+                                    <th>School</th>
+                                    <th>Position</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for request in pending_demo_requests %}
+                                <tr>
+                                    <td><strong>{{ request.full_name }}</strong></td>
+                                    <td><small>{{ request.email }}<br>{{ request.phone|default:"—" }}</small></td>
+                                    <td><small>{{ request.intended_school }}</small></td>
+                                    <td><small>{{ request.position_rank }}</small></td>
+                                    <td>
+                                        <form method="post" action="{% url 'approve_demo_request' request.id %}" class="d-flex gap-2 flex-wrap">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="status" value="approved">
+                                            <button type="submit" class="btn btn-sm btn-success">✓ Approve</button>
+                                            <input type="text" name="review_note" class="form-control form-control-sm" style="max-width: 180px;" placeholder="Note (optional)">
+                                            <button type="submit" class="btn btn-sm btn-danger" formaction="{% url 'approve_demo_request' request.id %}" formmethod="post">✕ Reject</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center py-5">✓ No pending demo requests</p>
+                    {% endif %}
+                </div>
+            </div>
+
             <!-- DOS QUERIES & SUPPORT MESSAGES -->
             <!-- PENDING LICENSE RENEWALS -->
             <div class="card border-0 shadow-lg rounded-4 mb-4" id="renewals">
