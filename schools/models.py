@@ -72,7 +72,7 @@ class School(models.Model):
     motto = models.CharField(max_length=300, null=True, blank=True)
 
     phone = models.CharField(
-    max_length=13,
+    max_length=20,
     validators=[phone_regex],
     unique=True,
     null=True,
