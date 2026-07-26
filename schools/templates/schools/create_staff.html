@@ -5,17 +5,20 @@
   <h2>Create Staff/Admin</h2>
   <form method="post">
     {% csrf_token %}
-    <div class="mb-3">
-      <label>Name</label>
-      <input type="text" name="name" class="form-control" required>
+    <div class="mb-3 {% if errors.name %}border border-danger rounded-2 p-2{% endif %}">
+      <label>Name <span class="text-danger">*</span></label>
+      <input type="text" name="name" class="form-control {% if errors.name %}is-invalid{% endif %}" value="{{ name|default:'' }}" required>
+      {% if errors.name %}<div class="invalid-feedback">{{ errors.name }}</div>{% endif %}
     </div>
-    <div class="mb-3">
-      <label>Email</label>
-      <input type="email" name="email" class="form-control" required>
+    <div class="mb-3 {% if errors.email %}border border-danger rounded-2 p-2{% endif %}">
+      <label>Email <span class="text-danger">*</span></label>
+      <input type="email" name="email" class="form-control {% if errors.email %}is-invalid{% endif %}" value="{{ email|default:'' }}" required>
+      {% if errors.email %}<div class="invalid-feedback">{{ errors.email }}</div>{% endif %}
     </div>
-    <div class="mb-3">
+    <div class="mb-3 {% if errors.phone %}border border-danger rounded-2 p-2{% endif %}">
       <label>Phone</label>
-      <input type="text" name="phone" class="form-control">
+      <input type="text" name="phone" pattern="^\+254[17]\d{8}$" title="+2547XXXXXXXX or +2541XXXXXXXX" class="form-control {% if errors.phone %}is-invalid{% endif %}" value="{{ phone|default:'' }}">
+      {% if errors.phone %}<div class="invalid-feedback">{{ errors.phone }}</div>{% endif %}
     </div>
     <div class="mb-3">
       <label>Password</label>
@@ -29,13 +32,15 @@
         <option value="teacher">Teacher</option>
       </select>
     </div>
-    <div class="mb-3">
+    <div class="mb-3 {% if errors.school %}border border-danger rounded-2 p-2{% endif %}">
       <label>School</label>
-      <select name="school_id" class="form-select">
+      <select name="school_id" class="form-select {% if errors.school %}is-invalid{% endif %}">
+        <option value="">-- Select school --</option>
         {% for s in schools %}
-          <option value="{{ s.id }}">{{ s.name }}</option>
+          <option value="{{ s.id }}" {% if school_id and school_id|stringformat:"s" == s.id|stringformat:"s" %}selected{% endif %}>{{ s.name }}</option>
         {% endfor %}
       </select>
+      {% if errors.school %}<div class="invalid-feedback">{{ errors.school }}</div>{% endif %}
     </div>
     <button type="submit" class="btn btn-primary">Create</button>
   </form>

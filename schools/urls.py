@@ -30,6 +30,7 @@ urlpatterns = [
     path("superuser/pending-verification/count/", views.pending_verification_count, name="pending_verification_count"),
     path("superuser/security-logs/", views.security_logs, name="security_logs"),
     path("superuser/error-reports/", views.error_reports, name="error_reports"),
+    path("superuser/support-team/", views.support_team, name="support_team"),
     path("superuser/error-reports/<int:report_id>/read/", views.mark_error_report_read, name="mark_error_report_read"),
     path("superuser/users/<int:user_id>/resend-verification/", views.resend_verification_email, name="resend_verification_email"),
     path("superuser/online-class/<int:online_class_id>/student/<int:student_id>/manual-join/", views.manual_join_online_class, name="manual_join_online_class"),

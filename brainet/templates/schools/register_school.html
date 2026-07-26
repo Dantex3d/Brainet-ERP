@@ -4,11 +4,11 @@
 {% block content %}
 <div class="container py-5">
     <div class="row justify-content-center">
-        <div class="col-lg-7">
+        <div class="col-lg-8">
             <div class="card border-0 shadow rounded-4">
                 <div class="card-header bg-primary text-white rounded-top-4">
                     <h4 class="mb-0">📘 Register Your School</h4>
-                    <small>Enter school details and the school admin account details in one step.</small>
+                    <small>Start with your school name and email, verify the address, then submit your full details for approval.</small>
                 </div>
                 <div class="card-body p-4">
                     {% if messages %}
@@ -21,17 +21,61 @@
 
                     <form method="POST">
                         {% csrf_token %}
+                        <input type="hidden" name="step" value="{{ step|default:'start' }}">
+                        <input type="hidden" name="school_id" value="{{ school_id|default:'' }}">
+
+                        {% if not step or step == 'start' %}
+                        <div class="mb-3 {% if errors.name %}border border-danger rounded-2 p-2{% endif %}">
+                            <label class="form-label fw-bold">School Name <span class="text-danger">*</span></label>
+                            <input type="text" name="name" class="form-control rounded-3 {% if errors.name %}is-invalid{% endif %}" value="{{ name|default:'' }}" required>
+                            {% if errors.name %}<div class="invalid-feedback">{{ errors.name }}</div>{% endif %}
+                        </div>
+                        <div class="mb-3 {% if errors.email %}border border-danger rounded-2 p-2{% endif %}">
+                            <label class="form-label fw-bold">School Email <span class="text-danger">*</span></label>
+                            <input type="email" name="email" class="form-control rounded-3 {% if errors.email %}is-invalid{% endif %}" value="{{ email|default:'' }}" required>
+                            {% if errors.email %}<div class="invalid-feedback">{{ errors.email }}</div>{% endif %}
+                        </div>
+                        <div class="alert alert-info rounded-3">
+                            We will send a verification code to this email address before you continue.
+                        </div>
+                        <div class="alert alert-secondary rounded-3">
+                            If there is any delay or you need assistance, please contact the admin or email <strong>support@brainetanalytics.co.ke</strong>. You may also WhatsApp/SMS <strong>0700 269 517</strong> or <strong>0736 645 038</strong>.
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center gap-2">
+                            <a href="{% url 'landing' %}" class="btn btn-outline-secondary rounded-3">Cancel</a>
+                            <button type="submit" class="btn btn-primary rounded-3">Send Verification Code</button>
+                        </div>
+                        {% endif %}
+
+                        {% if step == 'verify' %}
+                        <div class="alert alert-success rounded-3">
+                            A verification code was sent to <strong>{{ verification_email }}</strong>.
+                        </div>
+                        <div class="mb-3 {% if errors.verification_code %}border border-danger rounded-2 p-2{% endif %}">
+                            <label class="form-label fw-bold">Verification Code <span class="text-danger">*</span></label>
+                            <input type="text" name="verification_code" class="form-control rounded-3 {% if errors.verification_code %}is-invalid{% endif %}" maxlength="6" inputmode="numeric" required>
+                            <small class="text-muted">Enter the 6-digit code. It will expire in 1 hour.</small>
+                            {% if errors.verification_code %}<div class="invalid-feedback">{{ errors.verification_code }}</div>{% endif %}
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center gap-2">
+                            <a href="{% url 'register_school' %}" class="btn btn-outline-secondary rounded-3">Back</a>
+                            <button type="submit" class="btn btn-primary rounded-3">Verify Email</button>
+                        </div>
+                        {% endif %}
+
+                        {% if step == 'details' %}
                         <div class="mb-3">
                             <label class="form-label fw-bold">School Name</label>
                             <input type="text" name="name" class="form-control rounded-3" value="{{ name|default:'' }}" required>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label fw-bold">Email</label>
-                            <input type="email" name="email" class="form-control rounded-3" value="{{ email|default:'' }}" required>
+                            <label class="form-label fw-bold">County</label>
+                            <input type="text" name="county" class="form-control rounded-3" value="{{ county|default:'' }}">
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Phone / WhatsApp</label>
-                            <input type="text" name="phone" class="form-control rounded-3" value="{{ phone|default:'' }}" required>
+                        <div class="mb-3 {% if errors.phone %}border border-danger rounded-2 p-2{% endif %}">
+                            <label class="form-label fw-bold">Phone / WhatsApp <span class="text-danger">*</span></label>
+                            <input type="text" name="phone" pattern="^\+254[17]\d{8}$" title="+2547XXXXXXXX or +2541XXXXXXXX" class="form-control rounded-3 {% if errors.phone %}is-invalid{% endif %}" value="{{ phone|default:'' }}" required>
+                            {% if errors.phone %}<div class="invalid-feedback">{{ errors.phone }}</div>{% endif %}
                         </div>
                         <div class="mb-3">
                             <label class="form-label fw-bold">Address</label>
@@ -41,30 +85,38 @@
                         <hr class="my-4">
 
                         <h5 class="fw-bold mb-3">School Admin Details</h5>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Admin Full Name</label>
-                            <input type="text" name="admin_name" class="form-control rounded-3" value="{{ admin_name|default:'' }}" required>
+                        <div class="mb-3 {% if errors.admin_name %}border border-danger rounded-2 p-2{% endif %}">
+                            <label class="form-label fw-bold">Admin Full Name <span class="text-danger">*</span></label>
+                            <input type="text" name="admin_name" class="form-control rounded-3 {% if errors.admin_name %}is-invalid{% endif %}" value="{{ admin_name|default:'' }}" required>
+                            {% if errors.admin_name %}<div class="invalid-feedback">{{ errors.admin_name }}</div>{% endif %}
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Admin Email</label>
-                            <input type="email" name="admin_email" class="form-control rounded-3" value="{{ admin_email|default:'' }}" required>
+                        <div class="mb-3 {% if errors.admin_email %}border border-danger rounded-2 p-2{% endif %}">
+                            <label class="form-label fw-bold">Admin Email <span class="text-danger">*</span></label>
+                            <input type="email" name="admin_email" class="form-control rounded-3 {% if errors.admin_email %}is-invalid{% endif %}" value="{{ admin_email|default:'' }}" required>
+                            {% if errors.admin_email %}<div class="invalid-feedback">{{ errors.admin_email }}</div>{% endif %}
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Admin Phone</label>
-                            <input type="text" name="admin_phone" class="form-control rounded-3" value="{{ admin_phone|default:'' }}" required>
+                        <div class="mb-3 {% if errors.admin_phone %}border border-danger rounded-2 p-2{% endif %}">
+                            <label class="form-label fw-bold">Admin Phone <span class="text-danger">*</span></label>
+                            <input type="text" name="admin_phone" pattern="^\+254[17]\d{8}$" title="+2547XXXXXXXX or +2541XXXXXXXX" class="form-control rounded-3 {% if errors.admin_phone %}is-invalid{% endif %}" value="{{ admin_phone|default:'' }}" required>
+                            {% if errors.admin_phone %}<div class="invalid-feedback">{{ errors.admin_phone }}</div>{% endif %}
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Temporary Password</label>
-                            <input type="password" name="admin_password" class="form-control rounded-3" required>
+                        <div class="mb-3 {% if errors.admin_password %}border border-danger rounded-2 p-2{% endif %}">
+                            <label class="form-label fw-bold">Temporary Password <span class="text-danger">*</span></label>
+                            <input type="password" name="admin_password" class="form-control rounded-3 {% if errors.admin_password %}is-invalid{% endif %}" required>
+                            {% if errors.admin_password %}<div class="invalid-feedback">{{ errors.admin_password }}</div>{% endif %}
                         </div>
 
                         <div class="alert alert-warning rounded-3 mb-4">
-                            ⚠ Your school account must be activated within 48 hours. The school admin will receive login details and a temporary password immediately.
+                            Your registration will be reviewed by Brainet. Once approved, you will receive an email and your account will be created with a password-change requirement on first login.
+                        </div>
+                        <div class="alert alert-secondary rounded-3 mb-4">
+                            If there is any delay or you need assistance, please contact the admin or email <strong>support@brainetanalytics.co.ke</strong>. You may also WhatsApp/SMS <strong>0700 269 517</strong> or <strong>0736 645 038</strong>.
                         </div>
                         <div class="d-flex justify-content-between align-items-center gap-2">
-                            <a href="{% url 'landing' %}" class="btn btn-outline-secondary rounded-3">Cancel</a>
+                            <a href="{% url 'register_school' %}" class="btn btn-outline-secondary rounded-3">Back</a>
                             <button type="submit" class="btn btn-primary rounded-3">Submit Registration</button>
                         </div>
+                        {% endif %}
                     </form>
                 </div>
             </div>

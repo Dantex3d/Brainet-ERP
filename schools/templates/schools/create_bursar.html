@@ -35,21 +35,24 @@
                         <input type="hidden" name="action" value="{% if selected_bursar %}update{% else %}create{% endif %}">
                         <input type="hidden" name="bursar_id" value="{% if selected_bursar %}{{ selected_bursar.id }}{% endif %}">
 
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Full Name</label>
-                            <input type="text" name="name" class="form-control rounded-3" placeholder="e.g., John Mwangi" value="{% if selected_bursar %}{{ selected_bursar.get_full_name }}{% endif %}" required>
+                        <div class="mb-3 {% if errors.name %}border border-danger rounded-2 p-2{% endif %}">
+                            <label class="form-label fw-bold">Full Name <span class="text-danger">*</span></label>
+                            <input type="text" name="name" class="form-control rounded-3 {% if errors.name %}is-invalid{% endif %}" placeholder="e.g., John Mwangi" value="{% if name %}{{ name }}{% elif selected_bursar %}{{ selected_bursar.get_full_name }}{% endif %}" required>
+                            {% if errors.name %}<div class="invalid-feedback">{{ errors.name }}</div>{% endif %}
                             <small class="text-muted">Bursar's full name</small>
                         </div>
 
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Email Address</label>
-                            <input type="email" name="email" class="form-control rounded-3" placeholder="e.g., bursar@school.ac.ke" value="{% if selected_bursar %}{{ selected_bursar.email }}{% endif %}" required>
+                        <div class="mb-3 {% if errors.email %}border border-danger rounded-2 p-2{% endif %}">
+                            <label class="form-label fw-bold">Email Address <span class="text-danger">*</span></label>
+                            <input type="email" name="email" class="form-control rounded-3 {% if errors.email %}is-invalid{% endif %}" placeholder="e.g., bursar@school.ac.ke" value="{% if email %}{{ email }}{% elif selected_bursar %}{{ selected_bursar.email }}{% endif %}" required>
+                            {% if errors.email %}<div class="invalid-feedback">{{ errors.email }}</div>{% endif %}
                             <small class="text-muted">Must be a unique email. A verification link will be sent here.</small>
                         </div>
 
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Phone Number</label>
-                            <input type="tel" name="phone" class="form-control rounded-3" placeholder="e.g., 0700123456" value="{% if selected_bursar and selected_bursar.phone %}{{ selected_bursar.phone }}{% endif %}" required>
+                        <div class="mb-3 {% if errors.phone %}border border-danger rounded-2 p-2{% endif %}">
+                            <label class="form-label fw-bold">Phone Number <span class="text-danger">*</span></label>
+                            <input type="tel" name="phone" pattern="^\+254[17]\d{8}$" title="+2547XXXXXXXX or +2541XXXXXXXX" class="form-control rounded-3 {% if errors.phone %}is-invalid{% endif %}" placeholder="e.g., 0700123456" value="{% if phone %}{{ phone }}{% elif selected_bursar and selected_bursar.phone %}{{ selected_bursar.phone }}{% endif %}" required>
+                            {% if errors.phone %}<div class="invalid-feedback">{{ errors.phone }}</div>{% endif %}
                             <small class="text-muted">Bursar's contact phone number</small>
                         </div>
 

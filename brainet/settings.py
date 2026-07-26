@@ -208,6 +208,8 @@ USE_TZ = True
 
 SITE_NAME = os.environ.get('SITE_NAME', 'Brainet Analytics')
 SUPPORT_EMAIL = os.environ.get('SUPPORT_EMAIL', 'support@brainetanalytics.co.ke')
+SUPPORT_PHONE_1 = os.environ.get('SUPPORT_PHONE_1', '0700 269 517')
+SUPPORT_PHONE_2 = os.environ.get('SUPPORT_PHONE_2', '0736 645 038')
 DEFAULT_FROM_EMAIL = "no-reply@brainetanalytics.co.ke"
 SERVER_EMAIL = "no-reply@brainetanalytics.co.ke"
 EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')

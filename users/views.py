@@ -5,6 +5,7 @@ from datetime import timedelta
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, update_session_auth_hash, get_user_model
+from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView
 from django.core.mail import get_connection
@@ -128,6 +129,11 @@ class CustomLoginView(LoginView):
                 f"Your {role_name} account requires verification. Please check your email for the verification code."
             )
             return redirect(f"{reverse('verify_user_code')}?email={user.email}")
+
+        if getattr(user, 'must_change_password', False):
+            login(self.request, user)
+            messages.warning(self.request, 'Please change your password before continuing.')
+            return redirect('change_password')
 
         # Normal login flow
         login(self.request, user)
@@ -615,6 +621,23 @@ def resend_verification_code(request):
     except Exception as e:
         messages.error(request, f'Failed to send verification email: {str(e)}')
     return redirect(f"{reverse('verify_user_code')}?email={email}")
+
+
+@login_required
+def change_password(request):
+    if request.method == 'POST':
+        form = PasswordChangeForm(request.user, request.POST)
+        if form.is_valid():
+            user = form.save()
+            update_session_auth_hash(request, user)
+            user.must_change_password = False
+            user.save(update_fields=['must_change_password'])
+            messages.success(request, 'Your password was updated successfully.')
+            return redirect('dashboard')
+    else:
+        form = PasswordChangeForm(request.user)
+
+    return render(request, 'users/change_password.html', {'form': form})
 
 
 @login_required

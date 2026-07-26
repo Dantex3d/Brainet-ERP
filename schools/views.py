@@ -23,7 +23,7 @@ from django.urls import reverse
 
 import students
 import subjects
-from .models import DOSMessage, DOSQuery, Notification, School, DirectorOfStudies, Dormitory, Term, Class, Subject, GradingPolicy, StudentMark, StudentPromotion, SchoolNotice, ErrorReport, SecurityLog, ContactMessage, DemoRequest
+from .models import DOSMessage, DOSQuery, Notification, School, DirectorOfStudies, Dormitory, Term, Class, Subject, GradingPolicy, StudentMark, StudentPromotion, SchoolNotice, ErrorReport, SecurityLog, ContactMessage, DemoRequest, SupportAgent
 from django.db import IntegrityError
 from collections import defaultdict
 from students.models import Student
@@ -43,6 +43,9 @@ from reportlab.graphics.charts.barcharts import VerticalBarChart
 from reportlab.graphics.shapes import Drawing
 from reportlab.graphics.charts.lineplots import LinePlot
 from reportlab.graphics.shapes import Drawing, Circle
+from schools.models import School, normalize_kenya_phone, phone_regex
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError
 
 User = get_user_model()
 
@@ -351,17 +354,20 @@ def send_user_verification_email(user, request=None, role_name=None):
 
 def send_school_verification_email(school, request=None):
     if not school.email:
-        return
+        return False
 
     token = school.generate_verification_token()
     verify_link = request.build_absolute_uri(
         reverse('verify_school_via_token', args=[token])
     ) if request else reverse('verify_school_via_token', args=[token])
 
+    code = school.generate_verification_code()
     subject = "Verify your school registration on Brainet"
     body = (
         f"Hello {school.name},\n\n"
-        f"Please verify this school's email address by clicking the link below:\n\n{verify_link}\n\n"
+        f"Please verify this school's email address by entering the 6-digit code below on the Brainet registration page:\n\n"
+        f"Verification code: {code}\n\n"
+        f"You can also open this link: {verify_link}\n\n"
         "This link expires in 1 hour. After verification the school admin will be able to complete activation and password resets.\n\n"
         "If you did not register this school, please ignore this message."
     )
@@ -440,7 +446,7 @@ def request_demo(request):
 
     messages.success(
         request,
-        'Your demo request has been submitted for superuser approval. If approval is delayed, please contact the admin.'
+        'Your demo request has been submitted for superuser approval. If there is any delay or you need assistance, please contact the admin or email support@brainetanalytics.co.ke.'
     )
     return redirect('features_demo')
 
@@ -1012,7 +1018,7 @@ def _process_school_submission(request):
     messages.success(request, "School added successfully.")
     messages.warning(
         request,
-        "New school accounts expire within 48 hours if not activated. Contact admin to activate."
+        "The school submission is pending approval and will be activated after Brainet admin review."
     )
     return True
 
@@ -1873,6 +1879,54 @@ def mobile_app(request):
 def features_demo(request):
     """Public demo page showcasing features without requiring login or database submissions."""
     return render(request, "schools/features_demo.html")
+
+
+@user_passes_test(lambda u: getattr(u, 'is_superuser', False))
+def support_team(request):
+    """Superuser page to manage support team members who can respond to demo and support requests."""
+    User = get_user_model()
+
+    if request.method == 'POST':
+        action = (request.POST.get('action') or '').strip().lower()
+        if action == 'add':
+            email = (request.POST.get('email') or '').strip()
+            if not email:
+                messages.error(request, 'Please provide an email address to add.')
+                return redirect('support_team')
+            try:
+                user = User.objects.get(email__iexact=email)
+            except User.DoesNotExist:
+                messages.error(request, 'No user with that email exists. Create the user first.')
+                return redirect('support_team')
+
+            agent, created = SupportAgent.objects.get_or_create(user=user)
+            if created:
+                messages.success(request, f'{user.get_full_name() or user.email} added to support team.')
+            else:
+                messages.info(request, 'User is already on the support team.')
+            return redirect('support_team')
+
+        if action == 'remove':
+            agent_id = request.POST.get('agent_id')
+            if not agent_id:
+                messages.error(request, 'Missing agent id to remove.')
+                return redirect('support_team')
+            agent = get_object_or_404(SupportAgent, id=agent_id)
+            agent.delete()
+            messages.success(request, 'Support agent removed.')
+            return redirect('support_team')
+
+    agents = SupportAgent.objects.select_related('user').all().order_by('-created_at')
+    support_email = getattr(settings, 'SUPPORT_EMAIL', 'support@brainetanalytics.co.ke')
+    support_phone_1 = getattr(settings, 'SUPPORT_PHONE_1', '0700 269 517')
+    support_phone_2 = getattr(settings, 'SUPPORT_PHONE_2', '0736 645 038')
+
+    return render(request, 'schools/support_team.html', {
+        'agents': agents,
+        'support_email': support_email,
+        'support_phone_1': support_phone_1,
+        'support_phone_2': support_phone_2,
+    })
 
 
 def about_us(request):
@@ -3612,11 +3666,48 @@ def view_school(request, school_id):
 @login_required
 def create_staff(request):
     if request.method == "POST":
-        name = request.POST.get("name")
-        email = request.POST.get("email")
-        phone = request.POST.get("phone")
-        role = request.POST.get("role")
+        name = (request.POST.get("name") or '').strip()
+        email = (request.POST.get("email") or '').strip()
+        phone_raw = (request.POST.get("phone") or '').strip()
+        role = (request.POST.get("role") or '').strip()
         school_id = request.POST.get("school_id")
+
+        errors = {}
+        if not name:
+            errors['name'] = 'Name is required.'
+        if not email:
+            errors['email'] = 'Email is required.'
+        else:
+            try:
+                validate_email(email)
+            except ValidationError:
+                errors['email'] = 'Enter a valid email address.'
+
+        phone = normalize_kenya_phone(phone_raw)
+        if phone_raw:
+            if phone is None:
+                errors['phone'] = 'Enter a valid Kenya phone number (e.g. 07XXXXXXXX).'
+            else:
+                try:
+                    phone_regex(phone)
+                except ValidationError:
+                    errors['phone'] = 'Enter a valid Kenya phone number (e.g. +2547XXXXXXXX).'
+
+        if not school_id:
+            errors['school'] = 'Select a school.'
+
+        schools = School.objects.all()
+
+        if errors:
+            return render(request, "schools/create_staff.html", {
+                'schools': schools,
+                'errors': errors,
+                'name': name,
+                'email': email,
+                'phone': phone_raw,
+                'role': role,
+                'school_id': school_id,
+            })
 
         school = get_object_or_404(School, id=school_id)
 
@@ -3627,13 +3718,15 @@ def create_staff(request):
         user = CustomUser.objects.create_user(
             username=username,
             email=email,
-            password="password123",   # or generate random
+            password="password123",
             role=role,
             school=school
         )
 
         # Save extra fields
         user.first_name = name
+        if hasattr(user, 'phone') and phone:
+            user.phone = phone
         user.save()
 
         send_user_verification_email(user, request=request, role_name=role.replace('_', ' ').title())
@@ -3686,9 +3779,40 @@ def create_bursar(request):
 
             bursar = get_object_or_404(CustomUser, id=bursar_id, school=school, role='bursar')
 
-            if not all([name, email, phone]):
-                messages.error(request, 'All fields are required.')
-                return redirect(f'{reverse("create_bursar")}?bursar_id={bursar.id}')
+            errors = {}
+            if not name:
+                errors['name'] = 'Full name is required.'
+            if not email:
+                errors['email'] = 'Email is required.'
+            else:
+                try:
+                    validate_email(email)
+                except ValidationError:
+                    errors['email'] = 'Enter a valid email address.'
+
+            phone_norm = normalize_kenya_phone(phone)
+            if not phone:
+                errors['phone'] = 'Phone is required.'
+            else:
+                if phone_norm is None:
+                    errors['phone'] = 'Enter a valid Kenya phone number (e.g. 07XXXXXXXX).'
+                else:
+                    try:
+                        phone_regex(phone_norm)
+                    except ValidationError:
+                        errors['phone'] = 'Enter a valid Kenya phone number (e.g. +2547XXXXXXXX).'
+
+            if errors:
+                selected = get_object_or_404(CustomUser, id=bursar.id)
+                bursars = CustomUser.objects.filter(school=school, role='bursar').order_by('first_name', 'email')
+                return render(request, 'schools/create_bursar.html', {
+                    'bursars': bursars,
+                    'selected_bursar': selected,
+                    'errors': errors,
+                    'name': name,
+                    'email': email,
+                    'phone': phone,
+                })
 
             if CustomUser.objects.exclude(id=bursar.id).filter(email=email).exists():
                 messages.error(request, f'Email {email} is already registered.')
@@ -3707,13 +3831,41 @@ def create_bursar(request):
             return redirect('create_bursar')
 
         # CREATE
-        if not all([name, email, phone]):
-            messages.error(request, 'All fields are required.')
-            return redirect('create_bursar')
+        errors = {}
+        if not name:
+            errors['name'] = 'Full name is required.'
+        if not email:
+            errors['email'] = 'Email is required.'
+        else:
+            try:
+                validate_email(email)
+            except ValidationError:
+                errors['email'] = 'Enter a valid email address.'
+
+        phone_norm = normalize_kenya_phone(phone)
+        if not phone:
+            errors['phone'] = 'Phone is required.'
+        else:
+            if phone_norm is None:
+                errors['phone'] = 'Enter a valid Kenya phone number (e.g. 07XXXXXXXX).'
+            else:
+                try:
+                    phone_regex(phone_norm)
+                except ValidationError:
+                    errors['phone'] = 'Enter a valid Kenya phone number (e.g. +2547XXXXXXXX).'
 
         if CustomUser.objects.filter(email=email).exists():
-            messages.error(request, f'Email {email} is already registered.')
-            return redirect('create_bursar')
+            errors['email'] = f'Email {email} is already registered.'
+
+        if errors:
+            bursars = CustomUser.objects.filter(school=school, role='bursar').order_by('first_name', 'email')
+            return render(request, 'schools/create_bursar.html', {
+                'bursars': bursars,
+                'errors': errors,
+                'name': name,
+                'email': email,
+                'phone': phone,
+            })
 
         try:
             first_name = name
@@ -3732,8 +3884,8 @@ def create_bursar(request):
                 last_name=last_name,
                 email_verified=False,
             )
-            if hasattr(user, 'phone'):
-                user.phone = phone
+            if hasattr(user, 'phone') and phone_norm:
+                user.phone = phone_norm
             user.save()
 
             send_user_verification_email(user, request=request, role_name='Bursar')
@@ -3785,10 +3937,29 @@ def register_dos_by_superuser(request):
         try:
 
             name = request.POST.get("name")
-            email = request.POST.get("email")
-            phone = request.POST.get("phone")
+            email = (request.POST.get("email") or '').strip()
+            phone_raw = (request.POST.get("phone") or '').strip()
             password = request.POST.get("password")
             school_id = request.POST.get("school")
+
+            # Validate email format
+            try:
+                validate_email(email)
+            except ValidationError:
+                messages.error(request, "Enter a valid email address.")
+                return redirect("superuser_dashboard")
+
+            # Normalize and validate phone
+            phone = normalize_kenya_phone(phone_raw)
+            if phone_raw and phone is None:
+                messages.error(request, "Enter a valid Kenya phone number (e.g. 07XXXXXXXX).")
+                return redirect("superuser_dashboard")
+            if phone:
+                try:
+                    phone_regex(phone)
+                except ValidationError:
+                    messages.error(request, "Enter a valid Kenya phone number (e.g. +2547XXXXXXXX).")
+                    return redirect("superuser_dashboard")
 
             # VALIDATION
             if not all([name, email, phone, password, school_id]):
@@ -3884,11 +4055,31 @@ def register_dos_by_superuser(request):
 def register_principal_by_superuser(request):
     if request.method == "POST":
         try:
+
             name = request.POST.get("name")
-            email = request.POST.get("email")
-            phone = request.POST.get("phone")
+            email = (request.POST.get("email") or '').strip()
+            phone_raw = (request.POST.get("phone") or '').strip()
             password = request.POST.get("password")
             school_id = request.POST.get("school")
+
+            # Validate email format
+            try:
+                validate_email(email)
+            except ValidationError:
+                messages.error(request, "Enter a valid email address.")
+                return redirect("superuser_dashboard")
+
+            # Normalize and validate phone
+            phone = normalize_kenya_phone(phone_raw)
+            if phone_raw and phone is None:
+                messages.error(request, "Enter a valid Kenya phone number (e.g. 07XXXXXXXX).")
+                return redirect("superuser_dashboard")
+            if phone:
+                try:
+                    phone_regex(phone)
+                except ValidationError:
+                    messages.error(request, "Enter a valid Kenya phone number (e.g. +2547XXXXXXXX).")
+                    return redirect("superuser_dashboard")
 
             # VALIDATION
             if not all([name, email, phone, password, school_id]):
@@ -4174,7 +4365,7 @@ def add_school(request):
             messages.success(request, "School added successfully.")
             messages.warning(
                 request,
-                "New school accounts expire within 48 hours if not activated. Contact admin to activate."
+                "The school submission is pending review and will be activated after Brainet admin approval."
             )
         except (OSError, IOError) as e:
             # Likely running on a read-only filesystem (serverless). Create record without logo
@@ -4197,136 +4388,221 @@ def add_school(request):
 
 def register_school(request):
     if request.method == "POST":
+        step = request.POST.get("step")
         name = request.POST.get("name")
-        address = request.POST.get("address")
-        phone = request.POST.get("phone")
         email = request.POST.get("email")
+        county = request.POST.get("county")
+        address = request.POST.get("address")
+        phone = normalize_kenya_phone(request.POST.get("phone"))
         admin_name = request.POST.get("admin_name")
         admin_email = request.POST.get("admin_email")
         admin_phone = request.POST.get("admin_phone")
         admin_password = request.POST.get("admin_password") or request.POST.get("password")
+        verification_code = request.POST.get("verification_code")
 
-        if not all([name, address, phone, email, admin_name, admin_email, admin_phone, admin_password]):
-            messages.error(request, "Please fill in all required school and admin details.")
-            return render(request, "schools/register_school.html", {
-                "name": name,
-                "address": address,
-                "phone": phone,
-                "email": email,
-                "admin_name": admin_name,
-                "admin_email": admin_email,
-                "admin_phone": admin_phone,
-            })
+        if step == "start":
+            errors = {}
+            if not name:
+                errors['name'] = 'School name is required.'
+            if not email:
+                errors['email'] = 'School email is required.'
+            else:
+                try:
+                    validate_email(email)
+                except ValidationError:
+                    errors['email'] = 'Enter a valid email address.'
 
-        if School.objects.filter(email=email).exists():
-            messages.error(request, "Email already taken.")
-            return render(request, "schools/register_school.html", {
-                "name": name,
-                "address": address,
-                "phone": phone,
-                "email": email,
-                "admin_name": admin_name,
-                "admin_email": admin_email,
-                "admin_phone": admin_phone,
-            })
+            if errors:
+                return render(request, "schools/register_school.html", {"name": name, "email": email, 'errors': errors})
 
-        if CustomUser.objects.filter(email=admin_email).exists():
-            return render(request, "schools/register_school.html", {
-                "name": name,
-                "address": address,
-                "phone": phone,
-                "email": email,
-                "admin_name": admin_name,
-                "admin_email": admin_email,
-                "admin_phone": admin_phone,
-            })
+            if School.objects.filter(email=email).exists():
+                messages.error(request, "That emailis already Taken.")
+                return render(request, "schools/register_school.html", {"name": name, "email": email})
 
-        if Principal.objects.filter(phone=admin_phone).exists():
-            messages.error(request, "This admin phone number is already in use.")
-            return render(request, "schools/register_school.html", {
-                "name": name,
-                "address": address,
-                "phone": phone,
-                "email": email,
-                "admin_name": admin_name,
-                "admin_email": admin_email,
-                "admin_phone": admin_phone,
-            })
-
-        school = School.objects.create(
-            name=name,
-            address=address,
-            phone=phone,
-            email=email,
-            is_active=True,
-            is_verified=True,
-            license_status='active',
-            license_expiry=timezone.now().date() + timedelta(days=5),
-        )
-
-        user = CustomUser.objects.create_user(
-            email=admin_email,
-            password=admin_password,
-            role="principal",
-            school=school,
-            email_verified=True,
-        )
-        Principal.objects.create(
-            user=user,
-            school=school,
-            name=admin_name,
-            email=admin_email,
-            phone=admin_phone,
-        )
-
-        send_school_verification_email(school, request=request)
-
-        login_link = request.build_absolute_uri(reverse("login")) if request else reverse("login")
-        admin_message = (
-            f"Hello {admin_name},\n\n"
-            f"Your Brainet school admin account for {school.name} has been created.\n"
-            f"Email: {admin_email}\n"
-            f"Temporary password: {admin_password}\n\n"
-            f"Use this link to sign in: {login_link}\n\n"
-            "Please change your password after your first login."
-        )
-        send_email(
-            to_email=admin_email,
-            subject="Your Brainet school admin account",
-            message=admin_message,
-            recipient_name=admin_name,
-            html=False,
-        )
-
-        try:
-            superusers = User.objects.filter(is_superuser=True)
-            sender = superusers.first() if superusers.exists() else None
-            title = "New school registration request"
-            message_text = (
-                f"A new school registration request has been submitted for '{school.name}'. "
-                f"School admin: {admin_name} ({admin_email})."
+            school, created = School.objects.get_or_create(
+                email=email,
+                defaults={
+                    "name": name,
+                    "address": "",
+                    "is_active": False,
+                    "is_verified": False,
+                    "registration_status": "pending",
+                },
             )
-            for su in superusers:
-                Notification.objects.create(
-                    school=school,
-                    sender=sender or su,
-                    recipient=su,
-                    title=title,
-                    message=message_text,
+            if not created:
+                school.name = name
+                school.registration_status = "pending"
+                school.save(update_fields=["name", "registration_status"])
+
+            send_school_verification_email(school, request=request)
+            messages.success(request, "A verification code has been sent to your school email. Enter the 6-digit code below to continue.")
+            return render(request, "schools/register_school.html", {
+                "step": "verify",
+                "school_id": school.id,
+                "name": school.name,
+                "email": school.email,
+                "verification_email": school.email,
+            })
+
+        if step == "verify":
+            school_id = request.POST.get("school_id")
+            school = get_object_or_404(School, id=school_id)
+            expected_code = school.verification_code or ""
+            if verification_code != expected_code:
+                messages.error(request, "The verification code is incorrect. Please try again.")
+                return render(request, "schools/register_school.html", {
+                    "step": "verify",
+                    "school_id": school.id,
+                    "name": school.name,
+                    "email": school.email,
+                    "verification_email": school.email,
+                })
+
+            school.is_verified = True
+            school.verified_at = timezone.now()
+            school.registration_status = "pending"
+            school.save(update_fields=["is_verified", "verified_at", "registration_status"])
+            messages.success(request, "School email verified. Please complete the rest of the registration details.")
+            return render(request, "schools/register_school.html", {
+                "step": "details",
+                "school_id": school.id,
+                "name": school.name,
+                "email": school.email,
+                "county": county or "",
+            })
+
+        if step == "details":
+            school = get_object_or_404(School, id=request.POST.get("school_id"))
+            errors = {}
+            admin_phone_raw = admin_phone
+            admin_phone = normalize_kenya_phone(admin_phone_raw)
+
+            if not address:
+                errors['address'] = 'School address is required.'
+            if not phone:
+                errors['phone'] = 'School phone is required.'
+            else:
+                try:
+                    phone_regex(phone)
+                except ValidationError:
+                    errors['phone'] = 'Enter a valid Kenya phone number (e.g. +2547XXXXXXXX).'
+
+            if not admin_name:
+                errors['admin_name'] = 'Admin full name is required.'
+            if not admin_email:
+                errors['admin_email'] = 'Admin email is required.'
+            else:
+                try:
+                    validate_email(admin_email)
+                except ValidationError:
+                    errors['admin_email'] = 'Enter a valid admin email address.'
+
+            if not admin_phone_raw:
+                errors['admin_phone'] = 'Admin phone is required.'
+            else:
+                if admin_phone is None:
+                    errors['admin_phone'] = 'Enter a valid Kenya phone number (e.g. 07XXXXXXXX).' 
+                else:
+                    try:
+                        phone_regex(admin_phone)
+                    except ValidationError:
+                        errors['admin_phone'] = 'Enter a valid Kenya phone number (e.g. +2547XXXXXXXX).'
+
+            if not admin_password:
+                errors['admin_password'] = 'Temporary password is required.'
+
+            if errors:
+                return render(request, "schools/register_school.html", {
+                    "step": "details",
+                    "school_id": school.id,
+                    "name": school.name,
+                    "email": school.email,
+                    "county": county or school.county,
+                    "address": address,
+                    "phone": phone,
+                    "admin_name": admin_name,
+                    "admin_email": admin_email,
+                    "admin_phone": admin_phone_raw,
+                    'errors': errors,
+                })
+
+            if School.objects.exclude(id=school.id).filter(email=email).exists():
+                messages.error(request, "That school email is already registered.")
+                return render(request, "schools/register_school.html", {"step": "details", "school_id": school.id, "name": school.name, "email": school.email})
+
+            if CustomUser.objects.filter(email=admin_email).exists():
+                messages.error(request, "That admin email is already in use.")
+                return render(request, "schools/register_school.html", {"step": "details", "school_id": school.id, "name": school.name, "email": school.email})
+
+            if Principal.objects.filter(phone=admin_phone).exists():
+                messages.error(request, "This admin phone number is already in use.")
+                return render(request, "schools/register_school.html", {"step": "details", "school_id": school.id, "name": school.name, "email": school.email})
+
+            school.name = name or school.name
+            school.address = address
+            school.phone = phone
+            school.email = email or school.email
+            school.county = county or school.county
+            school.admin_name = admin_name
+            school.admin_email = admin_email
+            school.admin_phone = admin_phone
+            school.registration_status = "pending"
+            school.is_active = False
+            school.admin_account_created = False
+            school.is_verified = True
+            school.license_status = 'pending'
+            school.license_expiry = None
+            school.save(update_fields=[
+                "admin_name",
+                "admin_email",
+                "admin_phone",
+                "registration_status",
+                "is_active",
+                "admin_account_created",
+                "is_verified",
+                "license_status",
+                "license_expiry",
+                "address",
+                "phone",
+                "email",
+                "county",
+                "name",
+            ])
+
+            send_email(
+                to_email=admin_email,
+                subject="Your Brainet school admin account is pending approval",
+                message=(
+                    f"Hello {admin_name},\n\n"
+                    f"Your request for {school.name} is now under review by Brainet."
+                    f"Once approved, you will receive your school activation email and login instructions."
+                ),
+                recipient_name=admin_name,
+                html=False,
+            )
+
+            try:
+                superusers = User.objects.filter(is_superuser=True)
+                sender = superusers.first() if superusers.exists() else None
+                title = "New school registration request"
+                message_text = (
+                    f"A new school registration request has been submitted for '{school.name}'. "
+                    f"School admin: {admin_name} ({admin_email})."
                 )
-            notify_superusers_about_school_registration(
-                school,
-                admin_name=admin_name,
-                admin_email=admin_email,
-            )
-        except Exception:
-            pass
+                for su in superusers:
+                    Notification.objects.create(
+                        school=school,
+                        sender=sender or su,
+                        recipient=su,
+                        title=title,
+                        message=message_text,
+                    )
+                notify_superusers_about_school_registration(school, admin_name=admin_name, admin_email=admin_email)
+            except Exception:
+                pass
 
-        messages.success(
-            request,
-            f"Thank you. Your school trial account has been created for {school.name}. The free trial ends after 5 days on {school.license_expiry}. The school admin login details were sent to the admin email."
-        )
-        return redirect("register_school_success")
+            messages.success(request, "Your school registration has been submitted successfully and is awaiting Brainet admin approval. You will receive an email once the submission is approved.")
+            return redirect("register_school_success")
 
     return render(request, "schools/register_school.html")
 

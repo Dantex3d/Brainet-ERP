@@ -1,0 +1,66 @@
+{% extends 'dashboards/base.html' %}
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="card shadow rounded-4 p-4">
+        <div class="card-header bg-primary text-white">
+          <h4 class="mb-0">Support Team Management</h4>
+        </div>
+        <div class="card-body">
+          {% if messages %}
+            {% for message in messages %}
+              <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+
+          <p class="text-muted">Add existing users to the support team so they can respond to demo and support requests.</p>
+
+          <form method="POST" class="mb-4">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="add">
+            <div class="input-group">
+              <input type="email" name="email" class="form-control" placeholder="Existing user email to add" required>
+              <button class="btn btn-success" type="submit">Add to Support Team</button>
+            </div>
+          </form>
+
+          <h5>Current Support Agents</h5>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Added</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for agent in agents %}
+              <tr>
+                <td>{{ agent.user.get_full_name }}</td>
+                <td>{{ agent.user.email }}</td>
+                <td>{{ agent.created_at|date:'Y-m-d H:i' }}</td>
+                <td>
+                  <form method="POST" style="display:inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="remove">
+                    <input type="hidden" name="agent_id" value="{{ agent.id }}">
+                    <button class="btn btn-danger btn-sm">Remove</button>
+                  </form>
+                </td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="4" class="text-muted">No support agents yet.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+
+          <hr>
+          <p class="text-muted small">Support contacts: <strong>{{ support_email }}</strong> | WhatsApp/SMS: <strong>{{ support_phone_1 }}</strong> / <strong>{{ support_phone_2 }}</strong></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

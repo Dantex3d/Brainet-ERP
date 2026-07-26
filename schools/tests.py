@@ -356,39 +356,23 @@ class SuperuserNotificationClearTests(TestCase):
 
 @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
 class SchoolRegistrationFlowTests(TestCase):
-    def test_public_school_registration_creates_school_admin_and_sends_login_email(self):
+    def test_public_school_registration_sends_verification_code_to_school_email(self):
         response = self.client.post(
             reverse("register_school"),
             {
+                "step": "start",
                 "name": "Bright Future School",
-                "address": "123 Main Street",
-                "phone": "0712345678",
                 "email": "bright@example.com",
-                "admin_name": "Alice Maina",
-                "admin_email": "admin@example.com",
-                "admin_phone": "0723456789",
-                "admin_password": "StrongPass123",
             },
             follow=True,
         )
 
         self.assertEqual(response.status_code, 200)
-        school = School.objects.get(email="bright@example.com")
-        self.assertTrue(school.principals.exists())
-
-        principal = school.principals.get()
-        self.assertEqual(principal.name, "Alice Maina")
-        self.assertEqual(principal.email, "admin@example.com")
-        self.assertIsNotNone(principal.user)
-        self.assertTrue(principal.user.email_verified)
+        self.assertContains(response, "Enter the 6-digit code")
+        self.assertTrue(School.objects.filter(email="bright@example.com").exists())
 
         sent_messages = [message.subject for message in mail.outbox]
         self.assertIn("Verify your school registration on Brainet", sent_messages)
-        self.assertIn("Your Brainet school admin account", sent_messages)
-
-        login_email = next(message for message in mail.outbox if message.to == ["admin@example.com"])
-        self.assertIn("Temporary password", login_email.body)
-        self.assertIn("/login/", login_email.body)
 
 
 class SchoolLogoStorageTests(TestCase):

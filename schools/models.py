@@ -21,13 +21,7 @@ User = get_user_model()
 
 # =========================================================
 # PHONE VALIDATOR
-# =========================================================
-
-phone_regex = RegexValidator(
-    regex=r'^\+?\d{9,15}$',
-    message="Phone number must be in format like +254712345678"
-)
-
+# ========================================================
 
 # =========================================================
 # SCHOOL
@@ -37,12 +31,34 @@ from users.models import CustomUser
 from django.core.validators import RegexValidator
 from django.db import models
 
-# Kenyan phone validator
 phone_regex = RegexValidator(
-    regex=r'^(?:07\d{8}|011\d{7}|\+254[17]\d{7})$',
-    message="Phone number must be either 07xxxxxxxx (10 digits), 011xxxxxxx (10 digits), or +2547xxxxxxx / +2541xxxxxxx (13 digits)."
+    regex=r'^\+254[17]\d{8}$',
+    message="Phone number must be in format +2547XXXXXXXX or +2541XXXXXXXX."
 )
 
+
+# =========================================================
+# PHONE NORMALIZATION
+# =========================================================
+
+def normalize_kenya_phone(phone):
+    if not phone:
+        return None
+
+    phone = phone.strip().replace(" ", "").replace("-", "")
+
+    # 0712345678 -> +254712345678
+    if phone.startswith("07"):
+        phone = "+254" + phone[1:]
+
+    # 0112345678 -> +254112345678
+    elif phone.startswith("011"):
+        phone = "+254" + phone[1:]
+        from django.db import models
+
+
+
+    return phone
 
 class School(models.Model):
     LICENSE_STATUS = [
@@ -55,7 +71,13 @@ class School(models.Model):
     address = models.TextField()
     motto = models.CharField(max_length=300, null=True, blank=True)
 
-    phone = models.CharField(max_length=17, validators=[phone_regex], unique=True)
+    phone = models.CharField(
+    max_length=13,
+    validators=[phone_regex],
+    unique=True,
+    null=True,
+    blank=True
+)
     email = models.EmailField(unique=True)
 
     logo = CloudinaryField('image', blank=True, null=True)
@@ -75,6 +97,18 @@ class School(models.Model):
     )
     verification_token = models.CharField(max_length=64, blank=True, null=True, unique=True)
     verification_sent_at = models.DateTimeField(null=True, blank=True)
+    verification_code = models.CharField(max_length=6, blank=True, null=True)
+    verification_code_sent_at = models.DateTimeField(null=True, blank=True)
+    county = models.CharField(max_length=100, blank=True, null=True)
+    admin_name = models.CharField(max_length=200, blank=True, null=True)
+    admin_email = models.EmailField(blank=True, null=True)
+    admin_phone = models.CharField(max_length=20, blank=True, null=True)
+    registration_status = models.CharField(
+        max_length=20,
+        choices=[('draft', 'Draft'), ('pending', 'Pending Approval'), ('approved', 'Approved'), ('rejected', 'Rejected')],
+        default='draft'
+    )
+    admin_account_created = models.BooleanField(default=False)
 
     # License management
     license_status = models.CharField(max_length=20, choices=LICENSE_STATUS, default='active')
@@ -92,6 +126,15 @@ class School(models.Model):
         self.verification_sent_at = timezone.now()
         self.save(update_fields=["verification_token", "verification_sent_at"])
         return token
+
+    def generate_verification_code(self):
+        import random
+
+        code = f"{random.randint(0, 999999):06d}"
+        self.verification_code = code
+        self.verification_code_sent_at = timezone.now()
+        self.save(update_fields=["verification_code", "verification_code_sent_at"])
+        return code
 
     def __str__(self):
         return self.name
@@ -125,8 +168,13 @@ class DirectorOfStudies(models.Model):
 
     name = models.CharField(max_length=200)
     email = models.EmailField(unique=True)
-    phone = models.CharField(max_length=17, validators=[phone_regex], unique=True)
-
+    phone = models.CharField(
+    max_length=13,
+    validators=[phone_regex],
+    unique=True,
+    null=True,
+    blank=True
+)
     email_verified = models.BooleanField(default=False)
     phone_verified = models.BooleanField(default=False)
 
@@ -141,7 +189,13 @@ class Principal(models.Model):
     school = models.ForeignKey("schools.School", on_delete=models.CASCADE, related_name="principals")
     name = models.CharField(max_length=100)
     email = models.EmailField(unique=True)
-    phone = models.CharField(max_length=20)
+    phone = models.CharField(
+    max_length=13,
+    validators=[phone_regex],
+    unique=True,
+    null=True,
+    blank=True
+)
 
     def __str__(self):
         return f"{self.name} ({self.school.name})"
@@ -151,6 +205,27 @@ class Principal(models.Model):
 # =========================================================
 # TERM
 # =========================================================
+
+
+class SupportAgent(models.Model):
+    """Represents a support team member who can assist with user requests and demo responses."""
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='support_agent_profile'
+    )
+    active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        try:
+            return self.user.get_full_name() or self.user.email
+        except Exception:
+            return str(self.user)
+
 
 class Term(models.Model):
     school = models.ForeignKey("schools.School", on_delete=models.CASCADE)

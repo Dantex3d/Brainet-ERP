@@ -312,7 +312,7 @@ Support
 
 For support, bug reports, or feature requests:
 
-Email: support@brainet.co.ke
+Email: support@brainetanalytics.co.ke
 
 Website: https://brainet.co.ke
 

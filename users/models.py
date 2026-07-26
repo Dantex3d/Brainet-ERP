@@ -29,6 +29,7 @@ class CustomUser(AbstractUser):
     email_verified = models.BooleanField(default=False)
     email_verification_token = models.CharField(max_length=64, blank=True, null=True, unique=True)
     email_verification_sent_at = models.DateTimeField(null=True, blank=True)
+    must_change_password = models.BooleanField(default=False)
     
     # Verification code for DOS/Principal (6-digit numeric code)
     verification_code = models.CharField(max_length=6, blank=True, null=True)
