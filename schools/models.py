@@ -169,7 +169,7 @@ class DirectorOfStudies(models.Model):
     name = models.CharField(max_length=200)
     email = models.EmailField(unique=True)
     phone = models.CharField(
-    max_length=13,
+    max_length=20,
     validators=[phone_regex],
     unique=True,
     null=True,
@@ -190,7 +190,7 @@ class Principal(models.Model):
     name = models.CharField(max_length=100)
     email = models.EmailField(unique=True)
     phone = models.CharField(
-    max_length=13,
+    max_length=20,
     validators=[phone_regex],
     unique=True,
     null=True,

@@ -14,16 +14,16 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='directorofstudies',
             name='phone',
-            field=models.CharField(blank=True, max_length=13, null=True, unique=True, validators=[django.core.validators.RegexValidator(message='Phone number must be in format +2547XXXXXXXX or +2541XXXXXXXX.', regex='^\\+254[17]\\d{8}$')]),
+            field=models.CharField(blank=True, max_length=20, null=True, unique=True, validators=[django.core.validators.RegexValidator(message='Phone number must be in format +2547XXXXXXXX or +2541XXXXXXXX.', regex='^\\+254[17]\\d{8}$')]),
         ),
         migrations.AlterField(
             model_name='principal',
             name='phone',
-            field=models.CharField(blank=True, max_length=13, null=True, unique=True, validators=[django.core.validators.RegexValidator(message='Phone number must be in format +2547XXXXXXXX or +2541XXXXXXXX.', regex='^\\+254[17]\\d{8}$')]),
+            field=models.CharField(blank=True, max_length=20, null=True, unique=True, validators=[django.core.validators.RegexValidator(message='Phone number must be in format +2547XXXXXXXX or +2541XXXXXXXX.', regex='^\\+254[17]\\d{8}$')]),
         ),
         migrations.AlterField(
             model_name='school',
             name='phone',
-            field=models.CharField(blank=True, max_length=13, null=True, unique=True, validators=[django.core.validators.RegexValidator(message='Phone number must be in format +2547XXXXXXXX or +2541XXXXXXXX.', regex='^\\+254[17]\\d{8}$')]),
+            field=models.CharField(blank=True, max_length=20, null=True, unique=True, validators=[django.core.validators.RegexValidator(message='Phone number must be in format +2547XXXXXXXX or +2541XXXXXXXX.', regex='^\\+254[17]\\d{8}$')]),
         ),
     ]
