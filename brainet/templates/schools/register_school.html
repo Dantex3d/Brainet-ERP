@@ -10,7 +10,28 @@
                     <h4 class="mb-0">📘 Register Your School</h4>
                     <small>Start with your school name and email, verify the address, then submit your full details for approval.</small>
                 </div>
-                <div class="card-body p-4">
+                <div class="card-body p-4 school-register-card">
+                    <style>
+                        @media (max-width: 575px) {
+                            .school-register-card {
+                                padding: 1.25rem !important;
+                            }
+                            .school-register-card .btn-group-responsive {
+                                flex-direction: column !important;
+                                align-items: stretch !important;
+                            }
+                            .school-register-card .btn-group-responsive .btn {
+                                width: 100%;
+                            }
+                            .school-register-card .alert {
+                                font-size: 0.95rem;
+                            }
+                            .school-register-card .form-control,
+                            .school-register-card .form-label {
+                                font-size: 0.95rem;
+                            }
+                        }
+                    </style>
                     {% if messages %}
                         {% for message in messages %}
                             <div class="alert alert-{{ message.tags }} rounded-3">
@@ -41,9 +62,9 @@
                         <div class="alert alert-secondary rounded-3">
                             If there is any delay or you need assistance, please contact the admin or email <strong>support@brainetanalytics.co.ke</strong>. You may also WhatsApp/SMS <strong>0700 269 517</strong> or <strong>0736 645 038</strong>.
                         </div>
-                        <div class="d-flex justify-content-between align-items-center gap-2">
+                        <div class="d-flex justify-content-between align-items-center gap-2 btn-group-responsive">
                             <a href="{% url 'landing' %}" class="btn btn-outline-secondary rounded-3">Cancel</a>
-                            <button type="submit" class="btn btn-primary rounded-3">Send Verification Code</button>
+                            <button type="submit" class="btn btn-primary rounded-3">Register</button>
                         </div>
                         {% endif %}
 
@@ -54,10 +75,10 @@
                         <div class="mb-3 {% if errors.verification_code %}border border-danger rounded-2 p-2{% endif %}">
                             <label class="form-label fw-bold">Verification Code <span class="text-danger">*</span></label>
                             <input type="text" name="verification_code" class="form-control rounded-3 {% if errors.verification_code %}is-invalid{% endif %}" maxlength="6" inputmode="numeric" required>
-                            <small class="text-muted">Enter the 6-digit code. It will expire in 1 hour.</small>
+                            <small class="text-muted">Enter the 6-digit code. It will expire in 10 minutes.</small>
                             {% if errors.verification_code %}<div class="invalid-feedback">{{ errors.verification_code }}</div>{% endif %}
                         </div>
-                        <div class="d-flex justify-content-between align-items-center gap-2">
+                        <div class="d-flex justify-content-between align-items-center gap-2 btn-group-responsive">
                             <a href="{% url 'register_school' %}" class="btn btn-outline-secondary rounded-3">Back</a>
                             <button type="submit" class="btn btn-primary rounded-3">Verify Email</button>
                         </div>
@@ -100,19 +121,17 @@
                             <input type="text" name="admin_phone" pattern="^\+254[17]\d{8}$" title="+2547XXXXXXXX or +2541XXXXXXXX" class="form-control rounded-3 {% if errors.admin_phone %}is-invalid{% endif %}" value="{{ admin_phone|default:'' }}" required>
                             {% if errors.admin_phone %}<div class="invalid-feedback">{{ errors.admin_phone }}</div>{% endif %}
                         </div>
-                        <div class="mb-3 {% if errors.admin_password %}border border-danger rounded-2 p-2{% endif %}">
-                            <label class="form-label fw-bold">Temporary Password <span class="text-danger">*</span></label>
-                            <input type="password" name="admin_password" class="form-control rounded-3 {% if errors.admin_password %}is-invalid{% endif %}" required>
-                            {% if errors.admin_password %}<div class="invalid-feedback">{{ errors.admin_password }}</div>{% endif %}
+                        <div class="alert alert-warning rounded-3 mb-4">
+                            A temporary password will be generated after Brainet approves your school registration and emailed to your admin address.
                         </div>
 
-                        <div class="alert alert-warning rounded-3 mb-4">
+                        <div class="alert alert-secondary rounded-3 mb-4">
                             Your registration will be reviewed by Brainet. Once approved, you will receive an email and your account will be created with a password-change requirement on first login.
                         </div>
                         <div class="alert alert-secondary rounded-3 mb-4">
                             If there is any delay or you need assistance, please contact the admin or email <strong>support@brainetanalytics.co.ke</strong>. You may also WhatsApp/SMS <strong>0700 269 517</strong> or <strong>0736 645 038</strong>.
                         </div>
-                        <div class="d-flex justify-content-between align-items-center gap-2">
+                        <div class="d-flex justify-content-between align-items-center gap-2 btn-group-responsive">
                             <a href="{% url 'register_school' %}" class="btn btn-outline-secondary rounded-3">Back</a>
                             <button type="submit" class="btn btn-primary rounded-3">Submit Registration</button>
                         </div>

@@ -83,7 +83,33 @@
 
         }
 
-        .navbar-brand{
+        .navbar .nav-btn{
+            min-width: 110px;
+        }
+
+        .navbar .nav-summary{
+            flex: 1 1 auto;
+        }
+
+        @media (max-width: 991px) {
+            .navbar{
+                padding:14px 16px;
+            }
+            .navbar .nav-summary{
+                width: 100%;
+                margin-bottom: 0.75rem;
+            }
+            .navbar .d-flex.gap-2 {
+                justify-content: flex-end;
+                width: 100%;
+            }
+            .navbar .nav-btn{
+                width: 100%;
+            }
+            .navbar .nav-btn + .nav-btn{
+                margin-left: 0;
+            }
+        }
 
             font-size:1.9rem;
 
@@ -561,6 +587,22 @@
 
             }
 
+            .nav-summary {
+                justify-content: flex-start;
+                width: 100%;
+                margin-bottom: 0.75rem;
+            }
+
+            .hero-section .navbar-collapse {
+                background: rgba(0,0,0,0.35);
+                border-radius: 16px;
+                padding: 1rem;
+            }
+
+            .hero-section .nav-btn {
+                width: 100%;
+                text-align: center;
+            }
         }
 
     </style>
@@ -596,41 +638,46 @@
 
             </a>
 
-            <div class="d-flex align-items-center flex-wrap">
-                <span class="nav-summary">
-                    <i class="bi bi-heart-fill"></i>
-                    Donate/Appreciate: Safaricom / M-Pesa 0700267517
-                </span>
-            </div>
-            <div class="d-flex gap-2 flex-wrap mt-3 mt-lg-0">
-                <a href="{% url 'login' %}"
-                   class="btn btn-success nav-btn">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#landingNav" aria-controls="landingNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
 
-                    Login
+            <div class="collapse navbar-collapse" id="landingNav">
+                <div class="navbar-nav align-items-center me-auto">
+                    <span class="nav-summary">
+                        <i class="bi bi-heart-fill"></i>
+                        Donate/Appreciate: Safaricom / M-Pesa 0700267517
+                    </span>
+                </div>
+                <div class="d-flex gap-2 flex-wrap mt-3 mt-lg-0 justify-content-end w-100 w-lg-auto">
+                    <a href="{% url 'login' %}"
+                       class="btn btn-success nav-btn">
 
-                </a>
+                        Login
 
-                <a href="{% url 'about_us' %}"
-                   class="btn btn-outline-light nav-btn">
+                    </a>
 
-                    About Us
+                    <a href="{% url 'about_us' %}"
+                       class="btn btn-outline-light nav-btn">
 
-                </a>
+                        About Us
 
-                <a href="#contact"
-                   class="btn btn-outline-light nav-btn">
+                    </a>
 
-                    Contact Us
+                    <a href="#contact"
+                       class="btn btn-outline-light nav-btn">
 
-                </a>
+                        Contact Us
 
-                <a href="{% url 'register_school' %}"
-                   class="btn btn-outline-light nav-btn">
+                    </a>
 
-                    Register School
+                    <a href="{% url 'register_school' %}"
+                       class="btn btn-outline-light nav-btn">
 
-                </a>
+                        Register School
 
+                    </a>
+                </div>
             </div>
 
         </div>

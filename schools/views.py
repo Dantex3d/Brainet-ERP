@@ -4,6 +4,7 @@ import email
 import re
 from urllib.parse import urlparse
 from django.utils import timezone
+from django.utils.crypto import get_random_string
 from django.conf import settings
 import logging
 from io import BytesIO
@@ -23,7 +24,8 @@ from django.urls import reverse
 
 import students
 import subjects
-from .models import DOSMessage, DOSQuery, Notification, School, DirectorOfStudies, Dormitory, Term, Class, Subject, GradingPolicy, StudentMark, StudentPromotion, SchoolNotice, ErrorReport, SecurityLog, ContactMessage, DemoRequest, SupportAgent
+from .models import DOSMessage, DOSQuery, Notification, School, DirectorOfStudies, Dormitory, Term, Class, Subject, Principal, GradingPolicy, StudentMark, StudentPromotion, SchoolNotice, ErrorReport, SecurityLog, ContactMessage, DemoRequest, SupportAgent
+from users.models import CustomUser
 from django.db import IntegrityError
 from collections import defaultdict
 from students.models import Student
@@ -46,6 +48,7 @@ from reportlab.graphics.shapes import Drawing, Circle
 from schools.models import School, normalize_kenya_phone, phone_regex
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
+from django.utils.safestring import mark_safe
 
 User = get_user_model()
 
@@ -84,6 +87,60 @@ def notify_superusers_about_school_registration(school, admin_name=None, admin_e
         )
     except Exception as e:
         logging.getLogger(__name__).exception("Failed to notify superusers for new school registration: %s", e)
+
+
+def create_school_admin_account(school, request=None):
+    """Create the school admin user when a school registration is approved."""
+    if not school.admin_email or school.admin_account_created:
+        return False
+
+    if CustomUser.objects.filter(email=school.admin_email).exists():
+        return False
+
+    if Principal.objects.filter(school=school).exists():
+        return False
+
+    if school.admin_phone and Principal.objects.filter(phone=school.admin_phone).exists():
+        return False
+
+    password = get_random_string(length=12)
+    user = CustomUser.objects.create_user(
+        email=school.admin_email,
+        password=password,
+        role="principal",
+        school=school,
+        email_verified=False,
+        must_change_password=True,
+    )
+
+    Principal.objects.create(
+        user=user,
+        school=school,
+        name=school.admin_name or school.name,
+        email=school.admin_email,
+        phone=school.admin_phone or "",
+    )
+
+    try:
+        send_email(
+            to_email=school.admin_email,
+            subject="Your Brainet school admin account is ready",
+            message=(
+                f"Hello {school.admin_name or school.name},\n\n"
+                f"Your school administrator account for {school.name} has been created on Brainet.\n"
+                f"Login email: {school.admin_email}\n"
+                f"Temporary password: {password}\n\n"
+                "Please log in and change your password immediately."
+            ),
+            recipient_name=school.admin_name or school.name,
+            html=False,
+        )
+    except Exception:
+        pass
+
+    school.admin_account_created = True
+    school.save(update_fields=["admin_account_created"])
+    return True
 
 
 def resolve_exam_window_state(request, school):
@@ -155,12 +212,6 @@ def get_school_login_domain(school):
 
 def student_login_email(admission_number, school):
     return f"{admission_number}@{get_school_login_domain(school)}.school"
-
-
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
-from users.models import CustomUser
-from teachers.models import Teacher
 
 
 def superuser_required(view_func):
@@ -368,7 +419,7 @@ def send_school_verification_email(school, request=None):
         f"Please verify this school's email address by entering the 6-digit code below on the Brainet registration page:\n\n"
         f"Verification code: {code}\n\n"
         f"You can also open this link: {verify_link}\n\n"
-        "This link expires in 1 hour. After verification the school admin will be able to complete activation and password resets.\n\n"
+        "This link expires in 10 minutes. After verification the school admin will be able to complete activation and password resets.\n\n"
         "If you did not register this school, please ignore this message."
     )
 
@@ -4143,6 +4194,8 @@ def activate_school(request, school_id):
     school.verified_at = timezone.now()
     if hasattr(request.user, 'email'):
         school.verified_by = request.user
+
+    created_account = create_school_admin_account(school, request=request)
     school.save()
 
     email_subject = f"School verified: {school.name}"
@@ -4180,7 +4233,7 @@ def activate_school(request, school_id):
 def verify_school_via_token(request, token):
     school = get_object_or_404(School, verification_token=token)
 
-    if not school.verification_sent_at or school.verification_sent_at + timedelta(hours=1) < timezone.now():
+    if not school.verification_sent_at or school.verification_sent_at + timedelta(minutes=10) < timezone.now():
         school.verification_token = None
         school.save(update_fields=["verification_token"])
         messages.error(request, "School verification link has expired. Please request a new school registration email.")
@@ -4415,10 +4468,6 @@ def register_school(request):
             if errors:
                 return render(request, "schools/register_school.html", {"name": name, "email": email, 'errors': errors})
 
-            if School.objects.filter(email=email).exists():
-                messages.error(request, "That emailis already Taken.")
-                return render(request, "schools/register_school.html", {"name": name, "email": email})
-
             school, created = School.objects.get_or_create(
                 email=email,
                 defaults={
@@ -4429,6 +4478,14 @@ def register_school(request):
                     "registration_status": "pending",
                 },
             )
+
+            if not created and school.name.strip().lower() != name.strip().lower():
+                messages.error(request, mark_safe(
+                    "This email already belongs to another registered school. "
+                    "If this is not your school, use a different email address. "
+                    f"If it is your school, please <a href=\"{reverse('register_school')}\">return to registration</a> or contact support."
+                ))
+                return render(request, "schools/register_school.html", {"name": name, "email": email})
             if not created:
                 school.name = name
                 school.registration_status = "pending"
@@ -4448,6 +4505,18 @@ def register_school(request):
             school_id = request.POST.get("school_id")
             school = get_object_or_404(School, id=school_id)
             expected_code = school.verification_code or ""
+            if not school.verification_code or school.verification_code_sent_at + timedelta(minutes=10) < timezone.now():
+                school.verification_code = None
+                school.save(update_fields=["verification_code"])
+                messages.error(request, "The verification code has expired. Please request a new code.")
+                return render(request, "schools/register_school.html", {
+                    "step": "verify",
+                    "school_id": school.id,
+                    "name": school.name,
+                    "email": school.email,
+                    "verification_email": school.email,
+                })
+
             if verification_code != expected_code:
                 messages.error(request, "The verification code is incorrect. Please try again.")
                 return render(request, "schools/register_school.html", {
@@ -4508,9 +4577,6 @@ def register_school(request):
                     except ValidationError:
                         errors['admin_phone'] = 'Enter a valid Kenya phone number (e.g. +2547XXXXXXXX).'
 
-            if not admin_password:
-                errors['admin_password'] = 'Temporary password is required.'
-
             if errors:
                 return render(request, "schools/register_school.html", {
                     "step": "details",
@@ -4527,15 +4593,26 @@ def register_school(request):
                 })
 
             if School.objects.exclude(id=school.id).filter(email=email).exists():
-                messages.error(request, "That school email is already registered.")
+                messages.error(request, mark_safe(
+                    "This school email is already registered to another school. "
+                    "Please use a different school email, or if this is your school, "
+                    f"<a href=\"{reverse('register_school')}\">return to registration</a> or contact support."
+                ))
                 return render(request, "schools/register_school.html", {"step": "details", "school_id": school.id, "name": school.name, "email": school.email})
 
             if CustomUser.objects.filter(email=admin_email).exists():
-                messages.error(request, "That admin email is already in use.")
+                messages.error(request, mark_safe(
+                    "An account with that admin email already exists. "
+                    "If this is your existing admin account, please log in or use another email. "
+                    f"<a href=\"{reverse('register_school')}\">Return to registration</a>."
+                ))
                 return render(request, "schools/register_school.html", {"step": "details", "school_id": school.id, "name": school.name, "email": school.email})
 
             if Principal.objects.filter(phone=admin_phone).exists():
-                messages.error(request, "This admin phone number is already in use.")
+                messages.error(request, mark_safe(
+                    "This admin phone number is already in use. "
+                    f"<a href=\"{reverse('register_school')}\">Return to registration</a> to try again with a different phone."
+                ))
                 return render(request, "schools/register_school.html", {"step": "details", "school_id": school.id, "name": school.name, "email": school.email})
 
             school.name = name or school.name
@@ -4574,8 +4651,8 @@ def register_school(request):
                 subject="Your Brainet school admin account is pending approval",
                 message=(
                     f"Hello {admin_name},\n\n"
-                    f"Your request for {school.name} is now under review by Brainet."
-                    f"Once approved, you will receive your school activation email and login instructions."
+                    f"Your request for {school.name} is now under review by Brainet. "
+                    f"Once approved, we will create your school admin account and send login details to this email."
                 ),
                 recipient_name=admin_name,
                 html=False,

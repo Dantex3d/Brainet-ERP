@@ -24,6 +24,7 @@
     }
 
     .sidebar-toggle {
+        display: none;
         position: fixed;
         top: 20px;
         right: 20px;
@@ -38,6 +39,12 @@
         cursor: pointer;
         box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         transition: all 0.3s ease;
+    }
+
+    @media (max-width: 991px) {
+        .sidebar-toggle {
+            display: block;
+        }
     }
 
     .sidebar-toggle:hover {
@@ -104,6 +111,33 @@
         transition: margin-right 0.4s ease;
     }
 
+    .header-bar {
+        background: #fff;
+        border-radius: 18px;
+        padding: 24px 28px;
+        box-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
+        margin-bottom: 32px;
+    }
+
+    .header-bar .page-title {
+        margin-bottom: 0;
+    }
+
+    .sidebar-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.45);
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+        z-index: 1040;
+    }
+
+    .sidebar-overlay.active {
+        opacity: 1;
+        visibility: visible;
+    }
+
     @media (max-width: 768px) {
         .sidebar {
             width: 100%;
@@ -127,6 +161,7 @@
 
 <!-- SIDEBAR TOGGLE BUTTON -->
 <button class="sidebar-toggle" id="sidebarToggle" title="Open Menu">☰</button>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
 
 <!-- COLLAPSIBLE SIDEBAR -->
 <div class="sidebar" id="sidebar">
@@ -188,10 +223,10 @@
     <div class="container-fluid py-4">
 
         <!-- HEADER WITH SCHOOL INFO -->
-        <div class="row mb-4">
+        <div class="row mb-4 header-bar align-items-center">
             <div class="col-lg-8">
                 <div>
-                    <h1 class="fw-bold text-primary mb-1">
+                    <h1 class="page-title fw-bold text-primary mb-1">
                         🏫 School Administrator Dashboard
                     </h1>
                     <p class="text-muted mb-0">
@@ -201,7 +236,7 @@
             </div>
 
             <div class="col-lg-4">
-                <div class="d-flex justify-content-end gap-2 align-items-center flex-wrap">
+                <div class="d-flex justify-content-lg-end gap-2 align-items-center flex-wrap">
                     <button onclick="location.reload()" class="btn btn-outline-primary shadow-sm rounded-3" title="Refresh Dashboard">
                         🔄 Refresh
                     </button>
@@ -508,14 +543,23 @@ document.addEventListener('DOMContentLoaded', function() {
         link.addEventListener('click', function() {
             sidebar.classList.remove('active');
             sidebarToggle.textContent = '☰';
+            overlay.classList.remove('active');
         });
     });
     
-    // Close sidebar when clicking outside
+    const overlay = document.getElementById('sidebarOverlay');
+    overlay.addEventListener('click', function() {
+        sidebar.classList.remove('active');
+        sidebarToggle.textContent = '☰';
+        overlay.classList.remove('active');
+    });
+
+    // Close sidebar when clicking outside the sidebar and toggle
     document.addEventListener('click', function(e) {
-        if (!sidebar.contains(e.target) && !sidebarToggle.contains(e.target)) {
+        if (!sidebar.contains(e.target) && !sidebarToggle.contains(e.target) && !overlay.contains(e.target)) {
             sidebar.classList.remove('active');
             sidebarToggle.textContent = '☰';
+            overlay.classList.remove('active');
         }
     });
 });
