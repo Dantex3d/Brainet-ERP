@@ -77,10 +77,18 @@
 
             padding:18px 40px;
 
-            background:rgba(0,0,0,0.35);
+            background:linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
 
             backdrop-filter:blur(10px);
 
+            box-shadow:0 8px 24px rgba(0,0,0,0.18);
+
+        }
+
+        .navbar-brand{
+            font-size:1.9rem;
+            font-weight:800;
+            color:#fff !important;
         }
 
         .navbar .nav-btn{
@@ -91,13 +99,29 @@
             flex: 1 1 auto;
         }
 
+        .navbar .navbar-collapse{
+            border-radius:16px;
+        }
+
         @media (max-width: 991px) {
             .navbar{
                 padding:14px 16px;
+                background:linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
             }
+
+            .navbar .navbar-collapse{
+                margin-top:0.75rem;
+                padding:1rem;
+                background:#f8fafc;
+                border:1px solid #dbeafe;
+                box-shadow:0 12px 30px rgba(15, 23, 42, 0.16);
+            }
+
             .navbar .nav-summary{
                 width: 100%;
                 margin-bottom: 0.75rem;
+                color:#0f172a;
+                margin-left:0;
             }
             .navbar .d-flex.gap-2 {
                 justify-content: flex-end;
@@ -105,18 +129,23 @@
             }
             .navbar .nav-btn{
                 width: 100%;
+                color:#0f172a;
+                background:#ffffff;
+                border-color:#bfdbfe;
+            }
+            .navbar .nav-btn.btn-success{
+                background:#16a34a;
+                color:#fff;
+                border-color:#16a34a;
+            }
+            .navbar .nav-btn.btn-outline-light{
+                color:#0f172a;
+                background:#ffffff;
+                border-color:#bfdbfe;
             }
             .navbar .nav-btn + .nav-btn{
                 margin-left: 0;
             }
-        }
-
-            font-size:1.9rem;
-
-            font-weight:800;
-
-            color:#fff !important;
-
         }
 
         .nav-summary{
