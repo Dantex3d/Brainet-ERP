@@ -3,6 +3,32 @@
 
 {% block content %}
 
+<style>
+    .marksheet-table-panel {
+        overflow-x: auto;
+        overflow-y: hidden;
+    }
+
+    .marksheet-table {
+        min-width: max-content;
+        table-layout: auto;
+        white-space: nowrap;
+    }
+
+    .marksheet-table th,
+    .marksheet-table td {
+        white-space: nowrap;
+        vertical-align: middle;
+    }
+
+    .marksheet-table th.subject-col,
+    .marksheet-table td.subject-col {
+        min-width: 120px;
+        max-width: 220px;
+        white-space: nowrap;
+    }
+</style>
+
 <div class="container-fluid py-4">
 
     <div class="card border-0 shadow-sm rounded-4 mb-4">
@@ -38,8 +64,8 @@
 
     <div class="card">
         <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-bordered align-middle" id="full_marks_table">
+            <div class="marksheet-table-panel">
+                <table class="table table-bordered align-middle marksheet-table" id="full_marks_table">
                     <thead class="table-dark">
                         <tr>
                             <th>Rank</th>
@@ -47,7 +73,7 @@
                             <th>Adm No</th>
                             <th>Stream</th>
                             {% for subject in subjects %}
-                                <th>{{ subject.short_name }}</th>
+                                <th class="subject-col">{{ subject.short_name }}</th>
                             {% endfor %}
                             <th>Total</th>
                             <th>Avg</th>
@@ -64,7 +90,7 @@
                             <td>{{ row.student.admission_number }}</td>
                             <td>{{ row.stream_name }}</td>
                             {% for score in row.subject_scores %}
-                                <td class="text-center">{% if score is not None %}{{ score }}{% else %}-{% endif %}</td>
+                                <td class="text-center subject-col">{% if score is not None %}{{ score }}{% else %}-{% endif %}</td>
                             {% endfor %}
                             <td class="fw-bold text-success text-center">{{ row.total }}</td>
                             <td class="text-center">{{ row.average }}</td>

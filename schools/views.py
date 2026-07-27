@@ -5526,7 +5526,10 @@ def export_marksheet_pdf(request):
     ]
 
     for subject in subjects:
-        header.append(subject.short_name.upper())
+        subject_label = (subject.short_name or subject.name or "SUBJ").strip()
+        if len(subject_label) > 16:
+            subject_label = subject_label[:14] + ".."
+        header.append(subject_label.upper())
 
     header += [
         "TOTAL",
@@ -5633,7 +5636,12 @@ def export_marksheet_pdf(request):
     # =====================================================
     # CREATE TABLE
     # =====================================================
-    table = Table(table_data, repeatRows=1)
+    subject_column_count = len(subjects)
+    base_col_width = 28
+    dynamic_col_width = max(34, min(52, 500 // max(1, subject_column_count + 6)))
+    col_widths = [44, 110, 42, 34] + [dynamic_col_width] * subject_column_count + [36, 34, 42, 34, 34, 34]
+
+    table = Table(table_data, repeatRows=1, colWidths=col_widths)
 
     table.setStyle(TableStyle([
         # GRID
@@ -5650,6 +5658,8 @@ def export_marksheet_pdf(request):
         ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
         # STUDENT NAME LEFT ALIGN
         ("ALIGN", (1, 1), (1, -1), "LEFT"),
+        # WRAP TEXT FOR LONG SUBJECT LABELS
+        ("WORDWRAP", (0, 0), (-1, -1), "CJK"),
     ]))
 
     elements.append(table)
@@ -6806,8 +6816,7 @@ def export_class_report(request, class_id, term_id, exam_id):
         {school.address or ""}<br/>
         {school.phone or ""} | {school.email or ""}<br/><br/>
         <b>ACADEMIC REPORT FORM</b><br/>
-        Class: {class_obj.name}{stream_display} | Term: {term_obj.name} | Exam: {exam_obj.name}<br/>
-        School closed on {term_close_date} | Next term opens on {next_term_open_date}
+        Class: {class_obj.name}{stream_display} | Term: {term_obj.name} | Exam: {exam_obj.name}
         """
 
         if logo:
@@ -6953,6 +6962,13 @@ def export_class_report(request, class_id, term_id, exam_id):
         )
 
         elements.append(Paragraph(totals_text, styles["ReportHeader"]))
+        elements.append(Spacer(1, 4))
+
+        notice_text = (
+            f"<b>School closed on:</b> {term_close_date} | "
+            f"<b>Next term opens on:</b> {next_term_open_date}"
+        )
+        elements.append(Paragraph(notice_text, styles["ReportSmall"]))
         elements.append(Spacer(1, 8))
 
         # ================= SIGNATURES & COMMENTS SECTION =================

@@ -2,6 +2,30 @@
 {% block content %}
 
 <style>
+    .marksheet-table-wrap {
+        overflow-x: auto;
+        overflow-y: hidden;
+    }
+
+    .marksheet-table {
+        min-width: max-content;
+        table-layout: auto;
+        white-space: nowrap;
+    }
+
+    .marksheet-table th,
+    .marksheet-table td {
+        white-space: nowrap;
+        vertical-align: middle;
+    }
+
+    .marksheet-table th.subject-column,
+    .marksheet-table td.subject-column {
+        min-width: 140px;
+        max-width: 220px;
+        white-space: nowrap;
+    }
+
     .generation-progress-overlay {
         position: fixed;
         inset: 0;
