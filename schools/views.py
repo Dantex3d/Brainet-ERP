@@ -1,6 +1,7 @@
 import datetime
 from datetime import timedelta
 import email
+import random
 import re
 from urllib.parse import urlparse
 from django.utils import timezone
@@ -428,6 +429,28 @@ def send_school_verification_email(school, request=None):
         subject=subject,
         message=body,
         recipient_name=school.name,
+        html=False,
+    )
+
+
+def send_school_registration_code_email(name, email, code, request=None):
+    if not email:
+        return False
+
+    subject = "Verify your school registration on Brainet"
+    body = (
+        f"Hello {name},\n\n"
+        f"Please verify this school's email address by entering the 6-digit code below on the Brainet registration page:\n\n"
+        f"Verification code: {code}\n\n"
+        "This code expires in 10 minutes.\n\n"
+        "If you did not register this school, please ignore this message."
+    )
+
+    return send_email(
+        to_email=email,
+        subject=subject,
+        message=body,
+        recipient_name=name,
         html=False,
     )
 
@@ -4191,12 +4214,13 @@ def activate_school(request, school_id):
     school = get_object_or_404(School, id=school_id)
     school.is_active = True
     school.is_verified = True
+    school.registration_status = "approved"
     school.verified_at = timezone.now()
     if hasattr(request.user, 'email'):
         school.verified_by = request.user
 
     created_account = create_school_admin_account(school, request=request)
-    school.save()
+    school.save(update_fields=["is_active", "is_verified", "registration_status", "verified_at", "verified_by"])
 
     email_subject = f"School verified: {school.name}"
     email_body = (
@@ -4450,7 +4474,6 @@ def register_school(request):
         admin_name = request.POST.get("admin_name")
         admin_email = request.POST.get("admin_email")
         admin_phone = request.POST.get("admin_phone")
-        admin_password = request.POST.get("admin_password") or request.POST.get("password")
         verification_code = request.POST.get("verification_code")
 
         if step == "start":
@@ -4465,83 +4488,81 @@ def register_school(request):
                 except ValidationError:
                     errors['email'] = 'Enter a valid email address.'
 
+            if email and School.objects.filter(email__iexact=email).exists():
+                errors['email'] = 'This school email is already registered.'
+            if name and School.objects.filter(name__iexact=name).exists():
+                errors['name'] = 'This school name is already registered.'
+
             if errors:
                 return render(request, "schools/register_school.html", {"name": name, "email": email, 'errors': errors})
 
-            school, created = School.objects.get_or_create(
-                email=email,
-                defaults={
-                    "name": name,
-                    "address": "",
-                    "is_active": False,
-                    "is_verified": False,
-                    "registration_status": "pending",
-                },
-            )
+            code = str(random.randint(0, 999999)).zfill(6)
+            request.session["school_registration"] = {
+                "name": name,
+                "email": email,
+                "verification_code": code,
+                "verified": False,
+                "sent_at": timezone.now().isoformat(),
+            }
+            request.session.modified = True
+            send_school_registration_code_email(name, email, code, request=request)
 
-            if not created and school.name.strip().lower() != name.strip().lower():
-                messages.error(request, mark_safe(
-                    "This email already belongs to another registered school. "
-                    "If this is not your school, use a different email address. "
-                    f"If it is your school, please <a href=\"{reverse('register_school')}\">return to registration</a> or contact support."
-                ))
-                return render(request, "schools/register_school.html", {"name": name, "email": email})
-            if not created:
-                school.name = name
-                school.registration_status = "pending"
-                school.save(update_fields=["name", "registration_status"])
-
-            send_school_verification_email(school, request=request)
             messages.success(request, "A verification code has been sent to your school email. Enter the 6-digit code below to continue.")
             return render(request, "schools/register_school.html", {
                 "step": "verify",
-                "school_id": school.id,
-                "name": school.name,
-                "email": school.email,
-                "verification_email": school.email,
+                "school_id": "",
+                "name": name,
+                "email": email,
+                "verification_email": email,
             })
 
         if step == "verify":
-            school_id = request.POST.get("school_id")
-            school = get_object_or_404(School, id=school_id)
-            expected_code = school.verification_code or ""
-            if not school.verification_code or school.verification_code_sent_at + timedelta(minutes=10) < timezone.now():
-                school.verification_code = None
-                school.save(update_fields=["verification_code"])
-                messages.error(request, "The verification code has expired. Please request a new code.")
-                return render(request, "schools/register_school.html", {
-                    "step": "verify",
-                    "school_id": school.id,
-                    "name": school.name,
-                    "email": school.email,
-                    "verification_email": school.email,
-                })
+            pending = request.session.get("school_registration")
+            if not pending:
+                messages.error(request, "Your registration session has expired. Please start again.")
+                return redirect("register_school")
+
+            expected_code = pending.get("verification_code") or ""
+            sent_at_raw = pending.get("sent_at")
+            if sent_at_raw:
+                try:
+                    sent_at = datetime.datetime.fromisoformat(sent_at_raw)
+                    if sent_at + timedelta(minutes=10) < timezone.now():
+                        request.session.pop("school_registration", None)
+                        messages.error(request, "The verification code has expired. Please request a new code.")
+                        return redirect("register_school")
+                except ValueError:
+                    pass
 
             if verification_code != expected_code:
                 messages.error(request, "The verification code is incorrect. Please try again.")
                 return render(request, "schools/register_school.html", {
                     "step": "verify",
-                    "school_id": school.id,
-                    "name": school.name,
-                    "email": school.email,
-                    "verification_email": school.email,
+                    "school_id": "",
+                    "name": pending.get("name"),
+                    "email": pending.get("email"),
+                    "verification_email": pending.get("email"),
                 })
 
-            school.is_verified = True
-            school.verified_at = timezone.now()
-            school.registration_status = "pending"
-            school.save(update_fields=["is_verified", "verified_at", "registration_status"])
+            pending["verified"] = True
+            request.session["school_registration"] = pending
+            request.session.modified = True
             messages.success(request, "School email verified. Please complete the rest of the registration details.")
             return render(request, "schools/register_school.html", {
                 "step": "details",
-                "school_id": school.id,
-                "name": school.name,
-                "email": school.email,
+                "school_id": "",
+                "name": pending.get("name"),
+                "email": pending.get("email"),
                 "county": county or "",
             })
 
         if step == "details":
-            school = get_object_or_404(School, id=request.POST.get("school_id"))
+            pending = request.session.get("school_registration")
+            if not pending or not pending.get("verified"):
+                messages.error(request, "Your registration session has expired. Please start again.")
+                request.session.pop("school_registration", None)
+                return redirect("register_school")
+
             errors = {}
             admin_phone_raw = admin_phone
             admin_phone = normalize_kenya_phone(admin_phone_raw)
@@ -4570,20 +4591,39 @@ def register_school(request):
                 errors['admin_phone'] = 'Admin phone is required.'
             else:
                 if admin_phone is None:
-                    errors['admin_phone'] = 'Enter a valid Kenya phone number (e.g. 07XXXXXXXX).' 
+                    errors['admin_phone'] = 'Enter a valid Kenya phone number (e.g. 07XXXXXXXX).'
                 else:
                     try:
                         phone_regex(admin_phone)
                     except ValidationError:
                         errors['admin_phone'] = 'Enter a valid Kenya phone number (e.g. +2547XXXXXXXX).'
 
+            if School.objects.filter(email__iexact=email or pending.get("email")).exists():
+                errors['email'] = 'This school email is already registered.'
+            if School.objects.filter(name__iexact=name or pending.get("name")).exists():
+                errors['name'] = 'This school name is already registered.'
+            if CustomUser.objects.filter(email=admin_email).exists():
+                messages.error(request, mark_safe(
+                    "An account with that admin email already exists. "
+                    "If this is your existing admin account, please log in or use another email. "
+                    f"<a href=\"{reverse('register_school')}\">Return to registration</a>."
+                ))
+                return render(request, "schools/register_school.html", {"step": "details", "school_id": "", "name": pending.get("name"), "email": pending.get("email")})
+
+            if Principal.objects.filter(phone=admin_phone).exists():
+                messages.error(request, mark_safe(
+                    "This admin phone number is already in use. "
+                    f"<a href=\"{reverse('register_school')}\">Return to registration</a> to try again with a different phone."
+                ))
+                return render(request, "schools/register_school.html", {"step": "details", "school_id": "", "name": pending.get("name"), "email": pending.get("email")})
+
             if errors:
                 return render(request, "schools/register_school.html", {
                     "step": "details",
-                    "school_id": school.id,
-                    "name": school.name,
-                    "email": school.email,
-                    "county": county or school.county,
+                    "school_id": "",
+                    "name": name or pending.get("name"),
+                    "email": email or pending.get("email"),
+                    "county": county or "",
                     "address": address,
                     "phone": phone,
                     "admin_name": admin_name,
@@ -4592,59 +4632,23 @@ def register_school(request):
                     'errors': errors,
                 })
 
-            if School.objects.exclude(id=school.id).filter(email=email).exists():
-                messages.error(request, mark_safe(
-                    "This school email is already registered to another school. "
-                    "Please use a different school email, or if this is your school, "
-                    f"<a href=\"{reverse('register_school')}\">return to registration</a> or contact support."
-                ))
-                return render(request, "schools/register_school.html", {"step": "details", "school_id": school.id, "name": school.name, "email": school.email})
-
-            if CustomUser.objects.filter(email=admin_email).exists():
-                messages.error(request, mark_safe(
-                    "An account with that admin email already exists. "
-                    "If this is your existing admin account, please log in or use another email. "
-                    f"<a href=\"{reverse('register_school')}\">Return to registration</a>."
-                ))
-                return render(request, "schools/register_school.html", {"step": "details", "school_id": school.id, "name": school.name, "email": school.email})
-
-            if Principal.objects.filter(phone=admin_phone).exists():
-                messages.error(request, mark_safe(
-                    "This admin phone number is already in use. "
-                    f"<a href=\"{reverse('register_school')}\">Return to registration</a> to try again with a different phone."
-                ))
-                return render(request, "schools/register_school.html", {"step": "details", "school_id": school.id, "name": school.name, "email": school.email})
-
-            school.name = name or school.name
-            school.address = address
-            school.phone = phone
-            school.email = email or school.email
-            school.county = county or school.county
-            school.admin_name = admin_name
-            school.admin_email = admin_email
-            school.admin_phone = admin_phone
-            school.registration_status = "pending"
-            school.is_active = False
-            school.admin_account_created = False
-            school.is_verified = True
-            school.license_status = 'pending'
-            school.license_expiry = None
-            school.save(update_fields=[
-                "admin_name",
-                "admin_email",
-                "admin_phone",
-                "registration_status",
-                "is_active",
-                "admin_account_created",
-                "is_verified",
-                "license_status",
-                "license_expiry",
-                "address",
-                "phone",
-                "email",
-                "county",
-                "name",
-            ])
+            school = School.objects.create(
+                name=name or pending.get("name"),
+                address=address,
+                phone=phone,
+                email=email or pending.get("email"),
+                county=county or "",
+                admin_name=admin_name,
+                admin_email=admin_email,
+                admin_phone=admin_phone,
+                is_active=False,
+                is_verified=False,
+                registration_status="pending",
+                admin_account_created=False,
+                license_status='pending',
+                license_expiry=None,
+            )
+            request.session.pop("school_registration", None)
 
             send_email(
                 to_email=admin_email,

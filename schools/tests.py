@@ -201,6 +201,71 @@ class DemoRequestWorkflowTests(TestCase):
         self.assertFalse(School.objects.filter(name="Sunshine School").exists())
 
 
+class SchoolRegistrationApprovalWorkflowTests(TestCase):
+    def test_school_request_is_not_created_until_verified_details_are_submitted(self):
+        start_response = self.client.post(
+            reverse("register_school"),
+            {
+                "step": "start",
+                "name": "Pending Registration School",
+                "email": "awaiting-approval@example.com",
+            },
+            follow=True,
+        )
+
+        self.assertEqual(start_response.status_code, 200)
+        self.assertFalse(
+            School.objects.filter(email="awaiting-approval@example.com").exists()
+        )
+
+        pending_registration = self.client.session.get("school_registration")
+        self.assertIsNotNone(pending_registration)
+        self.assertEqual(pending_registration["email"], "awaiting-approval@example.com")
+
+        verification_response = self.client.post(
+            reverse("register_school"),
+            {
+                "step": "verify",
+                "school_id": "",
+                "name": "Pending Registration School",
+                "email": "awaiting-approval@example.com",
+                "verification_code": pending_registration["verification_code"],
+            },
+            follow=True,
+        )
+
+        self.assertEqual(verification_response.status_code, 200)
+        self.assertContains(verification_response, "Please complete the rest of the registration details")
+
+        details_response = self.client.post(
+            reverse("register_school"),
+            {
+                "step": "details",
+                "school_id": "",
+                "name": "Pending Registration School",
+                "email": "awaiting-approval@example.com",
+                "county": "Nairobi",
+                "address": "123 School Road",
+                "phone": "+254712345678",
+                "admin_name": "Grace Admin",
+                "admin_email": "admin@awaiting-approval.example.com",
+                "admin_phone": "+254712345679",
+            },
+            follow=True,
+        )
+
+        self.assertEqual(details_response.status_code, 200)
+        school = School.objects.filter(
+            email="awaiting-approval@example.com",
+            name="Pending Registration School",
+        ).first()
+
+        self.assertIsNotNone(school)
+        self.assertEqual(school.registration_status, "pending")
+        self.assertFalse(school.is_active)
+        self.assertFalse(school.is_verified)
+
+
 class ContactMessageFlowTests(TestCase):
     def setUp(self):
         self.school = School.objects.create(
