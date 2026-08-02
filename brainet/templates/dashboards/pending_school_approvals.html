@@ -1,0 +1,84 @@
+{% extends 'dashboards/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+        <div>
+            <h3 class="fw-bold mb-1">🏫 Pending School Requests</h3>
+            <p class="text-muted mb-0">Review and approve or reject new school registrations before activation.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'superuser_dashboard' %}" class="btn btn-outline-secondary rounded-3">← Back to Dashboard</a>
+        </div>
+    </div>
+
+    {% if messages %}
+    <div class="mb-4">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} shadow-sm rounded-3">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="card border-0 shadow-lg rounded-4">
+        <div class="card-header bg-warning text-dark rounded-top-4 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Review Queue ({{ pending_school_requests_count }})</h5>
+        </div>
+        <div class="card-body">
+            {% if schools %}
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>School</th>
+                            <th>Contact</th>
+                            <th>County</th>
+                            <th>Admin</th>
+                            <th>Submitted</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for school in schools %}
+                        <tr>
+                            <td>
+                                <strong>{{ school.name }}</strong><br>
+                                <small class="text-muted">{{ school.address|truncatechars:80 }}</small>
+                            </td>
+                            <td>
+                                <small>{{ school.email }}</small><br>
+                                <small class="text-muted">{{ school.phone }}</small>
+                            </td>
+                            <td><small>{{ school.county|default:'—' }}</small></td>
+                            <td>
+                                <small>{{ school.admin_name|default:'—' }}</small><br>
+                                <small class="text-muted">{{ school.admin_email|default:'—' }}</small>
+                            </td>
+                            <td><small>{{ school.created_at|date:'d M, Y H:i' }}</small></td>
+                            <td>
+                                <form method="post" class="d-flex flex-column gap-2" style="min-width: 260px;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="school_id" value="{{ school.id }}">
+                                    <textarea name="review_note" class="form-control form-control-sm" rows="2" placeholder="Optional review note"></textarea>
+                                    <div class="d-flex gap-2">
+                                        <button type="submit" name="action" value="approve" class="btn btn-success btn-sm flex-fill">✓ Approve</button>
+                                        <button type="submit" name="action" value="reject" class="btn btn-danger btn-sm flex-fill">✕ Reject</button>
+                                    </div>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5 text-muted">
+                <h5 class="mb-2">No pending school registrations</h5>
+                <p class="mb-0">New school requests will appear here once a school submits a registration.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

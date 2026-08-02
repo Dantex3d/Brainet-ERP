@@ -233,10 +233,14 @@ WHITENOISE_ROOT = BASE_DIR / 'static'
 
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
+USE_MANIFEST_STATICFILES = (
+    not DEBUG and not TESTING and os.environ.get('USE_STATIC_MANIFEST', 'True') == 'True'
+)
+
 STATICFILES_STORAGE = (
-    'django.contrib.staticfiles.storage.StaticFilesStorage'
-    if TESTING else
     'whitenoise.storage.CompressedManifestStaticFilesStorage'
+    if USE_MANIFEST_STATICFILES else
+    'django.contrib.staticfiles.storage.StaticFilesStorage'
 )
 
 STORAGES = {

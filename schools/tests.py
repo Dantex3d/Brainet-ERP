@@ -201,7 +201,62 @@ class DemoRequestWorkflowTests(TestCase):
         self.assertFalse(School.objects.filter(name="Sunshine School").exists())
 
 
+@override_settings(
+    STORAGES={
+        'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+        'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
+    }
+)
+@override_settings(
+    SECURE_SSL_REDIRECT=False,
+    SESSION_COOKIE_SECURE=False,
+    CSRF_COOKIE_SECURE=False,
+)
 class SchoolRegistrationApprovalWorkflowTests(TestCase):
+    def test_superuser_can_review_pending_school_requests_on_approval_page(self):
+        superuser = CustomUser.objects.create_user(
+            email="school-approval-super@example.com",
+            password="testpass123",
+            role="superuser",
+            email_verified=True,
+        )
+        superuser.is_superuser = True
+        superuser.save(update_fields=["is_superuser"])
+
+        school = School.objects.create(
+            name="Pending Approval School",
+            address="124 Pending Road",
+            phone="+254712345678",
+            email="pending-approval@example.com",
+            county="Nairobi",
+            admin_name="Grace Admin",
+            admin_email="admin@pending-approval.example.com",
+            admin_phone="+254712345679",
+            is_active=False,
+            is_verified=False,
+            registration_status="pending",
+            admin_account_created=False,
+            license_status='pending',
+        )
+
+        self.client.force_login(superuser)
+
+        response = self.client.get(reverse("pending_school_approvals"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, school.name)
+
+        approval_response = self.client.post(
+            reverse("pending_school_approvals"),
+            {"school_id": school.id, "action": "approve", "review_note": "Approved for onboarding"},
+            follow=True,
+        )
+
+        self.assertEqual(approval_response.status_code, 200)
+        school.refresh_from_db()
+        self.assertEqual(school.registration_status, "approved")
+        self.assertTrue(school.is_active)
+        self.assertTrue(school.is_verified)
+
     def test_school_request_is_not_created_until_verified_details_are_submitted(self):
         start_response = self.client.post(
             reverse("register_school"),
@@ -420,6 +475,18 @@ class SuperuserNotificationClearTests(TestCase):
 
 
 @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+@override_settings(
+    STORAGES={
+        'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+        'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
+    }
+)
+@override_settings(
+    SECURE_SSL_REDIRECT=False,
+    SESSION_COOKIE_SECURE=False,
+    CSRF_COOKIE_SECURE=False,
+    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+)
 class SchoolRegistrationFlowTests(TestCase):
     def test_public_school_registration_sends_verification_code_to_school_email(self):
         response = self.client.post(
@@ -434,10 +501,62 @@ class SchoolRegistrationFlowTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Enter the 6-digit code")
-        self.assertTrue(School.objects.filter(email="bright@example.com").exists())
+        self.assertFalse(School.objects.filter(email="bright@example.com").exists())
 
         sent_messages = [message.subject for message in mail.outbox]
         self.assertIn("Verify your school registration on Brainet", sent_messages)
+
+    def test_school_registration_requires_county_and_full_admin_details(self):
+        start_response = self.client.post(
+            reverse("register_school"),
+            {
+                "step": "start",
+                "name": "Strict School",
+                "email": "strict@example.com",
+            },
+            follow=True,
+        )
+
+        self.assertEqual(start_response.status_code, 200)
+
+        pending_registration = self.client.session.get("school_registration")
+        self.assertIsNotNone(pending_registration)
+
+        response = self.client.post(
+            reverse("register_school"),
+            {
+                "step": "verify",
+                "verification_code": pending_registration["verification_code"],
+            },
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+
+        details_response = self.client.post(
+            reverse("register_school"),
+            {
+                "step": "details",
+                "name": "Strict School",
+                "email": "strict@example.com",
+                "county": "",
+                "address": "",
+                "phone": "",
+                "admin_name": "",
+                "admin_email": "",
+                "admin_phone": "",
+            },
+            follow=True,
+        )
+
+        self.assertEqual(details_response.status_code, 200)
+        self.assertContains(details_response, "County is required.")
+        self.assertContains(details_response, "School address is required.")
+        self.assertContains(details_response, "School phone is required.")
+        self.assertContains(details_response, "Admin full name is required.")
+        self.assertContains(details_response, "Admin email is required.")
+        self.assertContains(details_response, "Admin phone is required.")
+        self.assertFalse(School.objects.filter(email="strict@example.com").exists())
 
 
 class SchoolLogoStorageTests(TestCase):

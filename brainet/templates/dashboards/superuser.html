@@ -272,6 +272,23 @@
         </div>
 
         <div class="col-md-3">
+            <a href="{% url 'pending_school_approvals' %}" class="text-decoration-none">
+                <div class="card border-0 shadow-lg rounded-4 bg-info text-white h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="text-uppercase text-white-50 mb-2">Pending School Requests</h6>
+                                <h2 class="fw-bold mb-0">{{ pending_school_requests_count }}</h2>
+                            </div>
+                            <div style="font-size: 2.5rem; opacity: 0.3;">🏫</div>
+                        </div>
+                        <small class="text-white-50">Review new registrations</small>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <div class="col-md-3">
             <div class="card border-0 shadow-lg rounded-4 bg-danger text-white h-100">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
@@ -388,6 +405,14 @@
                             </a>
                             <a href="{% url 'manage_schools' %}" class="nav-link btn btn-outline-success text-start rounded-3 py-2">
                                 ➕ Register School
+                            </a>
+                            <a href="{% url 'pending_school_approvals' %}" class="nav-link btn btn-outline-warning text-start rounded-3 py-2 d-flex justify-content-between align-items-center">
+                                <span>🏫 Pending School Requests</span>
+                                <span class="badge bg-light text-dark">{{ pending_school_requests_count|default:0 }}</span>
+                            </a>
+                            <a href="#demo-requests" class="nav-link btn btn-outline-danger text-start rounded-3 py-2 d-flex justify-content-between align-items-center">
+                                <span>📝 Pending Demo Requests</span>
+                                <span class="badge bg-light text-dark">{{ pending_demo_requests_count|default:0 }}</span>
                             </a>
                             <a href="{% url 'manage_schools' %}" class="nav-link btn btn-outline-info text-start rounded-3 py-2">
                                 🏢 Manage Schools

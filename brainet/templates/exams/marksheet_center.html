@@ -102,6 +102,10 @@
         </div>
         <div class="generation-progress-label">Preparing marksheet</div>
         <div class="generation-progress-message" id="generationProgressMessage">Collecting student data…</div>
+        <div class="generation-progress-actions mt-4" id="generationProgressActions" style="display: none;">
+            <button type="button" class="btn btn-success w-100 mb-2" id="generationProgressViewButton">Yes, view it</button>
+            <button type="button" class="btn btn-outline-light w-100 text-dark" id="generationProgressCloseButton">Not now</button>
+        </div>
     </div>
 </div>
 
@@ -365,8 +369,8 @@
             <div class="col-lg-3 col-md-6">
 
                     <a href="{% url 'export_class_report' selected_class selected_term selected_exam %}{% if selected_stream %}?stream_id={{ selected_stream }}{% endif %}"
-                       class="btn btn-primary w-100 py-3">
-
+               class="btn btn-primary w-100 py-3"
+               data-generate-progress="true">
                         📘 Generate Report Forms
 
                     </a>
@@ -427,16 +431,25 @@
                     }
                 }, 220);
 
+                const actionArea = document.getElementById('generationProgressActions');
+                const viewButton = document.getElementById('generationProgressViewButton');
+                const closeButton = document.getElementById('generationProgressCloseButton');
+
+                actionArea.style.display = 'none';
+                viewButton.onclick = function () {
+                    window.location.href = button.getAttribute('href');
+                };
+                closeButton.onclick = function () {
+                    overlay.style.display = 'none';
+                };
+
                 setTimeout(function () {
                     clearInterval(timer);
                     value.textContent = '100%';
                     ring.style.background = 'conic-gradient(#16a34a 360deg, #e2e8f0 0deg)';
-                    message.textContent = 'Finalizing download…';
+                    message.textContent = 'Ready — do you want to view it?';
+                    actionArea.style.display = 'block';
                 }, 2600);
-
-                setTimeout(function () {
-                    window.location.href = button.getAttribute('href');
-                }, 2200);
             });
         });
     });

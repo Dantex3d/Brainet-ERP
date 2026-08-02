@@ -16,6 +16,7 @@ urlpatterns = [
     # =====================================================
     path("superuser/", views.superuser_dashboard, name="superuser_dashboard"),
     path("superuser/schools/", views.manage_schools, name="manage_schools"),
+    path("superuser/schools/pending-approvals/", views.pending_school_approvals, name="pending_school_approvals"),
     path("superuser/principals/", views.manage_principals, name="manage_principals"),
     path("superuser/dos/", views.manage_dos, name="manage_dos"),
     path("superuser/create-staff/", views.create_staff, name="create_staff"),

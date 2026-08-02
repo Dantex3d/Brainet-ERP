@@ -40,7 +40,7 @@
                         {% endfor %}
                     {% endif %}
 
-                    <form method="POST">
+                    <form method="POST" class="needs-validation" novalidate>
                         {% csrf_token %}
                         <input type="hidden" name="step" value="{{ step|default:'start' }}">
                         <input type="hidden" name="school_id" value="{{ school_id|default:'' }}">
@@ -89,18 +89,20 @@
                             <label class="form-label fw-bold">School Name</label>
                             <input type="text" name="name" class="form-control rounded-3" value="{{ name|default:'' }}" required>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">County</label>
-                            <input type="text" name="county" class="form-control rounded-3" value="{{ county|default:'' }}">
+                        <div class="mb-3 {% if errors.county %}border border-danger rounded-2 p-2{% endif %}">
+                            <label class="form-label fw-bold">County <span class="text-danger">*</span></label>
+                            <input type="text" name="county" class="form-control rounded-3 {% if errors.county %}is-invalid{% endif %}" value="{{ county|default:'' }}" required>
+                            {% if errors.county %}<div class="invalid-feedback">{{ errors.county }}</div>{% endif %}
                         </div>
                         <div class="mb-3 {% if errors.phone %}border border-danger rounded-2 p-2{% endif %}">
                             <label class="form-label fw-bold">Phone / WhatsApp <span class="text-danger">*</span></label>
-                            <input type="text" name="phone" pattern="^\+254[17]\d{8}$" title="+2547XXXXXXXX or +2541XXXXXXXX" class="form-control rounded-3 {% if errors.phone %}is-invalid{% endif %}" value="{{ phone|default:'' }}" required>
+                            <input type="text" name="phone" pattern="^(?:\+254[17]\d{8}|0[17]\d{8}|\+2541\d{8}|\+2547\d{8})$" title="Use a Kenya number like 0712345678 or +254712345678" class="form-control rounded-3 {% if errors.phone %}is-invalid{% endif %}" value="{{ phone|default:'' }}" placeholder="0712345678" required>
                             {% if errors.phone %}<div class="invalid-feedback">{{ errors.phone }}</div>{% endif %}
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Address</label>
-                            <textarea name="address" class="form-control rounded-3" rows="4" required>{{ address|default:'' }}</textarea>
+                        <div class="mb-3 {% if errors.address %}border border-danger rounded-2 p-2{% endif %}">
+                            <label class="form-label fw-bold">Address <span class="text-danger">*</span></label>
+                            <textarea name="address" class="form-control rounded-3 {% if errors.address %}is-invalid{% endif %}" rows="4" required>{{ address|default:'' }}</textarea>
+                            {% if errors.address %}<div class="invalid-feedback">{{ errors.address }}</div>{% endif %}
                         </div>
 
                         <hr class="my-4">
@@ -118,7 +120,7 @@
                         </div>
                         <div class="mb-3 {% if errors.admin_phone %}border border-danger rounded-2 p-2{% endif %}">
                             <label class="form-label fw-bold">Admin Phone <span class="text-danger">*</span></label>
-                            <input type="text" name="admin_phone" pattern="^\+254[17]\d{8}$" title="+2547XXXXXXXX or +2541XXXXXXXX" class="form-control rounded-3 {% if errors.admin_phone %}is-invalid{% endif %}" value="{{ admin_phone|default:'' }}" required>
+                            <input type="text" name="admin_phone" pattern="^(?:\+254[17]\d{8}|0[17]\d{8}|\+2541\d{8}|\+2547\d{8})$" title="Use a Kenya number like 0712345678 or +254712345678" class="form-control rounded-3 {% if errors.admin_phone %}is-invalid{% endif %}" value="{{ admin_phone|default:'' }}" placeholder="0712345678" required>
                             {% if errors.admin_phone %}<div class="invalid-feedback">{{ errors.admin_phone }}</div>{% endif %}
                         </div>
                         <div class="alert alert-warning rounded-3 mb-4">
@@ -142,4 +144,96 @@
         </div>
     </div>
 </div>
+<script>
+function normalizeKenyaPhoneValue(value) {
+    if (!value) return '';
+
+    let phone = value.trim().replace(/\s+/g, '').replace(/[-()]/g, '');
+    if (!phone) return '';
+
+    if (phone.startsWith('+254')) {
+        return phone;
+    }
+
+    if (phone.startsWith('254')) {
+        return '+' + phone;
+    }
+
+    if (phone === '07') {
+        return '+2547';
+    }
+
+    if (phone === '01') {
+        return '+2541';
+    }
+
+    if (phone.startsWith('0') && ['7', '1'].includes(phone.charAt(1))) {
+        return '+254' + phone.slice(1);
+    }
+
+    if (phone.startsWith('7') || phone.startsWith('1')) {
+        return '+254' + phone;
+    }
+
+    return phone;
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const phoneFields = document.querySelectorAll('input[name="phone"], input[name="admin_phone"]');
+
+    phoneFields.forEach(function (field) {
+        const original = field.value || '';
+        if (original) {
+            field.value = normalizeKenyaPhoneValue(original);
+        }
+
+        field.addEventListener('blur', function () {
+            field.value = normalizeKenyaPhoneValue(field.value);
+        });
+
+        field.addEventListener('input', function () {
+            const cleaned = normalizeKenyaPhoneValue(field.value);
+            if (cleaned && cleaned !== field.value) {
+                field.value = cleaned;
+            }
+        });
+    });
+
+    const form = document.querySelector('form');
+    if (form) {
+        const requiredFields = Array.from(form.querySelectorAll('input[required], textarea[required], select[required]'));
+
+        requiredFields.forEach(function (field) {
+            field.addEventListener('input', function () {
+                if (field.value.trim()) {
+                    field.classList.remove('is-invalid');
+                }
+            });
+        });
+
+        form.addEventListener('submit', function (event) {
+            phoneFields.forEach(function (field) {
+                field.value = normalizeKenyaPhoneValue(field.value);
+            });
+
+            const invalidFields = requiredFields.filter(function (field) {
+                return !field.value.trim();
+            });
+
+            form.querySelectorAll('.is-invalid').forEach(function (el) {
+                el.classList.remove('is-invalid');
+            });
+
+            if (invalidFields.length > 0) {
+                event.preventDefault();
+                event.stopPropagation();
+
+                invalidFields.forEach(function (field) {
+                    field.classList.add('is-invalid');
+                });
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

@@ -45,18 +45,27 @@ def normalize_kenya_phone(phone):
     if not phone:
         return None
 
-    phone = phone.strip().replace(" ", "").replace("-", "")
+    phone = phone.strip().replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
+    if not phone:
+        return None
 
-    # 0712345678 -> +254712345678
-    if phone.startswith("07"):
-        phone = "+254" + phone[1:]
+    if phone.startswith("+254"):
+        return phone
 
-    # 0112345678 -> +254112345678
-    elif phone.startswith("011"):
-        phone = "+254" + phone[1:]
-        from django.db import models
+    if phone.startswith("254"):
+        return "+" + phone
 
+    if phone == "07":
+        return "+2547"
 
+    if phone == "01":
+        return "+2541"
+
+    if phone.startswith("0") and phone[1:2] in {"7", "1"}:
+        return "+254" + phone[1:]
+
+    if phone.startswith(("7", "1")):
+        return "+254" + phone
 
     return phone
 

@@ -887,6 +887,7 @@ def superuser_dashboard(request):
     # include pending license renewals so superusers can see reactivation requests
     from .models import LicenseRenewal
     pending_renewals = LicenseRenewal.objects.filter(status="pending").select_related("school", "requested_by").order_by("-requested_at")
+    pending_school_requests = School.objects.filter(registration_status="pending").order_by("-created_at")
     principals = Principal.objects.select_related("school").all()
     doss = DirectorOfStudies.objects.select_related("school").all()
     unverified_accounts = get_pending_verification_items()[:12]
@@ -916,6 +917,8 @@ def superuser_dashboard(request):
         "unread_error_reports": unread_error_reports,
         "pending_renewals": pending_renewals,
         "pending_renewals_count": pending_renewals.count(),
+        "pending_school_requests": pending_school_requests,
+        "pending_school_requests_count": pending_school_requests.count(),
         "principals": principals,
         "doss": doss,
         "unverified_accounts": unverified_accounts,
@@ -1269,6 +1272,54 @@ def _process_dos_submission(request):
     send_user_verification_email(user, request=request, role_name='Director of Studies')
     messages.success(request, f"{name} registered successfully. A verification email has been sent.")
     return True
+
+
+@superuser_required
+def pending_school_approvals(request):
+    pending_schools = School.objects.filter(registration_status="pending").order_by("-created_at")
+
+    if request.method == "POST":
+        school_id = request.POST.get("school_id")
+        action = (request.POST.get("action") or "").strip().lower()
+        review_note = (request.POST.get("review_note") or "").strip()
+
+        school = get_object_or_404(School, id=school_id)
+
+        if action == "approve":
+            school.is_active = True
+            school.is_verified = True
+            school.registration_status = "approved"
+            school.verified_at = timezone.now()
+            school.verified_by = request.user
+            school.license_status = "active"
+            school.save(update_fields=["is_active", "is_verified", "registration_status", "verified_at", "verified_by", "license_status"])
+
+            create_school_admin_account(school, request=request)
+            if review_note:
+                messages.success(request, f"School '{school.name}' approved. Review note saved.")
+            else:
+                messages.success(request, f"School '{school.name}' approved and activated successfully.")
+            return redirect("pending_school_approvals")
+
+        if action == "reject":
+            school.is_active = False
+            school.is_verified = False
+            school.registration_status = "rejected"
+            school.license_status = "suspended"
+            school.save(update_fields=["is_active", "is_verified", "registration_status", "license_status"])
+            if review_note:
+                messages.warning(request, f"School '{school.name}' rejected. Review note saved.")
+            else:
+                messages.warning(request, f"School '{school.name}' rejected and archived from active approval queue.")
+            return redirect("pending_school_approvals")
+
+        messages.error(request, "Choose an approval action before submitting.")
+        return redirect("pending_school_approvals")
+
+    return render(request, "dashboards/pending_school_approvals.html", {
+        "schools": pending_schools,
+        "pending_school_requests_count": pending_schools.count(),
+    })
 
 
 @superuser_required
@@ -4466,15 +4517,15 @@ def add_school(request):
 def register_school(request):
     if request.method == "POST":
         step = request.POST.get("step")
-        name = request.POST.get("name")
-        email = request.POST.get("email")
-        county = request.POST.get("county")
-        address = request.POST.get("address")
-        phone = normalize_kenya_phone(request.POST.get("phone"))
-        admin_name = request.POST.get("admin_name")
-        admin_email = request.POST.get("admin_email")
-        admin_phone = request.POST.get("admin_phone")
-        verification_code = request.POST.get("verification_code")
+        name = (request.POST.get("name") or "").strip()
+        email = (request.POST.get("email") or "").strip()
+        county = (request.POST.get("county") or "").strip()
+        address = (request.POST.get("address") or "").strip()
+        phone = normalize_kenya_phone((request.POST.get("phone") or "").strip())
+        admin_name = (request.POST.get("admin_name") or "").strip()
+        admin_email = (request.POST.get("admin_email") or "").strip()
+        admin_phone = (request.POST.get("admin_phone") or "").strip()
+        verification_code = (request.POST.get("verification_code") or "").strip()
 
         if step == "start":
             errors = {}
@@ -4564,9 +4615,13 @@ def register_school(request):
                 return redirect("register_school")
 
             errors = {}
+            submitted_name = name or pending.get("name") or ""
+            submitted_email = email or pending.get("email") or ""
             admin_phone_raw = admin_phone
             admin_phone = normalize_kenya_phone(admin_phone_raw)
 
+            if not county:
+                errors['county'] = 'County is required.'
             if not address:
                 errors['address'] = 'School address is required.'
             if not phone:
@@ -4598,9 +4653,9 @@ def register_school(request):
                     except ValidationError:
                         errors['admin_phone'] = 'Enter a valid Kenya phone number (e.g. +2547XXXXXXXX).'
 
-            if School.objects.filter(email__iexact=email or pending.get("email")).exists():
+            if submitted_email and School.objects.filter(email__iexact=submitted_email).exists():
                 errors['email'] = 'This school email is already registered.'
-            if School.objects.filter(name__iexact=name or pending.get("name")).exists():
+            if submitted_name and School.objects.filter(name__iexact=submitted_name).exists():
                 errors['name'] = 'This school name is already registered.'
             if CustomUser.objects.filter(email=admin_email).exists():
                 messages.error(request, mark_safe(
@@ -4621,9 +4676,9 @@ def register_school(request):
                 return render(request, "schools/register_school.html", {
                     "step": "details",
                     "school_id": "",
-                    "name": name or pending.get("name"),
-                    "email": email or pending.get("email"),
-                    "county": county or "",
+                    "name": submitted_name,
+                    "email": submitted_email,
+                    "county": county,
                     "address": address,
                     "phone": phone,
                     "admin_name": admin_name,
@@ -4633,11 +4688,11 @@ def register_school(request):
                 })
 
             school = School.objects.create(
-                name=name or pending.get("name"),
+                name=submitted_name,
                 address=address,
                 phone=phone,
-                email=email or pending.get("email"),
-                county=county or "",
+                email=submitted_email,
+                county=county,
                 admin_name=admin_name,
                 admin_email=admin_email,
                 admin_phone=admin_phone,
