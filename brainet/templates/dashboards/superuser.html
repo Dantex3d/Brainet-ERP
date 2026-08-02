@@ -446,8 +446,8 @@
                                 <th>Phone</th>
                                 <th>Status</th>
                                 <th>Subscription</th>
-                                <th class="pe-4">Actions</th>
                                 <th>Enrollment</th>
+                                <th class="pe-4">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -475,6 +475,11 @@
                                     {% endif %}
                                 </td>
                                 <td><strong>KES {{ school.subscription_balance }}</strong></td>
+                                <td>
+                                    <span class="badge bg-info text-dark" title="{{ school.student_count_active|default:0 }} active / {{ school.student_count|default:0 }} total">
+                                        {{ school.student_count_active|default:0 }}
+                                    </span>
+                                </td>
                                 <td class="pe-4">
                                     <div class="btn-group btn-group-sm" role="group">
                                         {% if school.is_active %}

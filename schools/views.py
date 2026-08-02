@@ -122,19 +122,74 @@ def create_school_admin_account(school, request=None):
         phone=school.admin_phone or "",
     )
 
+    welcome_message = (
+        f"Hello {school.admin_name or school.name},\n\n"
+        f"Welcome to Brainet! Your school administrator account for {school.name} is now ready.\n\n"
+        f"Login email: {school.admin_email}\n"
+        f"Temporary password: {password}\n\n"
+        "For your security, you will be required to change this password the first time you log in.\n\n"
+        "Quick start guide:\n"
+        "- Log in at your Brainet dashboard and update your profile.\n"
+        "- Confirm your school details, including address and contact phone.\n"
+        "- Add teachers, subjects, terms, and students so your academic year can begin.\n"
+        "- Use the Reports section to generate marksheets, class reports, and performance summaries.\n"
+        "- If you need help, contact support at support@brainetanalytics.co.ke.\n\n"
+        "What Brainet helps you do:\n"
+        "- Manage classes, exams, and student results from one place.\n"
+        "- Track attendance, behavior, and academic progress.\n"
+        "- Automate billing, reporting, and school communication.\n\n"
+        "We’re glad to have you on Brainet. Start by changing your password and exploring the dashboard."
+    )
+
+    email_recipients = [school.admin_email]
+    if school.email and school.email != school.admin_email:
+        email_recipients.append(school.email)
+
     try:
         send_email(
-            to_email=school.admin_email,
-            subject="Your Brainet school admin account is ready",
-            message=(
-                f"Hello {school.admin_name or school.name},\n\n"
-                f"Your school administrator account for {school.name} has been created on Brainet.\n"
-                f"Login email: {school.admin_email}\n"
-                f"Temporary password: {password}\n\n"
-                "Please log in and change your password immediately."
-            ),
+            to_email=email_recipients,
+            subject="Welcome to Brainet — your administrator account is ready",
+            message=welcome_message,
             recipient_name=school.admin_name or school.name,
             html=False,
+        )
+    except Exception:
+        pass
+
+    sender = None
+    if request is not None and hasattr(request, 'user') and request.user.is_authenticated:
+        sender = request.user
+    else:
+        sender = User.objects.filter(is_superuser=True).first() or user
+
+    try:
+        Notification.objects.create(
+            school=school,
+            sender=sender,
+            recipient=user,
+            title="Welcome to Brainet",
+            message=(
+                "Your Brainet school administrator account is ready. "
+                "Please log in using your temporary password and change it immediately. "
+                "Once signed in, complete your profile, confirm school details, add teachers and students, "
+                "and use the Reports menu to begin generating marksheets and class reports."
+            ),
+        )
+    except Exception:
+        pass
+
+    try:
+        SchoolNotice.objects.create(
+            school=school,
+            sender=sender,
+            title="Welcome to Brainet",
+            message=(
+                "Your school administrator account is ready. "
+                "Here are the first steps: change your password, verify school details, add teachers and students, "
+                "and use the Reports area to generate marksheets and academic summaries. "
+                "If you need help, contact support@brainetanalytics.co.ke."
+            ),
+            recipient_type='all',
         )
     except Exception:
         pass
@@ -817,7 +872,10 @@ def superuser_dashboard(request):
     # ----------------------------
     # SCHOOLS
     # ----------------------------
-    schools = School.objects.all().order_by("-id")
+    schools = School.objects.all().annotate(
+        student_count=Count('student'),
+        student_count_active=Count('student', filter=Q(student__status='active'))
+    ).order_by("-id")
 
     active_schools = schools.filter(
         is_active=True
